@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlineOutlined'
-import CloseIcon from '@mui/icons-material/Close'
+import { useEffect, useMemo, useState } from 'react'
+import AddIcon from '@mui/icons-material/Add'
+import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
+import TextField from '@mui/material/TextField'
 import DescriptionIcon from '@mui/icons-material/Description'
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
 import Alert from '@mui/material/Alert'
@@ -41,11 +42,45 @@ import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
 const REJECT_REASON = 'Kelmadi'
 
+const emptyDraft = () => ({ received: '', rejected: '' })
+
+const parseQty = (value) => {
+  const parsed = Number.parseInt(String(value).trim(), 10)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+}
+
+const hasDraftValue = (value) => {
+  const qty = parseQty(value)
+  return qty != null && qty > 0
+}
+
+const getItemDraftState = (draft) => {
+  const receivedFilled = hasDraftValue(draft.received)
+  const rejectedFilled = hasDraftValue(draft.rejected)
+  return { receivedFilled, rejectedFilled, receivedQty: parseQty(draft.received) ?? 0, rejectedQty: parseQty(draft.rejected) ?? 0 }
+}
+
+const canSubmitItemDraft = (item, draft) => {
+  const { receivedFilled, rejectedFilled, receivedQty, rejectedQty } = getItemDraftState(draft)
+  const pending = item.quantityPending
+
+  if (receivedFilled === rejectedFilled) {
+    return false
+  }
+
+  if (receivedFilled) {
+    return receivedQty <= pending
+  }
+
+  return rejectedQty <= pending
+}
+
 export const ReceiveWarehouseDispatchDialog = ({ open, dispatchId, onClose, onSuccess, title = 'Omborga qabul qilish' }) => {
   const [error, setError] = useState('')
   const [locationId, setLocationId] = useState('')
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
   const [actionLoadingByItem, setActionLoadingByItem] = useState({})
+  const [draftByItem, setDraftByItem] = useState({})
 
   const detailQuery = useGetWarehouseDispatchByIdQuery(
     { id: dispatchId, markSeen: true },
@@ -64,6 +99,26 @@ export const ReceiveWarehouseDispatchDialog = ({ open, dispatchId, onClose, onSu
     () => dispatch?.items?.filter((item) => item.quantityPending > 0) ?? [],
     [dispatch?.items],
   )
+
+  useEffect(() => {
+    if (!open) {
+      setDraftByItem({})
+      return
+    }
+
+    setDraftByItem((prev) => {
+      const next = { ...prev }
+      for (const item of pendingItems) {
+        if (next[item.itemIndex] == null) {
+          next[item.itemIndex] = {
+            received: String(item.quantityPending),
+            rejected: '',
+          }
+        }
+      }
+      return next
+    })
+  }, [open, pendingItems])
 
   const processedItems = useMemo(
     () => dispatch?.items?.filter((item) => item.quantityReceived > 0 || item.quantityRejected > 0) ?? [],
@@ -97,9 +152,37 @@ export const ReceiveWarehouseDispatchDialog = ({ open, dispatchId, onClose, onSu
     return true
   }
 
-  const handleAcceptItem = async (item) => {
+  const updateDraft = (itemIndex, field, value) => {
+    setDraftByItem((prev) => ({
+      ...prev,
+      [itemIndex]: {
+        ...(prev[itemIndex] ?? emptyDraft()),
+        [field]: value.replace(/[^\d]/g, ''),
+      },
+    }))
+  }
+
+  const handleSaveItem = async (item) => {
     setError('')
     if (!ensureLocationSelected()) return
+
+    const draft = draftByItem[item.itemIndex] ?? emptyDraft()
+    if (!canSubmitItemDraft(item, draft)) {
+      return
+    }
+
+    const { receivedFilled, receivedQty, rejectedQty } = getItemDraftState(draft)
+    const pending = item.quantityPending
+
+    if (receivedFilled && receivedQty > pending) {
+      setError(`«${item.name}» uchun qabul ${pending} tadan ko‘p bo‘lishi mumkin emas`)
+      return
+    }
+
+    if (!receivedFilled && rejectedQty > pending) {
+      setError(`«${item.name}» uchun kelmagan ${pending} tadan ko‘p bo‘lishi mumkin emas`)
+      return
+    }
 
     try {
       await withItemLoading(item.itemIndex, () =>
@@ -107,43 +190,37 @@ export const ReceiveWarehouseDispatchDialog = ({ open, dispatchId, onClose, onSu
           id: dispatchId,
           body: {
             locationId: selectedLocationId,
-            receivedItems: [{ itemIndex: item.itemIndex, quantityReceived: item.quantityPending }],
-            rejectedItems: [],
+            receivedItems:
+              receivedQty > 0
+                ? [{ itemIndex: item.itemIndex, quantityReceived: receivedQty }]
+                : [],
+            rejectedItems:
+              rejectedQty > 0
+                ? [
+                    {
+                      itemIndex: item.itemIndex,
+                      quantityRejected: rejectedQty,
+                      reason: REJECT_REASON,
+                    },
+                  ]
+                : [],
           },
         }).unwrap(),
       )
-      showSnackbar(`"${item.name}" qabul qilindi`, 'success')
+
+      const parts = []
+      if (receivedQty > 0) parts.push(`${receivedQty} ta qabul`)
+      if (rejectedQty > 0) parts.push(`${rejectedQty} ta kelmadi`)
+      showSnackbar(`"${item.name}": ${parts.join(', ')}`, 'success')
+
+      setDraftByItem((prev) => {
+        const next = { ...prev }
+        delete next[item.itemIndex]
+        return next
+      })
       await detailQuery.refetch()
     } catch (submitError) {
       setError(getApiErrorMessage(submitError, 'Qabul qilishda xatolik'))
-    }
-  }
-
-  const handleRejectItem = async (item) => {
-    setError('')
-    if (!ensureLocationSelected()) return
-
-    try {
-      await withItemLoading(item.itemIndex, () =>
-        receiveDispatch({
-          id: dispatchId,
-          body: {
-            locationId: selectedLocationId,
-            receivedItems: [],
-            rejectedItems: [
-              {
-                itemIndex: item.itemIndex,
-                quantityRejected: item.quantityPending,
-                reason: REJECT_REASON,
-              },
-            ],
-          },
-        }).unwrap(),
-      )
-      showSnackbar(`"${item.name}" kelmadi deb belgilandi`, 'info')
-      await detailQuery.refetch()
-    } catch (submitError) {
-      setError(getApiErrorMessage(submitError, 'Rad etishda xatolik'))
     }
   }
 
@@ -252,59 +329,118 @@ export const ReceiveWarehouseDispatchDialog = ({ open, dispatchId, onClose, onSu
                         <TableHead>
                           <TableRow>
                             <TableCell>Tovar</TableCell>
-                            <TableCell width={120} align="right">
+                            <TableCell width={90} align="right">
+                              Jo‘natilgan
+                            </TableCell>
+                            <TableCell width={80} align="right">
                               Qolgan
                             </TableCell>
-                            <TableCell width={140} align="center">
-                              Amallar
+                            <TableCell width={100} align="center">
+                              Qabul
                             </TableCell>
+                            <TableCell width={100} align="center">
+                              Kelmadi
+                            </TableCell>
+                            <TableCell width={72} align="center" />
                           </TableRow>
                         </TableHead>
                         <TableBody>
                           {pendingItems.map((item) => {
                             const itemLoading = Boolean(actionLoadingByItem[item.itemIndex]) || isLoading
+                            const draft = draftByItem[item.itemIndex] ?? emptyDraft()
+                            const { receivedFilled, rejectedFilled, receivedQty, rejectedQty } =
+                              getItemDraftState(draft)
+                            const canSubmit = canSubmitItemDraft(item, draft)
+                            const receivedExceeds =
+                              receivedFilled && receivedQty > item.quantityPending
+                            const rejectedExceeds =
+                              rejectedFilled && rejectedQty > item.quantityPending
+
                             return (
                               <TableRow key={item.itemIndex} hover>
                                 <TableCell>
                                   <Typography variant="body2" fontWeight={600}>
                                     {item.name}
                                   </Typography>
-                                  {item.characteristics ? (
-                                    <Typography variant="caption" color="text.secondary" display="block">
-                                      {item.characteristics}
-                                    </Typography>
-                                  ) : null}
                                 </TableCell>
-                                <TableCell align="right">{item.quantityPending} ta</TableCell>
+                                <TableCell align="right">{item.quantityDispatched} ta</TableCell>
+                                <TableCell align="right">
+                                  <Typography
+                                    variant="body2"
+                                    fontWeight={600}
+                                    color={receivedExceeds || rejectedExceeds ? 'error.main' : 'text.primary'}
+                                  >
+                                    {item.quantityPending} ta
+                                  </Typography>
+                                </TableCell>
                                 <TableCell align="center">
-                                  <Stack direction="row" spacing={0.5} sx={{ justifyContent: 'center' }}>
-                                    <Tooltip title="Qabul qilish (ticket)">
-                                      <span>
-                                        <IconButton
-                                          type="button"
-                                          size="small"
-                                          color="primary"
-                                          disabled={itemLoading}
-                                          onClick={() => handleAcceptItem(item)}
-                                        >
-                                          <CheckCircleOutlineIcon fontSize="small" />
-                                        </IconButton>
-                                      </span>
-                                    </Tooltip>
-                                    <Tooltip title="Kelmadi">
-                                      <span>
-                                        <IconButton
-                                          type="button"
-                                          size="small"
-                                          color="error"
-                                          disabled={itemLoading}
-                                          onClick={() => handleRejectItem(item)}
-                                        >
-                                          <CloseIcon fontSize="small" />
-                                        </IconButton>
-                                      </span>
-                                    </Tooltip>
-                                  </Stack>
+                                  <TextField
+                                    size="small"
+                                    type="number"
+                                    value={draft.received}
+                                    onChange={(e) => updateDraft(item.itemIndex, 'received', e.target.value)}
+                                    slotProps={{
+                                      htmlInput: {
+                                        min: 1,
+                                        max: item.quantityPending,
+                                        style: { textAlign: 'center' },
+                                      },
+                                    }}
+                                    disabled={itemLoading}
+                                    error={receivedExceeds || (receivedFilled && rejectedFilled)}
+                                    sx={{ width: 88 }}
+                                  />
+                                </TableCell>
+                                <TableCell align="center">
+                                  <TextField
+                                    size="small"
+                                    type="number"
+                                    value={draft.rejected}
+                                    onChange={(e) => updateDraft(item.itemIndex, 'rejected', e.target.value)}
+                                    slotProps={{
+                                      htmlInput: {
+                                        min: 1,
+                                        max: item.quantityPending,
+                                        style: { textAlign: 'center' },
+                                      },
+                                    }}
+                                    disabled={itemLoading}
+                                    error={rejectedExceeds || (receivedFilled && rejectedFilled)}
+                                    sx={{ width: 88 }}
+                                  />
+                                </TableCell>
+                                <TableCell align="center" sx={{ verticalAlign: 'middle' }}>
+                                  <Tooltip
+                                    title={
+                                      canSubmit
+                                        ? 'Qabul qilish'
+                                        : receivedFilled && rejectedFilled
+                                          ? 'Faqat bitta maydonni to‘ldiring'
+                                          : 'Qabul yoki kelmadi sonini kiriting'
+                                    }
+                                  >
+                                    <span>
+                                      <IconButton
+                                        type="button"
+                                        color="primary"
+                                        disabled={itemLoading || !canSubmit}
+                                        onClick={() => handleSaveItem(item)}
+                                        sx={{
+                                          bgcolor: canSubmit ? 'primary.main' : undefined,
+                                          color: canSubmit ? 'primary.contrastText' : undefined,
+                                          '&:hover': canSubmit
+                                            ? { bgcolor: 'primary.dark' }
+                                            : undefined,
+                                        }}
+                                      >
+                                        {itemLoading ? (
+                                          <CircularProgress size={20} color="inherit" />
+                                        ) : (
+                                          <AddIcon />
+                                        )}
+                                      </IconButton>
+                                    </span>
+                                  </Tooltip>
                                 </TableCell>
                               </TableRow>
                             )
@@ -340,14 +476,9 @@ export const ReceiveWarehouseDispatchDialog = ({ open, dispatchId, onClose, onSu
                             <TableRow key={item.itemIndex}>
                               <TableCell>
                                 <Stack spacing={0.5}>
-                                  <Box>
-                                    <Typography variant="body2" fontWeight={600}>
-                                      {item.name}
-                                    </Typography>
-                                    <Typography variant="caption" color="text.secondary" display="block">
-                                      {item.characteristics}
-                                    </Typography>
-                                  </Box>
+                                  <Typography variant="body2" fontWeight={600}>
+                                    {item.name}
+                                  </Typography>
                                   {item.rejectReason ? (
                                     <Tooltip title={item.rejectReason} placement="top-start" arrow>
                                       <Typography

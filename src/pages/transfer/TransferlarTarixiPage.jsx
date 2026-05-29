@@ -6,6 +6,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
+import Tooltip from '@mui/material/Tooltip'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Paper from '@mui/material/Paper'
@@ -24,6 +25,7 @@ import {
   getDispatchStatusChipProps,
   resolveTransferDirection,
 } from '@/features/warehouse-dispatches/utils/dispatchStatusDisplay'
+import { WarehouseDispatchSummaryPanel } from '@/features/warehouse-dispatches/components/WarehouseDispatchSummaryPanel'
 import { dispatchCodeSx } from '@/features/warehouse-dispatches/utils/dispatchCodeDisplay'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { usePermissions } from '@/shared/hooks/usePermissions'
@@ -71,8 +73,7 @@ export const TransferlarTarixiPage = () => {
   const resolveMovement = (item) => {
     const direction = resolveTransferDirection(item, viewerStructureId)
     return {
-      label: direction.movementLabel,
-      sublabel: direction.label,
+      tooltip: direction.label,
       color: direction.color,
       icon: directionIcons[direction.color] ?? directionIcons.default,
     }
@@ -80,9 +81,6 @@ export const TransferlarTarixiPage = () => {
 
   return (
     <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <Typography variant="h6" fontWeight={700}>
-        Transferlar tarixi
-      </Typography>
       <QuerySkeleton
         isLoading={inboxQuery.isLoading}
         isFetching={inboxQuery.isFetching}
@@ -97,7 +95,6 @@ export const TransferlarTarixiPage = () => {
 
         <TransferPageFilters
           title="Transferlar tarixi"
-          subtitle="Yuborilgan va kelgan transferlar — qabul holati va yo‘nalish bo‘yicha"
           search={search}
           onSearchChange={setSearch}
           dateFrom={dateFrom}
@@ -116,12 +113,11 @@ export const TransferlarTarixiPage = () => {
           </Paper>
         ) : (
           <TableContainer component={Paper} variant="outlined">
-            <Table size="small" stickyHeader>
+            <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell width={110}>Yo‘nalish</TableCell>
-                  <TableCell sx={{ minWidth: 160 }}>Nakladnoy</TableCell>
-                  <TableCell width={100}>Kod</TableCell>
+                  <TableCell width={56} padding="checkbox" />
+                  <TableCell width={200}>Nakladnoy</TableCell>
                   <TableCell width={120}>Jo‘natuvchi</TableCell>
                   <TableCell width={120}>Qabul qiluvchi</TableCell>
                   <TableCell width={150}>Sana</TableCell>
@@ -129,7 +125,7 @@ export const TransferlarTarixiPage = () => {
                   <TableCell width={90} align="right">
                     Qolgan
                   </TableCell>
-                  <TableCell width={70} align="right">
+                  <TableCell width={80} align="right">
                     Tovar
                   </TableCell>
                 </TableRow>
@@ -146,55 +142,37 @@ export const TransferlarTarixiPage = () => {
                       sx={{ cursor: 'pointer' }}
                       onClick={() => setDetailId(item.id)}
                     >
-                      <TableCell>
-                        <Stack spacing={0.5}>
-                          <Chip
-                            size="small"
-                            color={movement.color}
-                            icon={movement.icon}
-                            label={movement.label}
-                          />
-                          {movement.sublabel !== movement.label ? (
-                            <Typography variant="caption" color="text.secondary">
-                              {movement.sublabel}
-                            </Typography>
-                          ) : null}
-                        </Stack>
+                      <TableCell padding="checkbox">
+                        <Tooltip title={movement.tooltip}>
+                          <Box
+                            component="span"
+                            sx={{
+                              display: 'inline-flex',
+                              color:
+                                movement.color === 'default'
+                                  ? 'text.secondary'
+                                  : `${movement.color}.main`,
+                            }}
+                          >
+                            {movement.icon}
+                          </Box>
+                        </Tooltip>
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2" sx={dispatchCodeSx}>
+                        <Typography component="span" variant="body2" sx={dispatchCodeSx}>
                           {item.dispatchCode}
                         </Typography>
                       </TableCell>
-                      <TableCell>{item.requestCode}</TableCell>
                       <TableCell>
-                        <Typography variant="body2" noWrap>
-                          {item.sourceStructure?.shortName ?? item.dispatchedBy?.displayName ?? '—'}
-                        </Typography>
+                        {item.sourceStructure?.shortName ?? item.dispatchedBy?.displayName ?? '—'}
                       </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight={600} noWrap>
-                          {item.targetStructure?.shortName ?? '—'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" noWrap>
-                          {formatDateTime(item.dispatchedAt)}
-                        </Typography>
-                      </TableCell>
+                      <TableCell>{item.targetStructure?.shortName ?? '—'}</TableCell>
+                      <TableCell>{formatDateTime(item.dispatchedAt)}</TableCell>
                       <TableCell>
                         <Chip size="small" {...statusChip} />
                       </TableCell>
                       <TableCell align="right">
-                        {item.pendingTotal > 0 ? (
-                          <Typography variant="body2" color="warning.main" fontWeight={600}>
-                            {item.pendingTotal} ta
-                          </Typography>
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            —
-                          </Typography>
-                        )}
+                        {item.pendingTotal > 0 ? `${item.pendingTotal} ta` : '—'}
                       </TableCell>
                       <TableCell align="right">{item.items?.length ?? 0}</TableCell>
                     </TableRow>
@@ -243,15 +221,26 @@ export const TransferlarTarixiPage = () => {
                 {(() => {
                   const movement = resolveMovement(detailQuery.data)
                   return (
-                    <Chip
-                      size="small"
-                      color={movement.color}
-                      icon={movement.icon}
-                      label={movement.label}
-                    />
+                    <Tooltip title={movement.tooltip}>
+                      <Box
+                        component="span"
+                        sx={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          color:
+                            movement.color === 'default'
+                              ? 'text.secondary'
+                              : `${movement.color}.main`,
+                        }}
+                      >
+                        {movement.icon}
+                      </Box>
+                    </Tooltip>
                   )
                 })()}
               </Stack>
+
+              <WarehouseDispatchSummaryPanel dispatch={detailQuery.data} />
 
               <TableContainer component={Paper} variant="outlined">
                 <Table size="small">

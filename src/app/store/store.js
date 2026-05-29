@@ -10,6 +10,8 @@ import '@/features/purchase-requests/api/purchaseRequestsApi'
 import '@/features/warehouse-dispatches/api/warehouseDispatchesApi'
 import '@/features/transfer/api/transferApi'
 import '@/features/chat/api/chatApi'
+import '@/features/invertarizatsiya/api/stocktakesApi'
+import '@/features/product-prices/api/productPricesApi'
 
 export const store = configureStore({
   reducer: {

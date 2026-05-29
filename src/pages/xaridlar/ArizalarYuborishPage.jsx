@@ -5,9 +5,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import InputAdornment from '@mui/material/InputAdornment'
-import Paper from '@mui/material/Paper'
 import Snackbar from '@mui/material/Snackbar'
-import Stack from '@mui/material/Stack'
 import TablePagination from '@mui/material/TablePagination'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -118,30 +116,26 @@ export const ArizalarYuborishPage = () => {
         isFetching={requestsQuery.isFetching}
         isUninitialized={requestsQuery.isUninitialized}
         hasData={isRequestsReady}
-        skeleton={<PurchaseRequestsPageSkeleton showAddButton={canCreate} />}
+        skeleton={
+          <PurchaseRequestsPageSkeleton
+            showAddButton={canCreate}
+            ariaLabel="Arizalar yuborish yuklanmoqda"
+          />
+        }
       >
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Paper
-            variant="outlined"
+          <Box
             sx={{
-              width: '100%',
-              px: 2,
-              py: 1.5,
               display: 'flex',
-              alignItems: 'center',
+              alignItems: 'flex-start',
               justifyContent: 'space-between',
               gap: 2,
               flexWrap: 'wrap',
             }}
           >
-            <Stack spacing={0.25}>
-              <Typography variant="h5" component="h1" fontWeight={600}>
-                Arizalar yuborish
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Tovar xarid qilish uchun ariza yuborish va hujjatlarni yuklab olish
-              </Typography>
-            </Stack>
+            <Typography variant="h5" component="h1" fontWeight={600}>
+              Arizalar yuborish
+            </Typography>
 
             {canCreate ? (
               <Button
@@ -152,7 +146,7 @@ export const ArizalarYuborishPage = () => {
                 Qo‘shish
               </Button>
             ) : null}
-          </Paper>
+          </Box>
 
           <TextField
             size="small"

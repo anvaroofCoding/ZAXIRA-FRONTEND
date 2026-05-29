@@ -80,25 +80,36 @@ export const WarehouseDispatchSummaryPanel = ({ dispatch }) => {
 
       <Box sx={{ p: 2 }}>
         <Grid container spacing={2.5}>
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <SummaryItem
               icon={AssignmentOutlinedIcon}
               label="Nakladnoy"
               primary={dispatch.dispatchCode}
+              secondary={dispatch.requestCode || undefined}
             />
           </Grid>
-          <Grid size={{ xs: 12, md: 5 }}>
+          {dispatch.sourceStructure ? (
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <SummaryItem
+                icon={BusinessOutlinedIcon}
+                label="Jo‘natuvchi"
+                primary={dispatch.sourceStructure.shortName}
+              />
+            </Grid>
+          ) : null}
+          <Grid size={{ xs: 12, sm: 6, md: dispatch.sourceStructure ? 3 : 5 }}>
             <SummaryItem
               icon={BusinessOutlinedIcon}
-              label="Qabul qiluvchi tuzilma"
+              label="Qabul qiluvchi"
               primary={dispatch.targetStructure.shortName}
             />
           </Grid>
-          <Grid size={{ xs: 12, md: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <SummaryItem
               icon={ScheduleOutlinedIcon}
               label="Jo‘natilgan sana"
               primary={formatDateTime(dispatch.dispatchedAt)}
+              secondary={dispatch.dispatchedBy?.displayName}
             />
           </Grid>
         </Grid>

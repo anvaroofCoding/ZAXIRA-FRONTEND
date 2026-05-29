@@ -1,7 +1,8 @@
 const TABLE_ROUTE_PATTERNS = [
   'tarixi',
   'tasdiqlash',
-  'barcha-invertarizatsiyalar',
+  'invertarizatsiya',
+  'boshqaruv',
   'qilingan-tavarlar',
   'olinadigan-tavarlar',
 ]

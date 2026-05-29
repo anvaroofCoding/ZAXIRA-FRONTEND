@@ -113,13 +113,21 @@ export const BoshqaOmborlarPage = () => {
 
   return (
     <Stack spacing={2}>
-      <Box>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 2,
+          flexWrap: 'wrap',
+        }}
+      >
         <Typography variant="h6" fontWeight={700}>
           {selectedStructure ? `Ombor: ${selectedStructure.structure.shortName}` : 'Boshqa omborlar'}
         </Typography>
-        {!selectedStructure ? (
-          <Typography variant="body2" color="text.secondary">
-            Omborni tanlang, keyingi sahifada ichidagi joy va tovarlar ochiladi.
+        {!selectedStructure && !overviewQuery.isLoading ? (
+          <Typography variant="body2" color="text.secondary" fontWeight={600} sx={{ ml: 'auto' }}>
+            Jami omborlar: {structures.length}
           </Typography>
         ) : null}
       </Box>

@@ -4,7 +4,6 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Grid from '@mui/material/Grid'
 import InputAdornment from '@mui/material/InputAdornment'
-import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -32,15 +31,7 @@ export const TransferPageFilters = ({
   onClearFilters,
   hasActiveFilters = false,
 }) => (
-  <Paper
-    variant="outlined"
-    sx={{
-      ...stickySx,
-      p: 2,
-      bgcolor: 'background.paper',
-      borderColor: 'divider',
-    }}
-  >
+  <Box sx={stickySx}>
     <Stack spacing={2}>
       <Box
         sx={{
@@ -125,5 +116,5 @@ export const TransferPageFilters = ({
         </Grid>
       </Grid>
     </Stack>
-  </Paper>
+  </Box>
 )

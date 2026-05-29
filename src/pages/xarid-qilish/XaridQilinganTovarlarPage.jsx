@@ -72,7 +72,6 @@ export const XaridQilinganTovarlarPage = () => {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <PurchasingPageFilters
             title="Xarid qilingan tavarlar"
-            subtitle="Har bir xarid bo‘yicha tovarlar, qabul va rad miqdorlari"
             search={search}
             onSearchChange={setSearch}
             searchPlaceholder="Qidirish..."

@@ -10,7 +10,6 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Divider from '@mui/material/Divider'
-import Grid from '@mui/material/Grid'
 import InputAdornment from '@mui/material/InputAdornment'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
@@ -34,24 +33,20 @@ import { printBarcodeLabels } from '@/shared/utils/printBarcodeLabels'
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
 
 const LocationsSkeleton = () => (
-  <Paper variant="outlined" sx={{ p: 2 }}>
-    <Stack spacing={1}>
-      <SkeletonBlock variant="text" width={160} height={24} />
-      {Array.from({ length: 6 }).map((_, index) => (
-        <SkeletonBlock key={index} height={40} sx={{ borderRadius: 1 }} />
-      ))}
-    </Stack>
-  </Paper>
+  <Stack spacing={1}>
+    <SkeletonBlock variant="text" width={160} height={24} />
+    {Array.from({ length: 6 }).map((_, index) => (
+      <SkeletonBlock key={index} height={40} sx={{ borderRadius: 1 }} />
+    ))}
+  </Stack>
 )
 
 const InventorySkeleton = () => (
-  <Paper variant="outlined" sx={{ p: 2 }}>
-    <Stack spacing={1.5}>
-      <SkeletonBlock variant="text" width={200} height={24} />
-      <SkeletonBlock height={40} sx={{ borderRadius: 1 }} />
-      <SkeletonBlock height={220} sx={{ borderRadius: 1 }} />
-    </Stack>
-  </Paper>
+  <Stack spacing={1.5}>
+    <SkeletonBlock variant="text" width={200} height={24} />
+    <SkeletonBlock height={40} sx={{ borderRadius: 1 }} />
+    <SkeletonBlock height={220} sx={{ borderRadius: 1 }} />
+  </Stack>
 )
 
 export const MeningOmborimPage = () => {
@@ -91,7 +86,6 @@ export const MeningOmborimPage = () => {
 
   const inventoryItems = inventoryQuery.data?.items ?? []
   const inventoryTotal = inventoryQuery.data?.total ?? 0
-  const locationName = inventoryQuery.data?.location?.name
 
   const [detailItem, setDetailItem] = useState(null)
   const [printOpen, setPrintOpen] = useState(false)
@@ -166,13 +160,11 @@ export const MeningOmborimPage = () => {
         data={locationsQuery.data}
         skeleton={<LocationsSkeleton />}
       >
-        <Paper variant="outlined">
+        <Box>
           {!locations.length ? (
-            <Box sx={{ p: 3 }}>
-              <Typography variant="body2" color="text.secondary">
-                Hali joy yaratilmagan. Yuqoridagi <b>Joy qo‘shish</b> tugmasi orqali joy yarating.
-              </Typography>
-            </Box>
+            <Typography variant="body2" color="text.secondary">
+              Hali joy yaratilmagan. Yuqoridagi <b>Joy qo‘shish</b> tugmasi orqali joy yarating.
+            </Typography>
           ) : (
             <>
               <Tabs
@@ -186,18 +178,15 @@ export const MeningOmborimPage = () => {
                 }}
                 variant="scrollable"
                 scrollButtons="auto"
-                sx={{ px: 1 }}
               >
                 {locations.map((loc) => (
                   <Tab key={loc.id} label={loc.name} />
                 ))}
               </Tabs>
-              <Divider />
+              <Divider sx={{ mb: 1.5 }} />
 
               {!selectedLocationId ? (
-                <Box sx={{ p: 2 }}>
-                  <InventorySkeleton />
-                </Box>
+                <InventorySkeleton />
               ) : (
                 <QuerySkeleton
                   isLoading={inventoryQuery.isLoading}
@@ -206,103 +195,93 @@ export const MeningOmborimPage = () => {
                   hasData={!inventoryQuery.isLoading && !inventoryQuery.isUninitialized}
                   skeleton={<InventorySkeleton />}
                 >
-                  <Box sx={{ p: 2 }}>
-                    <Stack spacing={1.5}>
-                      <TextField
-                        size="small"
-                        placeholder="Qidirish..."
-                        value={search}
-                        onChange={(e) => {
-                          setSearch(e.target.value)
-                          setPage(0)
-                        }}
-                        fullWidth
-                        slotProps={{
-                          input: {
-                            startAdornment: (
-                              <InputAdornment position="start">
-                                <SearchIcon fontSize="small" />
-                              </InputAdornment>
-                            ),
-                          },
-                        }}
-                      />
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <TextField
+                      size="small"
+                      placeholder="Qidiruv"
+                      value={search}
+                      onChange={(e) => {
+                        setSearch(e.target.value)
+                        setPage(0)
+                      }}
+                      fullWidth
+                      slotProps={{
+                        input: {
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <SearchIcon fontSize="small" color="action" />
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
+                    />
 
-                      <TableContainer sx={{ border: 1, borderColor: 'divider', borderRadius: 1 }}>
-                        <Table size="small">
+                    {!inventoryItems.length && !inventoryQuery.isFetching ? (
+                      <Paper variant="outlined" sx={{ py: 6, textAlign: 'center' }}>
+                        <Typography color="text.secondary">
+                          {search.trim()
+                            ? 'Qidiruv bo‘yicha tovar topilmadi'
+                            : 'Bu joyda tovarlar yo‘q'}
+                        </Typography>
+                      </Paper>
+                    ) : (
+                      <TableContainer component={Paper} variant="outlined">
+                        <Table size="small" aria-label="Ombor tovarlari">
                           <TableHead>
                             <TableRow>
                               <TableCell>Tovar</TableCell>
-                              <TableCell width={180}>Barcode</TableCell>
-                              <TableCell width={140} align="right">
+                              <TableCell width={160}>Barcode</TableCell>
+                              <TableCell width={120} align="right">
                                 Soni
                               </TableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {!inventoryItems.length ? (
-                              <TableRow>
-                                <TableCell colSpan={3}>
-                                  <Typography variant="body2" color="text.secondary">
-                                    Bu joyda tovarlar yo‘q
+                            {inventoryItems.map((item) => (
+                              <TableRow
+                                key={item.id}
+                                hover
+                                sx={{ cursor: 'pointer' }}
+                                onClick={() => setDetailItem(item)}
+                              >
+                                <TableCell>
+                                  <Typography variant="body2" fontWeight={600}>
+                                    {item.name}
                                   </Typography>
-                                </TableCell>
-                              </TableRow>
-                            ) : (
-                              inventoryItems.map((item) => (
-                                <TableRow
-                                  key={item.id}
-                                  hover
-                                  sx={{ cursor: 'pointer' }}
-                                  onClick={() => setDetailItem(item)}
-                                >
-                                  <TableCell>
-                                    <Typography variant="body2" fontWeight={600}>
-                                      {item.name}
-                                    </Typography>
-                                    <Typography
-                                      variant="caption"
-                                      color="text.secondary"
-                                      display="block"
-                                    >
+                                  {item.characteristics ? (
+                                    <Typography variant="caption" color="text.secondary" display="block">
                                       {item.characteristics}
                                     </Typography>
-                                  </TableCell>
-                                  <TableCell>
-                                    <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                                      {barcodeForItem(item)}
-                                    </Typography>
-                                  </TableCell>
-                                  <TableCell align="right" sx={{ fontWeight: 700 }}>
-                                    {item.quantity}
-                                  </TableCell>
-                                </TableRow>
-                              ))
-                            )}
+                                  ) : null}
+                                </TableCell>
+                                <TableCell>{barcodeForItem(item)}</TableCell>
+                                <TableCell align="right">{item.quantity} ta</TableCell>
+                              </TableRow>
+                            ))}
                           </TableBody>
                         </Table>
                       </TableContainer>
+                    )}
 
-                      <TablePagination
-                        component="div"
-                        count={inventoryTotal}
-                        page={page}
-                        onPageChange={(_e, next) => setPage(next)}
-                        rowsPerPage={rowsPerPage}
-                        onRowsPerPageChange={(e) => {
-                          setRowsPerPage(Number(e.target.value))
-                          setPage(0)
-                        }}
-                        rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
-                        labelRowsPerPage="Qatorlar:"
-                      />
-                    </Stack>
+                    <TablePagination
+                      component="div"
+                      count={inventoryTotal}
+                      page={page}
+                      onPageChange={(_e, next) => setPage(next)}
+                      rowsPerPage={rowsPerPage}
+                      onRowsPerPageChange={(e) => {
+                        setRowsPerPage(Number.parseInt(e.target.value, 10))
+                        setPage(0)
+                      }}
+                      rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
+                      labelRowsPerPage="Qatorlar:"
+                    />
                   </Box>
                 </QuerySkeleton>
               )}
             </>
           )}
-        </Paper>
+        </Box>
       </QuerySkeleton>
 
       <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="xs" fullWidth>

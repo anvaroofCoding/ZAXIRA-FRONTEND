@@ -44,7 +44,11 @@ export const NAV_ITEMS = [
     label: 'Invertarizatsiya',
     children: [
       { label: 'Invertarizatsiya qilish', path: '/invertarizatsiya/invertarizatsiya-qilish' },
-      { label: 'Barcha invertarizatsiyalar', path: '/invertarizatsiya/barcha-invertarizatsiyalar' },
+      {
+        label: 'Barcha invertarizatsiyalar',
+        path: '/invertarizatsiya/barcha-invertarizatsiyalar',
+      },
+      { label: 'Boshqaruv', path: '/invertarizatsiya/boshqaruv' },
     ],
   },
   {

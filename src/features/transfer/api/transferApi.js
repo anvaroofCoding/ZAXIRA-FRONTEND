@@ -36,7 +36,11 @@ export const transferApi = baseApi.injectEndpoints({
     getTransferById: builder.query({
       query: ({ id, markSeen }) => ({
         url: `/warehouse-dispatches/${id}`,
-        params: markSeen ? { markSeen: '1' } : undefined,
+        params: {
+          source: 'transfer',
+          scope: 'history',
+          ...(markSeen ? { markSeen: '1' } : {}),
+        },
       }),
       providesTags: (_result, _error, { id }) => [
         { type: API_TAGS.TRANSFER, id },
@@ -53,6 +57,7 @@ export const transferApi = baseApi.injectEndpoints({
         API_TAGS.TRANSFER,
         API_TAGS.WAREHOUSE_DISPATCH,
         API_TAGS.WAREHOUSE_INVENTORY,
+        API_TAGS.DASHBOARD,
       ],
     }),
     receiveTransfer: builder.mutation({
@@ -66,6 +71,8 @@ export const transferApi = baseApi.injectEndpoints({
         { type: API_TAGS.WAREHOUSE_DISPATCH, id },
         API_TAGS.TRANSFER,
         API_TAGS.WAREHOUSE_DISPATCH,
+        API_TAGS.WAREHOUSE_INVENTORY,
+        API_TAGS.DASHBOARD,
       ],
     }),
   }),

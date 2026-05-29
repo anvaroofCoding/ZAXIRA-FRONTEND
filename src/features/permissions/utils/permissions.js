@@ -192,17 +192,42 @@ export const pickGrantedPermissions = (permissions) =>
     ),
   )
 
+const INVERTARIZATSIYA_PATHS = new Set([
+  '/invertarizatsiya',
+  '/invertarizatsiya/invertarizatsiya-qilish',
+  '/invertarizatsiya/barcha-invertarizatsiyalar',
+])
+
+const CHIQIM_PERMISSION_PATHS = new Set([
+  WAREHOUSE_EXPENSE_PATH,
+  '/omborlar/chiqim-tarixi',
+])
+
+const resolvePermissionLookupPaths = (path) => {
+  if (CHIQIM_PERMISSION_PATHS.has(path)) {
+    return [WAREHOUSE_EXPENSE_PATH]
+  }
+  if (!INVERTARIZATSIYA_PATHS.has(path)) {
+    return [path]
+  }
+  return Array.from(INVERTARIZATSIYA_PATHS)
+}
+
 export const hasPageAccess = (user, path) => {
   if (isAlwaysAllowedPath(path)) return true
   if (!user) return false
   if (isSuperAdminUser(user)) return true
-  return Boolean(user.permissions?.[path]?.access)
+  return resolvePermissionLookupPaths(path).some((lookupPath) =>
+    Boolean(user.permissions?.[lookupPath]?.access),
+  )
 }
 
 export const hasPageAction = (user, path, actionKey) => {
   if (isAlwaysAllowedPath(path)) return true
   if (!user) return false
   if (isSuperAdminUser(user)) return true
-  const page = user.permissions?.[path]
-  return Boolean(page?.access && page?.actions?.[actionKey])
+  return resolvePermissionLookupPaths(path).some((lookupPath) => {
+    const page = user.permissions?.[lookupPath]
+    return Boolean(page?.access && page?.actions?.[actionKey])
+  })
 }

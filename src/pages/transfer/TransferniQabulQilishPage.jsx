@@ -74,7 +74,6 @@ export const TransferniQabulQilishPage = () => {
 
           <TransferPageFilters
             title="Transferni qabul qilish"
-            subtitle="Tovarlarni qisman yoki to‘liq qabul qiling"
             search={search}
             onSearchChange={setSearch}
             dateFrom={dateFrom}
@@ -93,12 +92,10 @@ export const TransferniQabulQilishPage = () => {
             </Paper>
           ) : (
             <TableContainer component={Paper} variant="outlined">
-              <Table size="small" stickyHeader>
+              <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell sx={{ minWidth: 200, width: '1%', whiteSpace: 'nowrap' }}>
-                      Nakladnoy
-                    </TableCell>
+                    <TableCell width={200}>Nakladnoy</TableCell>
                     <TableCell width={120}>Kod</TableCell>
                     <TableCell width={150}>Sana</TableCell>
                     <TableCell width={140}>Jo‘natuvchi</TableCell>
@@ -115,8 +112,8 @@ export const TransferniQabulQilishPage = () => {
                       sx={{ cursor: 'pointer' }}
                       onClick={() => setDetailTarget(item)}
                     >
-                      <TableCell sx={{ minWidth: 200, width: '1%', whiteSpace: 'nowrap' }}>
-                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'nowrap' }}>
+                      <TableCell>
+                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                           {!item.isSeenByReceiver ? (
                             <Badge color="error" variant="dot" sx={{ flexShrink: 0 }} />
                           ) : null}
@@ -126,21 +123,9 @@ export const TransferniQabulQilishPage = () => {
                         </Stack>
                       </TableCell>
                       <TableCell>{item.requestCode}</TableCell>
-                      <TableCell>
-                        <Typography variant="body2" noWrap>
-                          {formatDateTime(item.dispatchedAt)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" noWrap>
-                          {item.dispatchedBy?.displayName ?? '—'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight={600}>
-                          {item.targetStructure.shortName}
-                        </Typography>
-                      </TableCell>
+                      <TableCell>{formatDateTime(item.dispatchedAt)}</TableCell>
+                      <TableCell>{item.dispatchedBy?.displayName ?? '—'}</TableCell>
+                      <TableCell>{item.targetStructure.shortName}</TableCell>
                       <TableCell>{item.pendingTotal} ta</TableCell>
                       <TableCell>
                         <Chip size="small" {...getDispatchStatusChipProps(item.status, item.statusLabel)} />

@@ -3,9 +3,7 @@ import SearchIcon from '@mui/icons-material/Search'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import InputAdornment from '@mui/material/InputAdornment'
-import Paper from '@mui/material/Paper'
 import Snackbar from '@mui/material/Snackbar'
-import Stack from '@mui/material/Stack'
 import TablePagination from '@mui/material/TablePagination'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -71,27 +69,17 @@ export const ArizalarniTasdiqlashPage = () => {
         isFetching={inboxQuery.isFetching}
         isUninitialized={inboxQuery.isUninitialized}
         hasData={isReady}
-        skeleton={<PurchaseRequestsPageSkeleton showAddButton={false} />}
+        skeleton={
+          <PurchaseRequestsPageSkeleton
+            variant="approval"
+            ariaLabel="Tasdiqlash arizalari yuklanmoqda"
+          />
+        }
       >
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Paper
-            variant="outlined"
-            sx={{
-              width: '100%',
-              px: 2,
-              py: 1.5,
-            }}
-          >
-            <Stack spacing={0.25}>
-              <Typography variant="h5" component="h1" fontWeight={600}>
-                Arizalarni tasdiqlash
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Sizga komissiya a’zosi yoki boshliq sifatida tayinlangan arizalarni ko‘rib chiqish
-                va qaror berish
-              </Typography>
-            </Stack>
-          </Paper>
+          <Typography variant="h5" component="h1" fontWeight={600}>
+            Arizalarni tasdiqlash
+          </Typography>
 
           <TextField
             size="small"

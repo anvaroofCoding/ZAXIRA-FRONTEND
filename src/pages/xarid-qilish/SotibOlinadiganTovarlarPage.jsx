@@ -77,7 +77,6 @@ export const SotibOlinadiganTovarlarPage = () => {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <PurchasingPageFilters
             title="Sotib olinadigan tavarlar"
-            subtitle="Boshliq tasdiqlagan arizalar — batafsil ko‘rish va xarid qilish"
             search={search}
             onSearchChange={setSearch}
             dateFrom={dateFrom}

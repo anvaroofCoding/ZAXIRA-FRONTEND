@@ -50,6 +50,10 @@ const { ChiqimQilishPage } = lazyImport(
   () => import('@/pages/omborlar'),
   'ChiqimQilishPage',
 )
+const { ChiqimTarixiPage } = lazyImport(
+  () => import('@/pages/omborlar'),
+  'ChiqimTarixiPage',
+)
 
 const { TransferQilishPage } = lazyImport(
   () => import('@/pages/transfer'),
@@ -64,13 +68,13 @@ const { TransferlarTarixiPage } = lazyImport(
   'TransferlarTarixiPage',
 )
 
-const { InvertarizatsiyaQilishPage } = lazyImport(
+const { InvertarizatsiyaPage } = lazyImport(
   () => import('@/pages/invertarizatsiya'),
-  'InvertarizatsiyaQilishPage',
+  'InvertarizatsiyaPage',
 )
-const { BarchaInvertarizatsiyalarPage } = lazyImport(
+const { BoshqaruvPage } = lazyImport(
   () => import('@/pages/invertarizatsiya'),
-  'BarchaInvertarizatsiyalarPage',
+  'BoshqaruvPage',
 )
 
 const { FoydalanuvchilarPage } = lazyImport(
@@ -151,6 +155,10 @@ export const routes = [
             element: <ChiqimQilishPage />,
           },
           {
+            path: 'omborlar/chiqim-tarixi',
+            element: <ChiqimTarixiPage />,
+          },
+          {
             path: 'transfer/transfer-qilish',
             element: <TransferQilishPage />,
           },
@@ -163,12 +171,20 @@ export const routes = [
             element: <TransferlarTarixiPage />,
           },
           {
+            path: 'invertarizatsiya',
+            element: <Navigate to="/invertarizatsiya/invertarizatsiya-qilish" replace />,
+          },
+          {
             path: 'invertarizatsiya/invertarizatsiya-qilish',
-            element: <InvertarizatsiyaQilishPage />,
+            element: <InvertarizatsiyaPage />,
           },
           {
             path: 'invertarizatsiya/barcha-invertarizatsiyalar',
-            element: <BarchaInvertarizatsiyalarPage />,
+            element: <InvertarizatsiyaPage />,
+          },
+          {
+            path: 'invertarizatsiya/boshqaruv',
+            element: <BoshqaruvPage />,
           },
           {
             path: 'royxatga-olish/foydalanuvchilar',

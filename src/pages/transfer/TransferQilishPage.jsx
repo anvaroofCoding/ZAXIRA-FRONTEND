@@ -170,26 +170,24 @@ export const TransferQilishPage = () => {
             hasActiveFilters={hasActiveFilters}
           />
 
-          <Paper variant="outlined" sx={{ p: 1.5 }}>
-            <FormControl size="small" sx={{ minWidth: 260 }}>
-              <InputLabel id="transfer-location">Manba ombor joyi</InputLabel>
-              <Select
-                labelId="transfer-location"
-                label="Manba ombor joyi"
-                value={effectiveLocationId}
-                onChange={(event) => {
-                  setSelectedLocationId(event.target.value)
-                  setPage(0)
-                }}
-              >
-                {locations.map((loc) => (
-                  <MenuItem key={loc.id} value={loc.id}>
-                    {loc.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Paper>
+          <FormControl size="small" sx={{ minWidth: 260 }}>
+            <InputLabel id="transfer-location">Manba ombor joyi</InputLabel>
+            <Select
+              labelId="transfer-location"
+              label="Manba ombor joyi"
+              value={effectiveLocationId}
+              onChange={(event) => {
+                setSelectedLocationId(event.target.value)
+                setPage(0)
+              }}
+            >
+              {locations.map((loc) => (
+                <MenuItem key={loc.id} value={loc.id}>
+                  {loc.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
           {!items.length ? (
             <Paper variant="outlined" sx={{ py: 6, textAlign: 'center' }}>

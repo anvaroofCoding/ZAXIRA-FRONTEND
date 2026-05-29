@@ -13,25 +13,23 @@ const ROW_COUNT = 6
 const CARD_COUNT = 3
 
 const FiltersSkeleton = () => (
-  <Paper variant="outlined" sx={{ p: 2 }}>
-    <Stack spacing={2}>
-      <Stack spacing={0.75}>
-        <SkeletonBlock variant="text" width={220} height={28} />
-        <SkeletonBlock variant="text" width={{ xs: '90%', sm: 420 }} height={18} />
-      </Stack>
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: '1.4fr 1fr 1fr' },
-          gap: 1.5,
-        }}
-      >
-        <SkeletonBlock variant="rounded" height={40} />
-        <SkeletonBlock variant="rounded" height={40} />
-        <SkeletonBlock variant="rounded" height={40} />
-      </Box>
+  <Stack spacing={2}>
+    <Stack spacing={0.75}>
+      <SkeletonBlock variant="text" width={220} height={28} />
+      <SkeletonBlock variant="text" width={{ xs: '90%', sm: 420 }} height={18} />
     </Stack>
-  </Paper>
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: { xs: '1fr', md: '1.4fr 1fr 1fr' },
+        gap: 1.5,
+      }}
+    >
+      <SkeletonBlock variant="rounded" height={40} />
+      <SkeletonBlock variant="rounded" height={40} />
+      <SkeletonBlock variant="rounded" height={40} />
+    </Box>
+  </Stack>
 )
 
 const QueueTableRowSkeleton = ({ showPurchaseTotal }) => (

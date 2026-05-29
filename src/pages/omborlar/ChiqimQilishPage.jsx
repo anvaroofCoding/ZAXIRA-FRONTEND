@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
+import HistoryIcon from '@mui/icons-material/History'
 import RemoveIcon from '@mui/icons-material/Remove'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -45,7 +47,9 @@ const clampInt = (value, min, max) => {
 
 export const ChiqimQilishPage = () => {
   const dispatch = useAppDispatch()
-  const { canCreate } = usePermissions()
+  const navigate = useNavigate()
+  const { canAccess, canCreate } = usePermissions()
+  const canViewExpense = canAccess(PAGE_PATH)
   const canCreateExpense = canCreate(PAGE_PATH)
 
   const reasonsQuery = useGetWarehouseExpenseReasonsQuery()
@@ -175,12 +179,27 @@ export const ChiqimQilishPage = () => {
   return (
     <PageShell>
       <Stack spacing={2}>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
-          <Box sx={{ minWidth: 0 }}>
-            <Typography variant="h5" component="h1" fontWeight={700}>
-              Chiqim qilish
-            </Typography>
-          </Box>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 2,
+            flexWrap: 'wrap',
+          }}
+        >
+          <Typography variant="h5" component="h1" fontWeight={700}>
+            Chiqim qilish
+          </Typography>
+          {canViewExpense ? (
+            <Button
+              variant="outlined"
+              startIcon={<HistoryIcon />}
+              onClick={() => navigate('/omborlar/chiqim-tarixi')}
+            >
+              Chiqim tarixi
+            </Button>
+          ) : null}
         </Box>
 
         {!canCreateExpense ? (

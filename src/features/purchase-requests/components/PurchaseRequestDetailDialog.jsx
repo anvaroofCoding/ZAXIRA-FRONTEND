@@ -22,6 +22,7 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Tooltip from '@mui/material/Tooltip'
+import { ProductPriceCompareDialog } from '@/features/product-prices/components/ProductPriceCompareDialog'
 import Typography from '@mui/material/Typography'
 import { ApprovalTimelineSteps } from '@/features/purchase-requests/components/ApprovalTimelineSteps'
 import { formatMemberLabel } from '@/features/purchase-requests/utils/formatMemberLabel'
@@ -52,6 +53,7 @@ export const PurchaseRequestDetailDialog = ({
   onResubmit,
 }) => {
   const [copied, setCopied] = useState(false)
+  const [priceItem, setPriceItem] = useState(null)
   const detailQuery = useGetPurchaseRequestByIdQuery(requestId, {
     skip: !open || !requestId,
   })
@@ -59,7 +61,10 @@ export const PurchaseRequestDetailDialog = ({
   const request = detailQuery.data
 
   useEffect(() => {
-    if (!open) setCopied(false)
+    if (!open) {
+      setCopied(false)
+      setPriceItem(null)
+    }
   }, [open])
 
   const handleCopyId = async () => {
@@ -182,9 +187,17 @@ export const PurchaseRequestDetailDialog = ({
             </Box>
 
             <Box>
-              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
-                Tovarlar
-              </Typography>
+              <Stack
+                direction="row"
+                sx={{ mb: 1, alignItems: 'center', justifyContent: 'space-between' }}
+              >
+                <Typography variant="subtitle2" fontWeight={600}>
+                  Tovarlar
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Narxni ko‘rish uchun qatorni bosing
+                </Typography>
+              </Stack>
               <TableContainer component={Paper} variant="outlined">
                 <Table size="small">
                   <TableHead>
@@ -197,7 +210,15 @@ export const PurchaseRequestDetailDialog = ({
                   </TableHead>
                   <TableBody>
                     {request.items.map((item, index) => (
-                      <TableRow key={`${item.name}-${index}`}>
+                      <TableRow
+                        key={`${item.name}-${index}`}
+                        hover
+                        onClick={() => setPriceItem(item)}
+                        sx={{
+                          cursor: 'pointer',
+                          '&:last-child td': { borderBottom: 0 },
+                        }}
+                      >
                         <TableCell>{index + 1}</TableCell>
                         <TableCell>{item.name}</TableCell>
                         <TableCell sx={{ whiteSpace: 'pre-wrap' }}>
@@ -262,6 +283,12 @@ export const PurchaseRequestDetailDialog = ({
           </>
         ) : null}
       </DialogActions>
+
+      <ProductPriceCompareDialog
+        open={Boolean(priceItem)}
+        item={priceItem}
+        onClose={() => setPriceItem(null)}
+      />
     </Dialog>
   )
 }

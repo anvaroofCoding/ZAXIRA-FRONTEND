@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import FilterListIcon from '@mui/icons-material/FilterList'
 import SearchIcon from '@mui/icons-material/Search'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -7,7 +6,6 @@ import FormControl from '@mui/material/FormControl'
 import InputAdornment from '@mui/material/InputAdornment'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
-import Paper from '@mui/material/Paper'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TablePagination from '@mui/material/TablePagination'
@@ -79,36 +77,26 @@ export const ArizalarTarixiPage = () => {
         isFetching={historyQuery.isFetching}
         isUninitialized={historyQuery.isUninitialized}
         hasData={isReady}
-        skeleton={<PurchaseRequestsPageSkeleton showAddButton={false} />}
+        skeleton={
+          <PurchaseRequestsPageSkeleton
+            variant="history"
+            ariaLabel="Arizalar tarixi yuklanmoqda"
+          />
+        }
       >
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Paper variant="outlined" sx={{ px: 2, py: 1.5 }}>
-            <Stack spacing={0.25}>
-              <Typography variant="h5" component="h1" fontWeight={600}>
-                Arizalar tarixi
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Barcha hodisalar jadval ko‘rinishida — qatorni bosib ariza tafsilotlarini ko‘ring
-              </Typography>
-            </Stack>
-          </Paper>
+          <Typography variant="h5" component="h1" fontWeight={600}>
+            Arizalar tarixi
+          </Typography>
 
-          <Paper variant="outlined" sx={{ p: 2 }}>
-            <Stack direction="row" spacing={1} sx={{ mb: 1.5, alignItems: 'center' }}>
-              <FilterListIcon fontSize="small" color="action" />
-              <Typography variant="subtitle2" fontWeight={600}>
-                Filtrlar
-              </Typography>
-            </Stack>
-
-            <Stack
-              direction={{ xs: 'column', md: 'row' }}
-              spacing={1.5}
-              sx={{ flexWrap: 'wrap' }}
-            >
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={1.5}
+            sx={{ flexWrap: 'wrap' }}
+          >
               <TextField
                 size="small"
-                placeholder="Qidirish (ariza, foydalanuvchi, izoh...)"
+                placeholder="Qidiruv"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 sx={{ flex: 1, minWidth: { xs: '100%', md: 280 } }}
@@ -154,8 +142,7 @@ export const ArizalarTarixiPage = () => {
                   ))}
                 </Select>
               </FormControl>
-            </Stack>
-          </Paper>
+          </Stack>
 
           {historyQuery.isError ? (
             <Alert severity="error">

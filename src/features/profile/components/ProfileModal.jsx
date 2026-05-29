@@ -1,0 +1,289 @@
+import { useEffect, useMemo, useState } from 'react'
+import Alert from '@mui/material/Alert'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import CircularProgress from '@mui/material/CircularProgress'
+import Collapse from '@mui/material/Collapse'
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
+import Divider from '@mui/material/Divider'
+import FormControl from '@mui/material/FormControl'
+import InputLabel from '@mui/material/InputLabel'
+import MenuItem from '@mui/material/MenuItem'
+import Select from '@mui/material/Select'
+import Stack from '@mui/material/Stack'
+import TextField from '@mui/material/TextField'
+import Typography from '@mui/material/Typography'
+import {
+  useChangePasswordMutation,
+  useUpdateProfileMutation,
+} from '@/features/auth/api/authApi'
+import { setUser } from '@/features/auth/model/authSlice'
+import { useGetStructuresQuery } from '@/features/structures/api/structuresApi'
+import { useAppDispatch } from '@/shared/hooks/useAppDispatch'
+import { usePermissions } from '@/shared/hooks/usePermissions'
+import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
+
+const buildProfileForm = (user) => ({
+  displayName: user?.displayName ?? '',
+  structureId: user?.structureId ?? '',
+})
+
+const emptyPasswordForm = {
+  currentPassword: '',
+  newPassword: '',
+  confirmNewPassword: '',
+}
+
+export const ProfileModal = ({ open, onClose }) => {
+  const dispatch = useAppDispatch()
+  const { user } = usePermissions()
+  const structuresQuery = useGetStructuresQuery(undefined, { skip: !open })
+  const [updateProfile, updateState] = useUpdateProfileMutation()
+  const [changePassword, passwordState] = useChangePasswordMutation()
+
+  const [profileForm, setProfileForm] = useState(() => buildProfileForm(user))
+  const [passwordForm, setPasswordForm] = useState(emptyPasswordForm)
+  const [showPasswordSection, setShowPasswordSection] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  const isSuperAdmin = user?.isSuperAdmin || user?.role === 'SUPER_ADMIN'
+  const showStructureField = !isSuperAdmin
+
+  const activeStructures = useMemo(
+    () => (structuresQuery.data ?? []).filter((item) => item.isActive),
+    [structuresQuery.data],
+  )
+
+  useEffect(() => {
+    if (open && user) {
+      setProfileForm(buildProfileForm(user))
+      setPasswordForm(emptyPasswordForm)
+      setShowPasswordSection(false)
+      setError('')
+      setSuccess('')
+    }
+  }, [open, user])
+
+  const handleClose = () => {
+    if (updateState.isLoading || passwordState.isLoading) return
+    onClose()
+  }
+
+  const handleSaveProfile = async () => {
+    setError('')
+    setSuccess('')
+
+    if (showStructureField && !profileForm.structureId) {
+      setError('Tarkibiy tuzilmani tanlang')
+      return
+    }
+
+    try {
+      const body = {
+        displayName: profileForm.displayName.trim() || user.login,
+        ...(showStructureField ? { structureId: profileForm.structureId } : {}),
+      }
+
+      const updated = await updateProfile(body).unwrap()
+      dispatch(setUser(updated))
+      setSuccess('Ma’lumotlar saqlandi')
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Saqlashda xatolik'))
+    }
+  }
+
+  const handleChangePassword = async () => {
+    setError('')
+    setSuccess('')
+
+    if (passwordForm.newPassword.length < 6) {
+      setError('Yangi parol kamida 6 belgidan iborat bo‘lishi kerak')
+      return
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmNewPassword) {
+      setError('Yangi parollar mos emas')
+      return
+    }
+
+    try {
+      await changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+        confirmNewPassword: passwordForm.confirmNewPassword,
+      }).unwrap()
+
+      setPasswordForm(emptyPasswordForm)
+      setShowPasswordSection(false)
+      setSuccess('Parol yangilandi')
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Parolni yangilab bo‘lmadi'))
+    }
+  }
+
+  const isSaving = updateState.isLoading
+  const isPasswordSaving = passwordState.isLoading
+
+  return (
+    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm" scroll="paper">
+      <DialogTitle sx={{ fontWeight: 600 }}>Mening profilim</DialogTitle>
+
+      <DialogContent>
+        <Stack spacing={2.5}>
+          {error ? <Alert severity="error">{error}</Alert> : null}
+          {success ? <Alert severity="success">{success}</Alert> : null}
+
+          <Box>
+            <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+              Asosiy ma&apos;lumotlar
+            </Typography>
+            <Stack spacing={1.5}>
+              <TextField
+                label="Login"
+                value={user?.login ?? ''}
+                size="small"
+                fullWidth
+                disabled
+              />
+
+              <TextField
+                label="Ism"
+                value={profileForm.displayName}
+                onChange={(event) =>
+                  setProfileForm((prev) => ({
+                    ...prev,
+                    displayName: event.target.value,
+                  }))
+                }
+                size="small"
+                fullWidth
+                disabled={isSaving}
+              />
+
+              {showStructureField ? (
+                <FormControl size="small" fullWidth disabled={isSaving || structuresQuery.isLoading}>
+                  <InputLabel id="profile-structure-label">Tarkibiy tuzilma</InputLabel>
+                  <Select
+                    labelId="profile-structure-label"
+                    label="Tarkibiy tuzilma"
+                    value={profileForm.structureId}
+                    onChange={(event) =>
+                      setProfileForm((prev) => ({
+                        ...prev,
+                        structureId: event.target.value,
+                      }))
+                    }
+                  >
+                    {activeStructures.map((structure) => (
+                      <MenuItem key={structure.id} value={structure.id}>
+                        {structure.fullName} ({structure.shortName})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              ) : null}
+
+              {showStructureField ? (
+                <Typography variant="caption" color="text.secondary">
+                  Tuzilmani o‘zgartirsangiz, avval qilingan amallar eski tuzilma nomi bilan
+                  saqlanadi. Yangi amallar yangi tuzilma bo‘yicha ketadi.
+                </Typography>
+              ) : null}
+            </Stack>
+          </Box>
+
+          <Divider />
+
+          <Box>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setShowPasswordSection((prev) => !prev)}
+            >
+              Parolni o‘zgartirish
+            </Button>
+
+            <Collapse in={showPasswordSection} sx={{ mt: 1.5 }}>
+              <Stack spacing={1.5}>
+                <TextField
+                  label="Joriy parol"
+                  type="password"
+                  size="small"
+                  fullWidth
+                  value={passwordForm.currentPassword}
+                  onChange={(event) =>
+                    setPasswordForm((prev) => ({
+                      ...prev,
+                      currentPassword: event.target.value,
+                    }))
+                  }
+                  disabled={isPasswordSaving}
+                />
+                <TextField
+                  label="Yangi parol"
+                  type="password"
+                  size="small"
+                  fullWidth
+                  value={passwordForm.newPassword}
+                  onChange={(event) =>
+                    setPasswordForm((prev) => ({
+                      ...prev,
+                      newPassword: event.target.value,
+                    }))
+                  }
+                  disabled={isPasswordSaving}
+                />
+                <TextField
+                  label="Yangi parolni takrorlang"
+                  type="password"
+                  size="small"
+                  fullWidth
+                  value={passwordForm.confirmNewPassword}
+                  onChange={(event) =>
+                    setPasswordForm((prev) => ({
+                      ...prev,
+                      confirmNewPassword: event.target.value,
+                    }))
+                  }
+                  disabled={isPasswordSaving}
+                />
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={handleChangePassword}
+                  disabled={isPasswordSaving}
+                  startIcon={
+                    isPasswordSaving ? (
+                      <CircularProgress size={16} color="inherit" />
+                    ) : null
+                  }
+                  sx={{ alignSelf: 'flex-start' }}
+                >
+                  Parolni saqlash
+                </Button>
+              </Stack>
+            </Collapse>
+          </Box>
+        </Stack>
+      </DialogContent>
+
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={handleClose} disabled={isSaving || isPasswordSaving}>
+          Yopish
+        </Button>
+        <Button
+          variant="contained"
+          onClick={handleSaveProfile}
+          disabled={isSaving || isPasswordSaving}
+          startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : null}
+        >
+          Saqlash
+        </Button>
+      </DialogActions>
+    </Dialog>
+  )
+}

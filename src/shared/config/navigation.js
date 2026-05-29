@@ -1,0 +1,58 @@
+export const NAV_ITEMS = [
+  {
+    type: 'link',
+    label: 'Dashboard',
+    path: '/dashboard',
+  },
+  {
+    type: 'group',
+    label: 'Xaridlar',
+    children: [
+      { label: 'Arizalar yuborish', path: '/xaridlar/arizalar-yuborish' },
+      { label: 'Arizalarni tasdiqlash', path: '/xaridlar/arizalarni-tasdiqlash' },
+      { label: 'Arizalar tarixi', path: '/xaridlar/arizalar-tarixi' },
+    ],
+  },
+  {
+    type: 'group',
+    label: 'Xarid qilish',
+    children: [
+      { label: 'Sotib olinadigan tavarlar', path: '/xarid-qilish/sotib-olinadigan-tavarlar' },
+      { label: 'Xarid qilingan tavarlar', path: '/xarid-qilish/xarid-qilingan-tavarlar' },
+      { label: 'Xaridni qabul qilish', path: '/xarid-qilish/xaridni-qabul-qilish', badgeKey: 'warehouse-receipt' },
+    ],
+  },
+  {
+    type: 'group',
+    label: 'Omborlar',
+    children: [
+      { label: 'Mening omborim', path: '/omborlar/mening-omborim' },
+      { label: 'Boshqa omborlar', path: '/omborlar/boshqa-omborlar' },
+    ],
+  },
+  {
+    type: 'group',
+    label: 'Transfer',
+    children: [
+      { label: 'Transfer qilish', path: '/transfer/transfer-qilish' },
+      { label: 'Transferni qabul qilish', path: '/transfer/transferni-qabul-qilish' },
+      { label: 'Transferlar tarixi', path: '/transfer/transferlar-tarixi' },
+    ],
+  },
+  {
+    type: 'group',
+    label: 'Invertarizatsiya',
+    children: [
+      { label: 'Invertarizatsiya qilish', path: '/invertarizatsiya/invertarizatsiya-qilish' },
+      { label: 'Barcha invertarizatsiyalar', path: '/invertarizatsiya/barcha-invertarizatsiyalar' },
+    ],
+  },
+  {
+    type: 'group',
+    label: "Ro'yxatga olish",
+    children: [
+      { label: 'Foydalanuvchilar', path: '/royxatga-olish/foydalanuvchilar' },
+      { label: 'Tarkibiy tuzilmalar', path: '/royxatga-olish/tuzilmalar' },
+    ],
+  },
+]

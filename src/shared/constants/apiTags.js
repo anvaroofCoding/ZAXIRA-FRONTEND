@@ -1,0 +1,11 @@
+export const API_TAGS = {
+  USER: 'User',
+  AUTH: 'Auth',
+  STRUCTURE: 'Structure',
+  DASHBOARD: 'Dashboard',
+  PURCHASE_REQUEST: 'PurchaseRequest',
+  TRANSFER: 'Transfer',
+  WAREHOUSE_DISPATCH: 'WarehouseDispatch',
+  WAREHOUSE_LOCATION: 'WarehouseLocation',
+  WAREHOUSE_INVENTORY: 'WarehouseInventory',
+}

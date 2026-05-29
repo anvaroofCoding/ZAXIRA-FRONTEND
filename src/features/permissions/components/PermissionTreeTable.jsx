@@ -1,0 +1,238 @@
+import { useMemo, useState } from 'react'
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
+import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight'
+import Box from '@mui/material/Box'
+import Checkbox from '@mui/material/Checkbox'
+import Collapse from '@mui/material/Collapse'
+import IconButton from '@mui/material/IconButton'
+import Paper from '@mui/material/Paper'
+import Table from '@mui/material/Table'
+import TableBody from '@mui/material/TableBody'
+import TableCell from '@mui/material/TableCell'
+import TableContainer from '@mui/material/TableContainer'
+import TableHead from '@mui/material/TableHead'
+import TableRow from '@mui/material/TableRow'
+import Typography from '@mui/material/Typography'
+import { PERMISSION_COLUMNS } from '@/features/permissions/constants'
+import {
+  getGroupActionState,
+  getGroupCheckState,
+  getGroupPaths,
+  setGroupAccess,
+  setGroupAction,
+  setPageAccess,
+  setPageAction,
+} from '@/features/permissions/utils/permissions'
+
+const WAREHOUSE_EXPENSE_PATH = '/omborlar/chiqim-qilish'
+
+const ExpensePermissionHintRow = ({ permissions, onChange, disabled }) => {
+  const page = permissions[WAREHOUSE_EXPENSE_PATH] ?? { access: false, actions: {} }
+  const checked = Boolean(page.access && page.actions?.create)
+
+  return (
+    <TableRow hover>
+      <TableCell sx={{ pl: 5 }}>
+        <Typography variant="caption" color="text.secondary">
+          Dashboarddagi tugma uchun qo'shimcha ruxsat (ticket bilan birga)
+        </Typography>
+      </TableCell>
+      <TableCell align="center" padding="checkbox" />
+      {PERMISSION_COLUMNS.slice(1).map((column) => (
+        <TableCell key={column.key} align="center" padding="checkbox">
+          {column.key === 'create' ? (
+            <Checkbox
+              checked={checked}
+              disabled={disabled || !page.access}
+              onChange={(event) =>
+                onChange(
+                  setPageAction(
+                    permissions,
+                    WAREHOUSE_EXPENSE_PATH,
+                    'create',
+                    event.target.checked,
+                  ),
+                )
+              }
+            />
+          ) : null}
+        </TableCell>
+      ))}
+    </TableRow>
+  )
+}
+
+const PageRow = ({ label, indent = 0, permissions, path, onChange, disabled }) => {
+  const page = permissions[path] ?? { access: false, actions: {} }
+  const accessDisabled = disabled
+
+  return (
+    <>
+      <TableRow hover>
+        <TableCell sx={{ pl: 2 + indent * 3 }}>
+          <Typography variant="body2">{label}</Typography>
+        </TableCell>
+
+        <TableCell align="center" padding="checkbox">
+          <Checkbox
+            checked={Boolean(page.access)}
+            disabled={accessDisabled}
+            onChange={(event) =>
+              onChange(setPageAccess(permissions, path, event.target.checked))
+            }
+          />
+        </TableCell>
+
+        {PERMISSION_COLUMNS.slice(1).map((column) => (
+          <TableCell key={column.key} align="center" padding="checkbox">
+            <Checkbox
+              checked={Boolean(page.access && page.actions?.[column.key])}
+              disabled={accessDisabled || !page.access}
+              onChange={(event) =>
+                onChange(
+                  setPageAction(permissions, path, column.key, event.target.checked),
+                )
+              }
+            />
+          </TableCell>
+        ))}
+      </TableRow>
+      {path === WAREHOUSE_EXPENSE_PATH ? (
+        <ExpensePermissionHintRow
+          permissions={permissions}
+          onChange={onChange}
+          disabled={disabled}
+        />
+      ) : null}
+    </>
+  )
+}
+
+const GroupSection = ({ group, permissions, onChange, disabled }) => {
+  const [open, setOpen] = useState(true)
+  const paths = useMemo(() => getGroupPaths(group), [group])
+  const accessState = getGroupCheckState(permissions, paths)
+
+  return (
+    <>
+      <TableRow sx={{ bgcolor: 'action.hover' }}>
+        <TableCell>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <IconButton size="small" onClick={() => setOpen((value) => !value)}>
+              {open ? <KeyboardArrowDownIcon /> : <KeyboardArrowRightIcon />}
+            </IconButton>
+            <Typography variant="body2" fontWeight={600}>
+              {group.label}
+            </Typography>
+          </Box>
+        </TableCell>
+
+        <TableCell align="center" padding="checkbox">
+          <Checkbox
+            checked={accessState.checked}
+            indeterminate={accessState.indeterminate}
+            disabled={disabled}
+            onChange={(event) =>
+              onChange(setGroupAccess(permissions, paths, event.target.checked))
+            }
+          />
+        </TableCell>
+
+        {PERMISSION_COLUMNS.slice(1).map((column) => {
+          const actionState = getGroupActionState(permissions, paths, column.key)
+
+          return (
+            <TableCell key={column.key} align="center" padding="checkbox">
+              <Checkbox
+                checked={actionState.checked}
+                indeterminate={actionState.indeterminate}
+                disabled={disabled || !paths.some((path) => permissions[path]?.access)}
+                onChange={(event) =>
+                  onChange(
+                    setGroupAction(permissions, paths, column.key, event.target.checked),
+                  )
+                }
+              />
+            </TableCell>
+          )
+        })}
+      </TableRow>
+
+      <TableRow>
+        <TableCell colSpan={PERMISSION_COLUMNS.length + 1} sx={{ p: 0, border: 0 }}>
+          <Collapse in={open} timeout="auto" unmountOnExit>
+            <Table size="small">
+              <TableBody>
+                {group.pages.map((page) => (
+                  <PageRow
+                    key={page.path}
+                    label={page.label}
+                    indent={1}
+                    path={page.path}
+                    permissions={permissions}
+                    onChange={onChange}
+                    disabled={disabled}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </Collapse>
+        </TableCell>
+      </TableRow>
+    </>
+  )
+}
+
+export const PermissionTreeTable = ({
+  catalog,
+  permissions,
+  onChange,
+  disabled = false,
+  maxHeight = 360,
+}) => {
+  if (!catalog) return null
+
+  return (
+    <TableContainer
+      component={Paper}
+      variant="outlined"
+      sx={{ maxHeight, overflow: 'auto' }}
+    >
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>Sahifa</TableCell>
+            {PERMISSION_COLUMNS.map((column) => (
+              <TableCell key={column.key} align="center">
+                {column.label}
+              </TableCell>
+            ))}
+          </TableRow>
+        </TableHead>
+
+        <TableBody>
+          {catalog.links.map((link) => (
+            <PageRow
+              key={link.path}
+              label={link.label}
+              path={link.path}
+              permissions={permissions}
+              onChange={onChange}
+              disabled={disabled}
+            />
+          ))}
+
+          {catalog.groups.map((group) => (
+            <GroupSection
+              key={group.key}
+              group={group}
+              permissions={permissions}
+              onChange={onChange}
+              disabled={disabled}
+            />
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  )
+}

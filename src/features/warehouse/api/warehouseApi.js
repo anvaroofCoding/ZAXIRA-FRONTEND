@@ -65,7 +65,7 @@ export const warehouseApi = baseApi.injectEndpoints({
       query: () => '/warehouse/expense-reasons',
     }),
     getWarehouseExpenses: builder.query({
-      query: ({ page = 1, limit = 10, search = '', dateFrom, dateTo, reasonKey } = {}) => ({
+      query: ({ page = 1, limit = 10, search = '', dateFrom, dateTo, reasonKey, structureId } = {}) => ({
         url: '/warehouse/expenses',
         params: {
           page,
@@ -74,13 +74,19 @@ export const warehouseApi = baseApi.injectEndpoints({
           ...(dateFrom ? { dateFrom } : {}),
           ...(dateTo ? { dateTo } : {}),
           ...(reasonKey ? { reasonKey } : {}),
+          ...(structureId ? { structureId } : {}),
         },
       }),
       providesTags: [API_TAGS.WAREHOUSE_EXPENSE],
     }),
     getWarehouseExpenseByCode: builder.query({
-      query: (code) => `/warehouse/expenses/${encodeURIComponent(code)}`,
-      providesTags: (_result, _error, code) => [{ type: API_TAGS.WAREHOUSE_EXPENSE, id: code }],
+      query: ({ code, structureId }) => ({
+        url: `/warehouse/expenses/${encodeURIComponent(code)}`,
+        ...(structureId ? { params: { structureId } } : {}),
+      }),
+      providesTags: (_result, _error, arg) => [
+        { type: API_TAGS.WAREHOUSE_EXPENSE, id: `${arg?.structureId ?? ''}:${arg?.code ?? ''}` },
+      ],
     }),
     createWarehouseExpense: builder.mutation({
       query: (body) => ({
@@ -97,6 +103,14 @@ export const warehouseApi = baseApi.injectEndpoints({
         return tags
       },
     }),
+    deleteWarehouseExpense: builder.mutation({
+      query: ({ code, structureId }) => ({
+        url: `/warehouse/expenses/${encodeURIComponent(code)}`,
+        method: 'DELETE',
+        ...(structureId ? { params: { structureId } } : {}),
+      }),
+      invalidatesTags: [API_TAGS.WAREHOUSE_EXPENSE, API_TAGS.WAREHOUSE_INVENTORY],
+    }),
   }),
 })
 
@@ -112,5 +126,6 @@ export const {
   useGetWarehouseExpensesQuery,
   useGetWarehouseExpenseByCodeQuery,
   useCreateWarehouseExpenseMutation,
+  useDeleteWarehouseExpenseMutation,
 } = warehouseApi
 

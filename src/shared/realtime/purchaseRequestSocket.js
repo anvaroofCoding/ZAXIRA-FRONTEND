@@ -1,5 +1,6 @@
 import { io } from 'socket.io-client'
 import { purchaseRequestsApi } from '@/features/purchase-requests/api/purchaseRequestsApi'
+import { notificationsApi } from '@/features/notifications/api/notificationsApi'
 import { warehouseDispatchesApi } from '@/features/warehouse-dispatches/api/warehouseDispatchesApi'
 import { env } from '@/shared/config/env'
 import { API_TAGS } from '@/shared/constants/apiTags'
@@ -28,6 +29,10 @@ export const createPurchaseRequestSocket = (token, dispatch) => {
 
     dispatch(purchaseRequestsApi.util.invalidateTags(tags))
     dispatch(warehouseDispatchesApi.util.invalidateTags([API_TAGS.WAREHOUSE_DISPATCH]))
+  })
+
+  socket.on('notification:created', () => {
+    dispatch(notificationsApi.util.invalidateTags([API_TAGS.NOTIFICATION]))
   })
 
   return socket

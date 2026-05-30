@@ -5,6 +5,7 @@ import Button from '@mui/material/Button'
 import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
 import { ProfileMenu } from '@/features/profile/components/ProfileMenu'
+import { NotificationsDrawer } from '@/features/notifications/components/NotificationsDrawer'
 import { ThemeToggle } from '@/shared/components/ThemeToggle'
 import { AppContainer } from '@/shared/components/layout/AppContainer'
 import { selectAuthUser } from '@/features/auth/model/authSlice'
@@ -104,6 +105,7 @@ export const AppNavbar = () => {
               gap: 0.25,
             }}
           >
+            <NotificationsDrawer />
             <ThemeToggle />
             <ProfileMenu />
           </Box>

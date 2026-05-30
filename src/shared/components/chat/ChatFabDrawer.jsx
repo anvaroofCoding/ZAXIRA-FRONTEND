@@ -1,23 +1,30 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import ChatIcon from '@mui/icons-material/Chat'
-import PublicIcon from '@mui/icons-material/Public'
-import SupportAgentIcon from '@mui/icons-material/SupportAgent'
-import PersonIcon from '@mui/icons-material/Person'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
-import SendIcon from '@mui/icons-material/Send'
+import ChatIcon from '@mui/icons-material/Chat'
+import CloseIcon from '@mui/icons-material/Close'
 import DownloadIcon from '@mui/icons-material/Download'
+import PersonIcon from '@mui/icons-material/Person'
+import PublicIcon from '@mui/icons-material/Public'
+import ReplyIcon from '@mui/icons-material/Reply'
+import SearchIcon from '@mui/icons-material/Search'
+import SendIcon from '@mui/icons-material/Send'
+import SupportAgentIcon from '@mui/icons-material/SupportAgent'
+import Badge from '@mui/material/Badge'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
-import Divider from '@mui/material/Divider'
 import Drawer from '@mui/material/Drawer'
-import FormControl from '@mui/material/FormControl'
+import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
-import InputLabel from '@mui/material/InputLabel'
-import MenuItem from '@mui/material/MenuItem'
+import InputAdornment from '@mui/material/InputAdornment'
+import List from '@mui/material/List'
+import ListItemAvatar from '@mui/material/ListItemAvatar'
+import ListItemButton from '@mui/material/ListItemButton'
+import ListItemText from '@mui/material/ListItemText'
+import Paper from '@mui/material/Paper'
 import Popover from '@mui/material/Popover'
-import Select from '@mui/material/Select'
 import SpeedDial from '@mui/material/SpeedDial'
 import SpeedDialAction from '@mui/material/SpeedDialAction'
 import SpeedDialIcon from '@mui/material/SpeedDialIcon'
@@ -27,17 +34,20 @@ import Tabs from '@mui/material/Tabs'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import dayjs from 'dayjs'
-import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
-import { useGetUsersLookupQuery } from '@/features/users/api/usersApi'
 import {
   useGetChatMessagesQuery,
+  useGetChatSummaryQuery,
+  useMarkChatReadMutation,
   useSendChatMessageMutation,
   useSendTypingMutation,
   useToggleMessageReactionMutation,
 } from '@/features/chat/api/chatApi'
-import { selectAccessToken, selectAuthUser } from '@/features/auth/model/authSlice'
+import { selectAuthUser } from '@/features/auth/model/authSlice'
+import { useGetUsersLookupQuery } from '@/features/users/api/usersApi'
+import { ChatUserAvatar } from '@/shared/components/chat/ChatUserAvatar'
 import { useAppSelector } from '@/shared/hooks/useAppSelector'
-import { createChatSocket } from '@/shared/realtime/chatSocket'
+import { useChatRealtime } from '@/shared/hooks/useChatRealtime'
+import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
 const CHAT_TABS = [
   { key: 'SUPPORT', label: 'Support', icon: <SupportAgentIcon fontSize="small" /> },
@@ -62,7 +72,16 @@ const hasFullPermissions = (permissions) => {
 const formatChatDateTime = (value) => {
   const d = dayjs(value)
   if (!d.isValid()) return ''
-  return d.format('DD.MM.YYYY HH:mm')
+  const now = dayjs()
+  if (d.isSame(now, 'day')) return d.format('HH:mm')
+  if (d.isSame(now.subtract(1, 'day'), 'day')) return 'Kecha'
+  return d.format('DD.MM.YY')
+}
+
+const formatListTime = (value) => {
+  const d = dayjs(value)
+  if (!d.isValid()) return ''
+  return formatChatDateTime(value)
 }
 
 const fileToDataUrl = (file) =>
@@ -98,14 +117,103 @@ const compressImageDataUrl = async (sourceDataUrl) => {
   return canvas.toDataURL('image/jpeg', 0.78)
 }
 
+const formatReplyPreview = (replyTo) => {
+  if (!replyTo) return ''
+  if (replyTo.text) return replyTo.text
+  if (replyTo.hasImage) return '📷 Rasm'
+  if (replyTo.hasFile) return '📎 Fayl'
+  return 'Xabar'
+}
+
+const ReplyQuote = ({ replyTo, own, onClick }) => {
+  if (!replyTo) return null
+  return (
+    <Box
+      onClick={onClick}
+      sx={{
+        mb: 0.75,
+        px: 1,
+        py: 0.5,
+        borderLeft: 3,
+        borderColor: own ? 'primary.contrastText' : 'primary.main',
+        bgcolor: own ? 'rgba(255,255,255,0.15)' : 'action.hover',
+        borderRadius: 1,
+        cursor: onClick ? 'pointer' : 'default',
+      }}
+    >
+      <Typography variant="caption" fontWeight={700} sx={{ display: 'block', opacity: 0.9 }}>
+        {replyTo.senderName}
+      </Typography>
+      <Typography variant="caption" sx={{ display: 'block', opacity: 0.85 }} noWrap>
+        {formatReplyPreview(replyTo)}
+      </Typography>
+    </Box>
+  )
+}
+
+const TabLabelWithBadge = ({ label, count }) => (
+  <Badge badgeContent={count} color="error" max={99} invisible={!count}>
+    <Box component="span" sx={{ pr: count ? 1.5 : 0 }}>
+      {label}
+    </Box>
+  </Badge>
+)
+
+const UnreadBadge = ({ count }) => {
+  if (!count) return null
+  return (
+    <Chip
+      size="small"
+      color="error"
+      label={count > 99 ? '99+' : count}
+      sx={{ minWidth: 28, height: 22, fontWeight: 700 }}
+    />
+  )
+}
+
+const ConversationRow = ({ avatar, title, subtitle, time, unreadCount, onClick }) => (
+  <ListItemButton onClick={onClick} alignItems="flex-start" sx={{ py: 1.25 }}>
+    <ListItemAvatar sx={{ minWidth: 52 }}>{avatar}</ListItemAvatar>
+    <ListItemText
+      primary={
+        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+          <Typography variant="subtitle2" fontWeight={700} noWrap sx={{ flex: 1 }}>
+            {title}
+          </Typography>
+          {time ? (
+            <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>
+              {time}
+            </Typography>
+          ) : null}
+        </Stack>
+      }
+      secondary={
+        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            noWrap
+            sx={{ flex: 1, fontWeight: unreadCount ? 600 : 400 }}
+          >
+            {subtitle || 'Xabar yo‘q'}
+          </Typography>
+          <UnreadBadge count={unreadCount} />
+        </Stack>
+      }
+    />
+  </ListItemButton>
+)
+
 export const ChatFabDrawer = () => {
-  const token = useAppSelector(selectAccessToken)
   const user = useAppSelector(selectAuthUser)
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState('GLOBAL')
+  const [view, setView] = useState('list')
   const [text, setText] = useState('')
   const [selectedPeerId, setSelectedPeerId] = useState('')
   const [selectedSupportRequesterId, setSelectedSupportRequesterId] = useState('')
+  const [directSearch, setDirectSearch] = useState('')
+  const [supportSearch, setSupportSearch] = useState('')
   const [imageDataUrl, setImageDataUrl] = useState('')
   const [fileDataUrl, setFileDataUrl] = useState('')
   const [fileName, setFileName] = useState('')
@@ -116,16 +224,11 @@ export const ChatFabDrawer = () => {
   const [sendError, setSendError] = useState('')
   const [reactionAnchorEl, setReactionAnchorEl] = useState(null)
   const [reactionMessageId, setReactionMessageId] = useState('')
+  const [replyTo, setReplyTo] = useState(null)
   const listRef = useRef(null)
-  const socketRef = useRef(null)
   const typingTimerRef = useRef(null)
   const reactionTimerRef = useRef(null)
 
-  const lookupQuery = useGetUsersLookupQuery(undefined, { skip: !open })
-  const peers = useMemo(
-    () => (lookupQuery.data ?? []).filter((u) => u.id !== user?.id),
-    [lookupQuery.data, user?.id],
-  )
   const isSupportOperator = useMemo(
     () =>
       user?.role === 'SUPER_ADMIN' ||
@@ -134,17 +237,104 @@ export const ChatFabDrawer = () => {
     [user?.permissions, user?.role],
   )
 
-  useEffect(() => {
-    if (!selectedPeerId && peers.length) {
-      setSelectedPeerId(peers[0].id)
-    }
-  }, [peers, selectedPeerId])
+  const summaryQuery = useGetChatSummaryQuery(undefined, {
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
+  })
+  const summary = summaryQuery.data
 
-  useEffect(() => {
-    if (isSupportOperator && !selectedSupportRequesterId && peers.length) {
-      setSelectedSupportRequesterId(peers[0].id)
+  const tabUnread = useMemo(() => {
+    const supportUnread = isSupportOperator
+      ? (summary?.supportThreads ?? []).reduce((sum, thread) => sum + (thread.unreadCount ?? 0), 0)
+      : (summary?.support?.unreadCount ?? 0)
+    const directUnread = Object.values(summary?.direct ?? {}).reduce(
+      (sum, item) => sum + (item.unreadCount ?? 0),
+      0,
+    )
+    return {
+      SUPPORT: supportUnread,
+      GLOBAL: summary?.global?.unreadCount ?? 0,
+      DIRECT: directUnread,
     }
-  }, [isSupportOperator, peers, selectedSupportRequesterId])
+  }, [isSupportOperator, summary])
+
+  const lookupQuery = useGetUsersLookupQuery()
+  const peers = useMemo(
+    () => (lookupQuery.data ?? []).filter((u) => u.id !== user?.id),
+    [lookupQuery.data, user?.id],
+  )
+
+  const activeRoom = useMemo(() => {
+    if (view !== 'thread') return null
+    if (tab === 'DIRECT') {
+      return { roomType: 'DIRECT', directPeerUserId: selectedPeerId }
+    }
+    if (tab === 'SUPPORT') {
+      return {
+        roomType: 'SUPPORT',
+        supportRequesterId: isSupportOperator ? selectedSupportRequesterId : user?.id,
+      }
+    }
+    return { roomType: 'GLOBAL' }
+  }, [
+    isSupportOperator,
+    selectedPeerId,
+    selectedSupportRequesterId,
+    tab,
+    user?.id,
+    view,
+  ])
+
+  const messageMatchesActiveRoom = useCallback(
+    (payload) => {
+      if (!payload || view !== 'thread' || !open) return false
+      if (payload.roomType !== tab) return false
+      if (tab === 'GLOBAL') return true
+      if (tab === 'DIRECT') {
+        const senderId = String(payload.senderId ?? '')
+        return (
+          senderId === String(selectedPeerId) || senderId === String(user?.id ?? '')
+        )
+      }
+      if (tab === 'SUPPORT') {
+        const requesterId = isSupportOperator ? selectedSupportRequesterId : user?.id
+        return String(payload.supportRequesterId ?? '') === String(requesterId ?? '')
+      }
+      return false
+    },
+    [
+      isSupportOperator,
+      open,
+      selectedPeerId,
+      selectedSupportRequesterId,
+      tab,
+      user?.id,
+      view,
+    ],
+  )
+
+  useChatRealtime({
+    activeRoom,
+    onMessage: (payload) => {
+      if (messageMatchesActiveRoom(payload)) {
+        setIncomingTick((v) => v + 1)
+      }
+    },
+    onTyping: (payload) => {
+      const senderId = payload?.userId
+      if (!senderId) return
+      setTypingIds((prev) =>
+        payload?.isTyping
+          ? Array.from(new Set([...prev, senderId]))
+          : prev.filter((id) => id !== senderId),
+      )
+    },
+    onReaction: (payload) => {
+      if (messageMatchesActiveRoom(payload)) {
+        setIncomingTick((v) => v + 1)
+      }
+    },
+  })
 
   const queryArgs = useMemo(
     () => ({
@@ -158,49 +348,56 @@ export const ChatFabDrawer = () => {
   )
 
   const messagesQuery = useGetChatMessagesQuery(queryArgs, {
-    skip: !open || (tab === 'DIRECT' && !selectedPeerId),
+    skip:
+      !open ||
+      view !== 'thread' ||
+      (tab === 'DIRECT' && !selectedPeerId) ||
+      (tab === 'SUPPORT' && isSupportOperator && !selectedSupportRequesterId),
   })
+
   const [sendChatMessage, sendState] = useSendChatMessageMutation()
+  const [markChatRead] = useMarkChatReadMutation()
   const [sendTyping] = useSendTypingMutation()
   const [toggleMessageReaction] = useToggleMessageReactionMutation()
 
-  useEffect(() => {
-    if (!open || !token) return
-    const socket = createChatSocket(token)
-    socketRef.current = socket
-
-    socket.on('chat:message', () => {
-      setIncomingTick((v) => v + 1)
-    })
-
-    socket.on('chat:typing', (payload) => {
-      const senderId = payload?.userId
-      if (!senderId || senderId === user?.id) return
-      const matchRoom = payload?.roomType === tab
-      const matchDirect =
-        tab !== 'DIRECT' || payload?.directPeerUserId === user?.id || senderId === selectedPeerId
-      if (!matchRoom || !matchDirect) return
-
-      setTypingIds((prev) =>
-        payload?.isTyping
-          ? Array.from(new Set([...prev, senderId]))
-          : prev.filter((id) => id !== senderId),
-      )
-    })
-
-    socket.on('chat:reaction', () => {
-      setIncomingTick((v) => v + 1)
-    })
-
-    return () => {
-      socket.removeAllListeners()
-      socket.disconnect()
-      socketRef.current = null
+  const markCurrentThreadRead = useCallback(() => {
+    if (tab === 'GLOBAL') {
+      markChatRead({ roomType: 'GLOBAL' })
+      return
     }
-  }, [open, selectedPeerId, tab, token, user?.id])
+    if (tab === 'DIRECT' && selectedPeerId) {
+      markChatRead({ roomType: 'DIRECT', directPeerUserId: selectedPeerId })
+      return
+    }
+    if (tab === 'SUPPORT') {
+      if (isSupportOperator && selectedSupportRequesterId) {
+        markChatRead({
+          roomType: 'SUPPORT',
+          supportRequesterId: selectedSupportRequesterId,
+        })
+      } else {
+        markChatRead({ roomType: 'SUPPORT' })
+      }
+    }
+  }, [isSupportOperator, markChatRead, selectedPeerId, selectedSupportRequesterId, tab])
 
   useEffect(() => {
-    if (incomingTick > 0) {
+    if (!open || view !== 'thread') return
+    if (!messagesQuery.data) return
+    markCurrentThreadRead()
+  }, [
+    incomingTick,
+    markCurrentThreadRead,
+    messagesQuery.data,
+    open,
+    selectedPeerId,
+    selectedSupportRequesterId,
+    tab,
+    view,
+  ])
+
+  useEffect(() => {
+    if (incomingTick > 0 && open && view === 'thread') {
       messagesQuery.refetch()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -213,13 +410,95 @@ export const ChatFabDrawer = () => {
     node.scrollTop = node.scrollHeight
   }, [messagesQuery.data])
 
-  const currentTypingNames = useMemo(() => {
-    const nameMap = new Map((messagesQuery.data ?? []).map((m) => [m.senderId, m.senderName]))
-    return typingIds.map((id) => nameMap.get(id) || 'Kimdir')
-  }, [messagesQuery.data, typingIds])
+  useEffect(() => {
+    setView('list')
+    setTypingIds([])
+    setReplyTo(null)
+  }, [tab])
+
+  const selectedPeer = useMemo(
+    () => peers.find((p) => p.id === selectedPeerId),
+    [peers, selectedPeerId],
+  )
+
+  const threadTitle = useMemo(() => {
+    if (tab === 'GLOBAL') return 'Umumiy chat'
+    if (tab === 'SUPPORT') {
+      if (isSupportOperator) {
+        const thread = summary?.supportThreads?.find(
+          (t) => t.requesterId === selectedSupportRequesterId,
+        )
+        return thread?.requesterName ?? 'Support'
+      }
+      return 'Support'
+    }
+    return selectedPeer?.displayName ?? 'Lichka chat'
+  }, [
+    isSupportOperator,
+    selectedPeer?.displayName,
+    selectedSupportRequesterId,
+    summary?.supportThreads,
+    tab,
+  ])
+
+  const filteredPeers = useMemo(() => {
+    const q = directSearch.trim().toLowerCase()
+    const list = q
+      ? peers.filter((peer) => {
+          const haystack = [
+            peer.displayName,
+            peer.login,
+            peer.structureShortName,
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase()
+          return haystack.includes(q)
+        })
+      : peers
+
+    return [...list].sort((a, b) => {
+      const aMeta = summary?.direct?.[a.id]
+      const bMeta = summary?.direct?.[b.id]
+      const aTime = aMeta?.lastMessageAt ? new Date(aMeta.lastMessageAt).getTime() : 0
+      const bTime = bMeta?.lastMessageAt ? new Date(bMeta.lastMessageAt).getTime() : 0
+      if (aTime !== bTime) return bTime - aTime
+      return (a.displayName || '').localeCompare(b.displayName || '')
+    })
+  }, [directSearch, peers, summary?.direct])
+
+  const filteredSupportThreads = useMemo(() => {
+    const threads = summary?.supportThreads ?? []
+    const q = supportSearch.trim().toLowerCase()
+    if (!q) return threads
+    return threads.filter((thread) =>
+      thread.requesterName.toLowerCase().includes(q),
+    )
+  }, [summary?.supportThreads, supportSearch])
+
+  const openThread = (options = {}) => {
+    if (options.peerId) setSelectedPeerId(options.peerId)
+    if (options.supportRequesterId) {
+      setSelectedSupportRequesterId(options.supportRequesterId)
+    }
+    setView('thread')
+    setTypingIds([])
+    setReplyTo(null)
+  }
+
+  const backToList = () => {
+    setView('list')
+    setTypingIds([])
+    setReplyTo(null)
+  }
+
+  const handleTabChange = (_event, value) => {
+    setTab(value)
+    setView('list')
+  }
 
   const sendTypingSignal = (isTyping) => {
-    if (!open) return
+    if (!open || view !== 'thread') return
     sendTyping({
       roomType: tab,
       ...(tab === 'DIRECT' ? { directPeerUserId: selectedPeerId } : {}),
@@ -234,9 +513,7 @@ export const ChatFabDrawer = () => {
     setText(value)
     if (sendError) setSendError('')
     sendTypingSignal(true)
-    if (typingTimerRef.current) {
-      clearTimeout(typingTimerRef.current)
-    }
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
     typingTimerRef.current = setTimeout(() => sendTypingSignal(false), 900)
   }
 
@@ -274,17 +551,12 @@ export const ChatFabDrawer = () => {
       roomType: tab,
       text: text.trim(),
       imageDataUrl,
-      ...(fileDataUrl
-        ? {
-            fileDataUrl,
-            fileName,
-            fileMime,
-          }
-        : {}),
+      ...(fileDataUrl ? { fileDataUrl, fileName, fileMime } : {}),
       ...(tab === 'DIRECT' ? { directPeerUserId: selectedPeerId } : {}),
       ...(tab === 'SUPPORT' && isSupportOperator
         ? { supportRequesterId: selectedSupportRequesterId }
         : {}),
+      ...(replyTo?.id ? { replyToMessageId: replyTo.id } : {}),
     }
     try {
       await sendChatMessage(payload).unwrap()
@@ -293,10 +565,30 @@ export const ChatFabDrawer = () => {
       setFileDataUrl('')
       setFileName('')
       setFileMime('')
+      setReplyTo(null)
       sendTypingSignal(false)
       messagesQuery.refetch()
+      markCurrentThreadRead()
     } catch (error) {
       setSendError(getApiErrorMessage(error, 'Xabar yuborilmadi'))
+    }
+  }
+
+  const handleReply = (msg) => {
+    setReplyTo({
+      id: msg.id,
+      senderName: msg.senderName,
+      text: msg.text,
+      hasImage: Boolean(msg.imageDataUrl),
+      hasFile: Boolean(msg.fileDataUrl && !msg.imageDataUrl),
+    })
+  }
+
+  const scrollToMessage = (messageId) => {
+    if (!messageId || !listRef.current) return
+    const node = listRef.current.querySelector(`[data-message-id="${messageId}"]`)
+    if (node) {
+      node.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   }
 
@@ -325,258 +617,434 @@ export const ChatFabDrawer = () => {
     messagesQuery.refetch()
   }
 
+  const currentTypingNames = useMemo(() => {
+    const nameMap = new Map((messagesQuery.data ?? []).map((m) => [m.senderId, m.senderName]))
+    return typingIds.map((id) => nameMap.get(id) || 'Kimdir')
+  }, [messagesQuery.data, typingIds])
+
+  const renderConversationList = () => {
+    if (tab === 'GLOBAL') {
+      return (
+        <List disablePadding>
+          <ConversationRow
+            avatar={<ChatUserAvatar name="Umumiy" />}
+            title="Umumiy chat"
+            subtitle={summary?.global?.lastMessageText}
+            time={formatListTime(summary?.global?.lastMessageAt)}
+            unreadCount={summary?.global?.unreadCount ?? 0}
+            onClick={() => openThread()}
+          />
+        </List>
+      )
+    }
+
+    if (tab === 'SUPPORT') {
+      if (isSupportOperator) {
+        return (
+          <>
+            <Box sx={{ px: 2, pt: 1, pb: 0.5 }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Qidiruv"
+                value={supportSearch}
+                onChange={(e) => setSupportSearch(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Box>
+            <List disablePadding>
+              {filteredSupportThreads.map((thread) => (
+                <ConversationRow
+                  key={thread.requesterId}
+                  avatar={<ChatUserAvatar name={thread.requesterName} />}
+                  title={thread.requesterName}
+                  subtitle={thread.lastMessageText}
+                  time={formatListTime(thread.lastMessageAt)}
+                  unreadCount={thread.unreadCount}
+                  onClick={() =>
+                    openThread({ supportRequesterId: thread.requesterId })
+                  }
+                />
+              ))}
+              {!filteredSupportThreads.length ? (
+                <Typography variant="body2" color="text.secondary" sx={{ px: 2, py: 3 }}>
+                  Support suhbatlari topilmadi
+                </Typography>
+              ) : null}
+            </List>
+          </>
+        )
+      }
+
+      return (
+        <List disablePadding>
+          <ConversationRow
+            avatar={<ChatUserAvatar name="Support" />}
+            title="Support"
+            subtitle={summary?.support?.lastMessageText}
+            time={formatListTime(summary?.support?.lastMessageAt)}
+            unreadCount={summary?.support?.unreadCount ?? 0}
+            onClick={() => openThread()}
+          />
+        </List>
+      )
+    }
+
+    return (
+      <>
+        <Box sx={{ px: 2, pt: 1, pb: 0.5 }}>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Qidiruv"
+            value={directSearch}
+            onChange={(e) => setDirectSearch(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+          />
+        </Box>
+        <List disablePadding sx={{ pb: 1 }}>
+          {filteredPeers.map((peer) => {
+            const meta = summary?.direct?.[peer.id]
+            const subtitle =
+              meta?.lastMessageText ||
+              [peer.structureShortName, peer.login].filter(Boolean).join(' · ')
+            return (
+              <ConversationRow
+                key={peer.id}
+                avatar={<ChatUserAvatar name={peer.displayName} />}
+                title={peer.displayName}
+                subtitle={subtitle}
+                time={formatListTime(meta?.lastMessageAt)}
+                unreadCount={meta?.unreadCount ?? 0}
+                onClick={() => openThread({ peerId: peer.id })}
+              />
+            )
+          })}
+          {!filteredPeers.length ? (
+            <Typography variant="body2" color="text.secondary" sx={{ px: 2, py: 3 }}>
+              Xodim topilmadi
+            </Typography>
+          ) : null}
+        </List>
+      </>
+    )
+  }
+
+  const renderMessages = () => (
+    <Box
+      ref={listRef}
+      sx={{
+        flex: 1,
+        overflowY: 'auto',
+        px: 0.75,
+        py: 1,
+        bgcolor: 'background.default',
+      }}
+    >
+      <Stack spacing={1}>
+        {(messagesQuery.data ?? []).map((msg) => {
+          const own = String(msg.senderId) === String(user?.id)
+          return (
+            <Box
+              key={msg.id}
+              data-message-id={msg.id}
+              onMouseEnter={(event) => openReactionPicker(event, msg.id)}
+              onMouseLeave={cancelReactionHover}
+              sx={{
+                ml: own ? 'auto' : 0,
+                mr: own ? 0 : 'auto',
+                alignSelf: own ? 'flex-end' : 'flex-start',
+                maxWidth: '80%',
+                bgcolor: own ? 'primary.main' : 'background.paper',
+                color: own ? 'primary.contrastText' : 'text.primary',
+                borderRadius: 2,
+                px: 1.25,
+                py: 0.9,
+                position: 'relative',
+                '&:hover .message-action-icon': { opacity: 1 },
+                '&:hover .message-download-icon': { opacity: 1 },
+              }}
+            >
+              <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.5}>
+                <Typography variant="caption" sx={{ opacity: 0.85, display: 'block', flex: 1 }}>
+                  {msg.senderName}
+                </Typography>
+                <IconButton
+                  size="small"
+                  className="message-action-icon"
+                  onClick={() => handleReply(msg)}
+                  sx={{
+                    opacity: 0,
+                    transition: 'opacity 0.2s ease',
+                    color: own ? 'primary.contrastText' : 'text.secondary',
+                    p: 0.25,
+                  }}
+                  aria-label="Javob berish"
+                >
+                  <ReplyIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Stack>
+              <ReplyQuote
+                replyTo={msg.replyTo}
+                own={own}
+                onClick={
+                  msg.replyTo?.messageId
+                    ? () => scrollToMessage(msg.replyTo.messageId)
+                    : undefined
+                }
+              />
+              {msg.text ? <Typography variant="body2">{msg.text}</Typography> : null}
+              {msg.imageDataUrl ? (
+                <>
+                  <Box
+                    component="img"
+                    src={msg.imageDataUrl}
+                    alt="chat-attachment"
+                    onClick={() => setPreviewImageUrl(msg.imageDataUrl)}
+                    sx={{
+                      mt: 0.5,
+                      width: '100%',
+                      borderRadius: 1.5,
+                      maxHeight: 260,
+                      objectFit: 'cover',
+                      cursor: 'zoom-in',
+                    }}
+                  />
+                  <IconButton
+                    size="small"
+                    className="message-download-icon"
+                    onClick={() =>
+                      downloadDataUrl(msg.imageDataUrl, msg.fileName || 'image.jpg')
+                    }
+                    sx={{
+                      position: 'absolute',
+                      top: 6,
+                      right: 6,
+                      bgcolor: 'background.paper',
+                      opacity: 0,
+                      transition: 'opacity 0.2s ease',
+                    }}
+                  >
+                    <DownloadIcon fontSize="small" />
+                  </IconButton>
+                </>
+              ) : null}
+              {msg.fileDataUrl && !msg.imageDataUrl ? (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<DownloadIcon />}
+                  onClick={() =>
+                    downloadDataUrl(msg.fileDataUrl, msg.fileName || 'attachment')
+                  }
+                  sx={{ mt: 0.5, textTransform: 'none' }}
+                >
+                  {msg.fileName || 'Faylni yuklab olish'}
+                </Button>
+              ) : null}
+              <Typography
+                variant="caption"
+                sx={{ opacity: 0.75, display: 'block', mt: 0.5, textAlign: 'right' }}
+              >
+                {formatChatDateTime(msg.createdAt)}
+              </Typography>
+              {Array.isArray(msg.reactions) && msg.reactions.length ? (
+                <Stack direction="row" spacing={0.5} sx={{ mt: 0.5, flexWrap: 'wrap' }}>
+                  {msg.reactions.map((reaction) => (
+                    <Chip
+                      key={`${msg.id}-${reaction.emoji}`}
+                      size="small"
+                      label={`${reaction.emoji} ${reaction.count}`}
+                    />
+                  ))}
+                </Stack>
+              ) : null}
+            </Box>
+          )
+        })}
+      </Stack>
+    </Box>
+  )
+
   return (
     <>
       <Box sx={{ position: 'fixed', bottom: 16, right: 16, zIndex: 1300 }}>
         <SpeedDial
-          ariaLabel="Chat speed dial"
+          ariaLabel="Chat"
           icon={<SpeedDialIcon openIcon={<ChatIcon />} />}
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            setOpen(true)
+            setView('list')
+          }}
+          sx={{ position: 'static' }}
         >
           {CHAT_TABS.map((action) => (
             <SpeedDialAction
               key={action.key}
               icon={action.icon}
               slotProps={{
-                tooltip: {
-                  title: action.label,
-                },
+                tooltip: { title: action.label },
               }}
               onClick={() => {
                 setTab(action.key)
                 setOpen(true)
+                setView('list')
               }}
             />
           ))}
         </SpeedDial>
       </Box>
 
-      <Drawer anchor="left" open={open} onClose={() => setOpen(false)}>
-        <Box sx={{ width: { xs: 340, sm: 420 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
-          <Box sx={{ p: 2 }}>
-            <Typography variant="h6" fontWeight={700}>
-              Chat
-            </Typography>
-            <Tabs value={tab} onChange={(_e, v) => setTab(v)} sx={{ mt: 1 }}>
-              {CHAT_TABS.map((item) => (
-                <Tab key={item.key} value={item.key} label={item.label} />
-              ))}
-            </Tabs>
-            {tab === 'DIRECT' ? (
-              <FormControl fullWidth size="small" sx={{ mt: 1.5 }}>
-                <InputLabel id="chat-peer-label">Kimga</InputLabel>
-                <Select
-                  labelId="chat-peer-label"
-                  value={selectedPeerId}
-                  label="Kimga"
-                  onChange={(e) => setSelectedPeerId(e.target.value)}
-                >
-                  {peers.map((peer) => (
-                    <MenuItem key={peer.id} value={peer.id}>
-                      {peer.displayName}
-                      {peer.structureShortName ? ` (${peer.structureShortName})` : ''}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            ) : null}
-            {tab === 'SUPPORT' && isSupportOperator ? (
-              <FormControl fullWidth size="small" sx={{ mt: 1.5 }}>
-                <InputLabel id="chat-support-user-label">Support kimga</InputLabel>
-                <Select
-                  labelId="chat-support-user-label"
-                  value={selectedSupportRequesterId}
-                  label="Support kimga"
-                  onChange={(e) => setSelectedSupportRequesterId(e.target.value)}
-                >
-                  {peers.map((peer) => (
-                    <MenuItem key={peer.id} value={peer.id}>
-                      {peer.displayName}
-                      {peer.structureShortName ? ` (${peer.structureShortName})` : ''}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+      <Drawer
+        anchor="left"
+        open={open}
+        onClose={() => {
+          setOpen(false)
+          setView('list')
+        }}
+      >
+        <Box
+          sx={{
+            width: { xs: 360, sm: 420 },
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <Box sx={{ px: 1.5, pt: 1.5, pb: 0.5 }}>
+            <Stack direction="row" alignItems="center" spacing={0.5}>
+              {view === 'thread' ? (
+                <IconButton size="small" onClick={backToList} aria-label="Orqaga">
+                  <ArrowBackIcon />
+                </IconButton>
+              ) : null}
+              <Typography variant="h6" fontWeight={700} sx={{ flex: 1 }}>
+                {view === 'thread' ? threadTitle : 'Chat'}
+              </Typography>
+            </Stack>
+            {view === 'list' ? (
+              <Tabs value={tab} onChange={handleTabChange} sx={{ mt: 0.5 }}>
+                {CHAT_TABS.map((item) => (
+                  <Tab
+                    key={item.key}
+                    value={item.key}
+                    label={
+                      <TabLabelWithBadge label={item.label} count={tabUnread[item.key] ?? 0} />
+                    }
+                  />
+                ))}
+              </Tabs>
             ) : null}
           </Box>
 
           <Divider />
 
-          <Box
-            ref={listRef}
-            sx={{
-              flex: 1,
-              overflowY: 'auto',
-              px: 0.75,
-              py: 1,
-              bgcolor: 'background.default',
-            }}
-          >
-            <Stack spacing={1}>
-              {(messagesQuery.data ?? []).map((msg) => {
-                const own = String(msg.senderId) === String(user?.id)
-                return (
-                  <Box
-                    key={msg.id}
-                    onMouseEnter={(event) => openReactionPicker(event, msg.id)}
-                    onMouseLeave={cancelReactionHover}
+          {view === 'list' ? (
+            <Box sx={{ flex: 1, overflowY: 'auto' }}>{renderConversationList()}</Box>
+          ) : (
+            <>
+              {renderMessages()}
+              {currentTypingNames.length ? (
+                <Typography variant="caption" color="text.secondary" sx={{ px: 2, py: 0.5 }}>
+                  {currentTypingNames.join(', ')} yozmoqda...
+                </Typography>
+              ) : null}
+              <Divider />
+              <Box sx={{ p: 1.5 }}>
+                {replyTo ? (
+                  <Paper
+                    variant="outlined"
                     sx={{
-                      ml: own ? 'auto' : 0,
-                      mr: own ? 0 : 'auto',
-                      alignSelf: own ? 'flex-end' : 'flex-start',
-                      maxWidth: '80%',
-                      bgcolor: own ? 'primary.main' : 'background.paper',
-                      color: own ? 'primary.contrastText' : 'text.primary',
-                      borderRadius: 2,
+                      mb: 1,
                       px: 1.25,
-                      py: 0.9,
-                      position: 'relative',
-                      '&:hover .message-download-icon': { opacity: 1 },
+                      py: 0.75,
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 1,
+                      borderLeft: 3,
+                      borderColor: 'primary.main',
                     }}
                   >
-                    <Typography variant="caption" sx={{ opacity: 0.85, display: 'block' }}>
-                      {msg.senderName}
-                    </Typography>
-                    {msg.text ? <Typography variant="body2">{msg.text}</Typography> : null}
-                    {msg.imageDataUrl ? (
-                      <>
-                        <Box
-                          component="img"
-                          src={msg.imageDataUrl}
-                          alt="chat-attachment"
-                          onClick={() => setPreviewImageUrl(msg.imageDataUrl)}
-                          sx={{
-                            mt: 0.5,
-                            width: '100%',
-                            borderRadius: 1.5,
-                            maxHeight: 260,
-                            objectFit: 'cover',
-                            cursor: 'zoom-in',
-                          }}
-                        />
-                        <IconButton
-                          size="small"
-                          className="message-download-icon"
-                          onClick={() => downloadDataUrl(msg.imageDataUrl, msg.fileName || 'image.jpg')}
-                          sx={{
-                            position: 'absolute',
-                            top: 6,
-                            right: 6,
-                            bgcolor: 'background.paper',
-                            opacity: 0,
-                            transition: 'opacity 0.2s ease',
-                          }}
-                        >
-                          <DownloadIcon fontSize="small" />
-                        </IconButton>
-                      </>
-                    ) : null}
-                    {msg.fileDataUrl && !msg.imageDataUrl ? (
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<DownloadIcon />}
-                        onClick={() =>
-                          downloadDataUrl(
-                            msg.fileDataUrl,
-                            msg.fileName || 'attachment',
-                          )
-                        }
-                        sx={{ mt: 0.5, textTransform: 'none' }}
-                      >
-                        {msg.fileName || 'Faylni yuklab olish'}
-                      </Button>
-                    ) : null}
-                    <Typography
-                      variant="caption"
-                      sx={{ opacity: 0.75, display: 'block', mt: 0.5, textAlign: 'right' }}
-                    >
-                      {formatChatDateTime(msg.createdAt)}
-                    </Typography>
-                    {Array.isArray(msg.reactions) && msg.reactions.length ? (
-                      <Stack direction="row" spacing={0.5} sx={{ mt: 0.5, flexWrap: 'wrap' }}>
-                        {msg.reactions.map((reaction) => (
-                          <Chip
-                            key={`${msg.id}-${reaction.emoji}`}
-                            size="small"
-                            label={`${reaction.emoji} ${reaction.count}`}
-                          />
-                        ))}
-                      </Stack>
-                    ) : null}
-                  </Box>
-                )
-              })}
-            </Stack>
-          </Box>
-
-          {currentTypingNames.length ? (
-            <Typography variant="caption" color="text.secondary" sx={{ px: 2, py: 0.5 }}>
-              {currentTypingNames.join(', ')} yozmoqda...
-            </Typography>
-          ) : null}
-
-          <Divider />
-
-          <Box sx={{ p: 1.5 }}>
-            {imageDataUrl ? (
-              <Chip
-                size="small"
-                label="1 ta rasm biriktirildi"
-                onDelete={() => setImageDataUrl('')}
-                sx={{ mb: 1 }}
-              />
-            ) : null}
-            {!imageDataUrl && fileDataUrl ? (
-              <Chip
-                size="small"
-                label={fileName ? `1 ta fayl: ${fileName}` : '1 ta fayl biriktirildi'}
-                onDelete={() => {
-                  setFileDataUrl('')
-                  setFileName('')
-                  setFileMime('')
-                }}
-                sx={{ mb: 1 }}
-              />
-            ) : null}
-            <Stack direction="row" spacing={1} alignItems="flex-end">
-              <TextField
-                fullWidth
-                size="small"
-                multiline
-                maxRows={4}
-                placeholder="Xabar yozing..."
-                value={text}
-                onChange={(e) => handleInputChange(e.target.value)}
-              />
-              <IconButton component="label">
-                <AttachFileIcon />
-                <input hidden type="file" onChange={handleFilePick} />
-              </IconButton>
-              <IconButton
-                color="primary"
-                disabled={
-                  sendState.isLoading ||
-                  (!text.trim() && !imageDataUrl && !fileDataUrl) ||
-                  (tab === 'DIRECT' && !selectedPeerId) ||
-                  (tab === 'SUPPORT' && isSupportOperator && !selectedSupportRequesterId)
-                }
-                onClick={handleSend}
-              >
-                <SendIcon />
-              </IconButton>
-            </Stack>
-            {tab === 'DIRECT' && !selectedPeerId ? (
-              <Typography variant="caption" color="warning.main">
-                Lichka chat uchun foydalanuvchi tanlang
-              </Typography>
-            ) : null}
-            {sendError ? (
-              <Typography variant="caption" color="error.main">
-                {sendError}
-              </Typography>
-            ) : null}
-          </Box>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="caption" fontWeight={700} color="primary.main">
+                        {replyTo.senderName}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" noWrap>
+                        {formatReplyPreview(replyTo)}
+                      </Typography>
+                    </Box>
+                    <IconButton size="small" onClick={() => setReplyTo(null)} aria-label="Javobni bekor qilish">
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                  </Paper>
+                ) : null}
+                {imageDataUrl ? (
+                  <Chip
+                    size="small"
+                    label="1 ta rasm biriktirildi"
+                    onDelete={() => setImageDataUrl('')}
+                    sx={{ mb: 1 }}
+                  />
+                ) : null}
+                {!imageDataUrl && fileDataUrl ? (
+                  <Chip
+                    size="small"
+                    label={fileName ? `1 ta fayl: ${fileName}` : '1 ta fayl biriktirildi'}
+                    onDelete={() => {
+                      setFileDataUrl('')
+                      setFileName('')
+                      setFileMime('')
+                    }}
+                    sx={{ mb: 1 }}
+                  />
+                ) : null}
+                <Stack direction="row" spacing={1} alignItems="flex-end">
+                  <TextField
+                    fullWidth
+                    size="small"
+                    multiline
+                    maxRows={4}
+                    placeholder="Xabar yozing..."
+                    value={text}
+                    onChange={(e) => handleInputChange(e.target.value)}
+                  />
+                  <IconButton component="label">
+                    <AttachFileIcon />
+                    <input hidden type="file" onChange={handleFilePick} />
+                  </IconButton>
+                  <IconButton
+                    color="primary"
+                    disabled={
+                      sendState.isLoading ||
+                      (!text.trim() && !imageDataUrl && !fileDataUrl) ||
+                      (tab === 'DIRECT' && !selectedPeerId) ||
+                      (tab === 'SUPPORT' && isSupportOperator && !selectedSupportRequesterId)
+                    }
+                    onClick={handleSend}
+                  >
+                    <SendIcon />
+                  </IconButton>
+                </Stack>
+                {sendError ? (
+                  <Typography variant="caption" color="error.main">
+                    {sendError}
+                  </Typography>
+                ) : null}
+              </Box>
+            </>
+          )}
         </Box>
       </Drawer>
 

@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import dayjs from 'dayjs'
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import CircularProgress from '@mui/material/CircularProgress'
 import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
+import DialogContentText from '@mui/material/DialogContentText'
 import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
 import InputAdornment from '@mui/material/InputAdornment'
@@ -24,26 +29,49 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import {
+  useDeleteWarehouseExpenseMutation,
   useGetWarehouseExpenseByCodeQuery,
   useGetWarehouseExpenseReasonsQuery,
   useGetWarehouseExpensesQuery,
 } from '@/features/warehouse/api/warehouseApi'
+import { useGetStructuresQuery } from '@/features/structures/api/structuresApi'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { PageShell } from '@/shared/components/layout/PageShell'
+import { useAppDispatch } from '@/shared/hooks/useAppDispatch'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
+import { usePermissions } from '@/shared/hooks/usePermissions'
+import { showNotification } from '@/shared/model/notificationSlice'
 import { formatDateTime } from '@/shared/utils/formatDate'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
+const CHIQIM_QILISH_PATH = '/omborlar/chiqim-qilish'
 
 export const ChiqimTarixiPage = () => {
+  const dispatch = useAppDispatch()
+  const { user, canAccess, canDelete } = usePermissions()
+  const canDeleteExpense =
+    user?.isSuperAdmin ||
+    user?.role === 'SUPER_ADMIN' ||
+    user?.role === 'ADMIN' ||
+    canDelete(CHIQIM_QILISH_PATH)
+  const canFilterByStructure =
+    user?.isSuperAdmin ||
+    user?.role === 'SUPER_ADMIN' ||
+    user?.role === 'ADMIN' ||
+    canAccess('/omborlar/boshqa-omborlar')
+
   const [search, setSearch] = useState('')
   const [reasonKey, setReasonKey] = useState('')
+  const [structureFilter, setStructureFilter] = useState('')
   const [dateFrom, setDateFrom] = useState(null)
   const [dateTo, setDateTo] = useState(null)
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(25)
-  const [detailCode, setDetailCode] = useState('')
+  const [detailSelection, setDetailSelection] = useState(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+
+  const [deleteExpense, deleteExpenseState] = useDeleteWarehouseExpenseMutation()
 
   const debouncedSearch = useDebouncedValue(search, 350)
   const dateFromParam = useMemo(
@@ -57,7 +85,18 @@ export const ChiqimTarixiPage = () => {
 
   useEffect(() => {
     setPage(0)
-  }, [debouncedSearch, reasonKey, dateFromParam, dateToParam])
+  }, [debouncedSearch, reasonKey, structureFilter, dateFromParam, dateToParam])
+
+  const structuresQuery = useGetStructuresQuery(undefined, { skip: !canFilterByStructure })
+  const structuresForFilter = useMemo(() => {
+    const list = structuresQuery.data ?? []
+    return [...list]
+      .filter((structure) => structure.isActive)
+      .sort((a, b) => a.shortName.localeCompare(b.shortName, 'uz'))
+  }, [structuresQuery.data])
+
+  const structureIdParam = structureFilter || undefined
+  const showAllStructures = canFilterByStructure && !structureFilter
 
   const reasonsQuery = useGetWarehouseExpenseReasonsQuery()
   const historyQuery = useGetWarehouseExpensesQuery({
@@ -67,23 +106,110 @@ export const ChiqimTarixiPage = () => {
     dateFrom: dateFromParam,
     dateTo: dateToParam,
     reasonKey,
+    structureId: structureIdParam,
   })
 
-  const detailQuery = useGetWarehouseExpenseByCodeQuery(detailCode, {
-    skip: !detailCode,
-  })
+  const detailQuery = useGetWarehouseExpenseByCodeQuery(
+    {
+      code: detailSelection?.code ?? '',
+      structureId: detailSelection?.structureId,
+    },
+    { skip: !detailSelection?.code },
+  )
 
   const items = historyQuery.data?.items ?? []
   const total = historyQuery.data?.total ?? 0
   const isReady = !historyQuery.isLoading && !historyQuery.isUninitialized
   const reasons = reasonsQuery.data ?? []
 
+  const handleCloseDetail = () => {
+    if (deleteExpenseState.isLoading) return
+    setDetailSelection(null)
+    setDeleteConfirmOpen(false)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!detailSelection?.code) return
+
+    const structureId =
+      detailSelection.structureId || detailQuery.data?.structureId || undefined
+
+    try {
+      const result = await deleteExpense({
+        code: detailSelection.code,
+        structureId,
+      }).unwrap()
+
+      dispatch(
+        showNotification({
+          severity: 'success',
+          message: `Chiqim o‘chirildi. Omborga ${result.restoredQuantity} ta qaytarildi.`,
+        }),
+      )
+      setDeleteConfirmOpen(false)
+      setDetailSelection(null)
+    } catch (error) {
+      dispatch(
+        showNotification({
+          severity: 'error',
+          message: getApiErrorMessage(error, 'Chiqimni o‘chirishda xatolik'),
+        }),
+      )
+    }
+  }
+
   return (
     <PageShell>
       <Stack spacing={2}>
-        <Typography variant="h5" component="h1" fontWeight={700}>
-          Chiqim tarixi
-        </Typography>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            justifyContent: 'space-between',
+            gap: 1.5,
+            flexWrap: 'wrap',
+            width: '100%',
+          }}
+        >
+          <Typography variant="h5" component="h1" fontWeight={700} sx={{ flexShrink: 0 }}>
+            Chiqim tarixi
+          </Typography>
+
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1.5}
+            sx={{
+              flexWrap: 'wrap',
+              width: { xs: '100%', sm: 'auto' },
+              ml: { sm: 'auto' },
+              justifyContent: { xs: 'stretch', sm: 'flex-end' },
+            }}
+          >
+            <DatePicker
+              label="Sana (dan)"
+              value={dateFrom}
+              onChange={setDateFrom}
+              format="DD.MM.YYYY"
+              maxDate={dateTo || undefined}
+              slotProps={{
+                textField: { size: 'small', sx: { minWidth: { xs: '100%', sm: 160 } } },
+                field: { clearable: true },
+              }}
+            />
+            <DatePicker
+              label="Sana (gacha)"
+              value={dateTo}
+              onChange={setDateTo}
+              format="DD.MM.YYYY"
+              minDate={dateFrom || undefined}
+              slotProps={{
+                textField: { size: 'small', sx: { minWidth: { xs: '100%', sm: 160 } } },
+                field: { clearable: true },
+              }}
+            />
+          </Stack>
+        </Box>
 
         <QuerySkeleton
           isLoading={historyQuery.isLoading}
@@ -117,6 +243,27 @@ export const ChiqimTarixiPage = () => {
                 }}
               />
 
+              {canFilterByStructure ? (
+                <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 240 } }}>
+                  <InputLabel id="expense-structure-filter-label">Tuzilma</InputLabel>
+                  <Select
+                    labelId="expense-structure-filter-label"
+                    label="Tuzilma"
+                    value={structureFilter}
+                    onChange={(event) => setStructureFilter(event.target.value)}
+                  >
+                    <MenuItem value="">
+                      <em>Barchasi</em>
+                    </MenuItem>
+                    {structuresForFilter.map((structure) => (
+                      <MenuItem key={structure.id} value={structure.id}>
+                        {structure.shortName || structure.fullName}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              ) : null}
+
               <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 220 } }}>
                 <InputLabel id="expense-reason-filter-label">Sabab</InputLabel>
                 <Select
@@ -133,30 +280,6 @@ export const ChiqimTarixiPage = () => {
                   ))}
                 </Select>
               </FormControl>
-
-              <DatePicker
-                label="Sana (dan)"
-                value={dateFrom}
-                onChange={setDateFrom}
-                format="DD.MM.YYYY"
-                maxDate={dateTo || undefined}
-                slotProps={{
-                  textField: { size: 'small', sx: { minWidth: { xs: '100%', md: 160 } } },
-                  field: { clearable: true },
-                }}
-              />
-
-              <DatePicker
-                label="Sana (gacha)"
-                value={dateTo}
-                onChange={setDateTo}
-                format="DD.MM.YYYY"
-                minDate={dateFrom || undefined}
-                slotProps={{
-                  textField: { size: 'small', sx: { minWidth: { xs: '100%', md: 160 } } },
-                  field: { clearable: true },
-                }}
-              />
             </Stack>
 
             {!items.length ? (
@@ -169,6 +292,7 @@ export const ChiqimTarixiPage = () => {
                   <TableHead>
                     <TableRow>
                       <TableCell>Kod</TableCell>
+                      {showAllStructures ? <TableCell>Tuzilma</TableCell> : null}
                       <TableCell>Sabab</TableCell>
                       <TableCell width={180}>Sana</TableCell>
                       <TableCell>Kim</TableCell>
@@ -183,16 +307,28 @@ export const ChiqimTarixiPage = () => {
                   <TableBody>
                     {items.map((item) => (
                       <TableRow
-                        key={item.code}
+                        key={`${item.structureId}-${item.code}`}
                         hover
                         sx={{ cursor: 'pointer' }}
-                        onClick={() => setDetailCode(item.code)}
+                        onClick={() =>
+                          setDetailSelection({
+                            code: item.code,
+                            structureId: item.structureId,
+                          })
+                        }
                       >
                         <TableCell>
                           <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'monospace' }}>
                             {item.code}
                           </Typography>
                         </TableCell>
+                        {showAllStructures ? (
+                          <TableCell>
+                            <Typography variant="body2" noWrap>
+                              {item.structureName ?? '—'}
+                            </Typography>
+                          </TableCell>
+                        ) : null}
                         <TableCell>{item.reasonLabel}</TableCell>
                         <TableCell>
                           <Typography variant="body2" noWrap>
@@ -230,8 +366,13 @@ export const ChiqimTarixiPage = () => {
         </QuerySkeleton>
       </Stack>
 
-      <Dialog open={Boolean(detailCode)} onClose={() => setDetailCode('')} maxWidth="md" fullWidth>
-        <DialogTitle>Chiqim batafsil</DialogTitle>
+      <Dialog
+        open={Boolean(detailSelection?.code)}
+        onClose={handleCloseDetail}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ pr: canDeleteExpense ? 14 : undefined }}>Chiqim batafsil</DialogTitle>
         <DialogContent dividers>
           {detailQuery.isLoading ? (
             <Typography color="text.secondary">Yuklanmoqda...</Typography>
@@ -250,6 +391,16 @@ export const ChiqimTarixiPage = () => {
                     {detailQuery.data.code}
                   </Typography>
                 </Box>
+                {canFilterByStructure ? (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Tuzilma
+                    </Typography>
+                    <Typography variant="body2" fontWeight={600}>
+                      {detailQuery.data.structureName ?? '—'}
+                    </Typography>
+                  </Box>
+                ) : null}
                 <Box>
                   <Typography variant="caption" color="text.secondary">
                     Sabab
@@ -316,6 +467,59 @@ export const ChiqimTarixiPage = () => {
             </Stack>
           ) : null}
         </DialogContent>
+        {canDeleteExpense && detailQuery.data ? (
+          <DialogActions sx={{ px: 3, pb: 2, justifyContent: 'space-between' }}>
+            <Typography variant="caption" color="text.secondary">
+              O‘chirilgach tovarlar omborga qaytariladi
+            </Typography>
+            <Button
+              color="error"
+              variant="outlined"
+              startIcon={
+                deleteExpenseState.isLoading ? (
+                  <CircularProgress size={16} color="inherit" />
+                ) : (
+                  <DeleteOutlinedIcon />
+                )
+              }
+              disabled={deleteExpenseState.isLoading}
+              onClick={() => setDeleteConfirmOpen(true)}
+            >
+              Chiqimni o‘chirish
+            </Button>
+          </DialogActions>
+        ) : null}
+      </Dialog>
+
+      <Dialog
+        open={deleteConfirmOpen}
+        onClose={() => !deleteExpenseState.isLoading && setDeleteConfirmOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Chiqimni o‘chirish</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            <strong>{detailSelection?.code}</strong> chiqimini o‘chirasizmi? Barcha tovarlar
+            soni va qiymati omborga qaytariladi.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setDeleteConfirmOpen(false)}
+            disabled={deleteExpenseState.isLoading}
+          >
+            Bekor qilish
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={deleteExpenseState.isLoading}
+            onClick={handleConfirmDelete}
+          >
+            {deleteExpenseState.isLoading ? 'O‘chirilmoqda...' : 'O‘chirish'}
+          </Button>
+        </DialogActions>
       </Dialog>
     </PageShell>
   )

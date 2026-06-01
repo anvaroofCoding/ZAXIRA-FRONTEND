@@ -69,11 +69,11 @@ const { TransferlarTarixiPage } = lazyImport(
 )
 
 const { InvertarizatsiyaPage } = lazyImport(
-  () => import('@/pages/invertarizatsiya'),
+  () => import('@/pages/invertarizatsiya/InvertarizatsiyaPage'),
   'InvertarizatsiyaPage',
 )
 const { BoshqaruvPage } = lazyImport(
-  () => import('@/pages/invertarizatsiya'),
+  () => import('@/pages/invertarizatsiya/BoshqaruvPage'),
   'BoshqaruvPage',
 )
 
@@ -92,7 +92,7 @@ export const routes = [
     children: [
       {
         path: '/login',
-        element: <LoginPage />,
+        Component: LoginPage,
       },
     ],
   },
@@ -112,19 +112,19 @@ export const routes = [
             children: [
           {
             path: 'dashboard',
-            element: <DashboardPage />,
+            Component: DashboardPage,
           },
           {
             path: 'xaridlar/arizalar-yuborish',
-            element: <ArizalarYuborishPage />,
+            Component: ArizalarYuborishPage,
           },
           {
             path: 'xaridlar/arizalarni-tasdiqlash',
-            element: <ArizalarniTasdiqlashPage />,
+            Component: ArizalarniTasdiqlashPage,
           },
           {
             path: 'xaridlar/arizalar-tarixi',
-            element: <ArizalarTarixiPage />,
+            Component: ArizalarTarixiPage,
           },
           {
             path: 'xarid-qilish',
@@ -132,43 +132,43 @@ export const routes = [
           },
           {
             path: 'xarid-qilish/sotib-olinadigan-tavarlar',
-            element: <SotibOlinadiganTovarlarPage />,
+            Component: SotibOlinadiganTovarlarPage,
           },
           {
             path: 'xarid-qilish/xarid-qilingan-tavarlar',
-            element: <XaridQilinganTovarlarPage />,
+            Component: XaridQilinganTovarlarPage,
           },
           {
             path: 'xarid-qilish/xaridni-qabul-qilish',
-            element: <XaridniQabulQilishPage />,
+            Component: XaridniQabulQilishPage,
           },
           {
             path: 'omborlar/mening-omborim',
-            element: <MeningOmborimPage />,
+            Component: MeningOmborimPage,
           },
           {
             path: 'omborlar/boshqa-omborlar',
-            element: <BoshqaOmborlarPage />,
+            Component: BoshqaOmborlarPage,
           },
           {
             path: 'omborlar/chiqim-qilish',
-            element: <ChiqimQilishPage />,
+            Component: ChiqimQilishPage,
           },
           {
             path: 'omborlar/chiqim-tarixi',
-            element: <ChiqimTarixiPage />,
+            Component: ChiqimTarixiPage,
           },
           {
             path: 'transfer/transfer-qilish',
-            element: <TransferQilishPage />,
+            Component: TransferQilishPage,
           },
           {
             path: 'transfer/transferni-qabul-qilish',
-            element: <TransferniQabulQilishPage />,
+            Component: TransferniQabulQilishPage,
           },
           {
             path: 'transfer/transferlar-tarixi',
-            element: <TransferlarTarixiPage />,
+            Component: TransferlarTarixiPage,
           },
           {
             path: 'invertarizatsiya',
@@ -176,23 +176,23 @@ export const routes = [
           },
           {
             path: 'invertarizatsiya/invertarizatsiya-qilish',
-            element: <InvertarizatsiyaPage />,
+            Component: InvertarizatsiyaPage,
           },
           {
             path: 'invertarizatsiya/barcha-invertarizatsiyalar',
-            element: <InvertarizatsiyaPage />,
+            Component: InvertarizatsiyaPage,
           },
           {
             path: 'invertarizatsiya/boshqaruv',
-            element: <BoshqaruvPage />,
+            Component: BoshqaruvPage,
           },
           {
             path: 'royxatga-olish/foydalanuvchilar',
-            element: <FoydalanuvchilarPage />,
+            Component: FoydalanuvchilarPage,
           },
           {
             path: 'royxatga-olish/tuzilmalar',
-            element: <TuzilmalarPage />,
+            Component: TuzilmalarPage,
           },
           {
             path: 'foydalanuvchilar',
@@ -202,7 +202,7 @@ export const routes = [
           },
           {
             path: '*',
-            element: <NotFoundPage />,
+            Component: NotFoundPage,
           },
         ],
       },

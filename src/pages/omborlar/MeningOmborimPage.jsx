@@ -28,6 +28,7 @@ import { useCreateWarehouseLocationMutation, useGetWarehouseInventoryByLocationQ
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { SkeletonBlock } from '@/shared/components/skeleton'
 import { formatDateTime } from '@/shared/utils/formatDate'
+import { formatUzs } from '@/shared/utils/formatUzs'
 import { printBarcodeLabels } from '@/shared/utils/printBarcodeLabels'
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
@@ -82,6 +83,7 @@ export const MeningOmborimPage = () => {
 
   const inventoryQuery = useGetWarehouseInventoryByLocationQuery(queryArgs, {
     skip: !selectedLocationId,
+    refetchOnMountOrArgChange: true,
   })
 
   const inventoryItems = inventoryQuery.data?.items ?? []
@@ -97,6 +99,20 @@ export const MeningOmborimPage = () => {
     const idx = locations.findIndex((loc) => loc.id === selectedLocationId)
     return Math.max(0, idx)
   }, [locations, selectedLocationId])
+
+  const detailForModal = useMemo(() => {
+    if (!detailItem) return null
+    return inventoryItems.find((row) => row.id === detailItem.id) ?? detailItem
+  }, [detailItem, inventoryItems])
+
+  const detailPricing = useMemo(() => {
+    if (!detailForModal) return null
+    const unitPrice = Math.round(Number(detailForModal.unitPrice) || 0)
+    const quantity = Math.max(0, Number(detailForModal.quantity) || 0)
+    const lineTotal =
+      Math.round(Number(detailForModal.lineTotal) || 0) || unitPrice * quantity
+    return { unitPrice, lineTotal }
+  }, [detailForModal])
 
   const barcodeForItem = (item) => {
     const raw = `${item.name ?? ''}|${item.characteristics ?? ''}`
@@ -245,16 +261,11 @@ export const MeningOmborimPage = () => {
                                 onClick={() => setDetailItem(item)}
                               >
                                 <TableCell>
-                                  <Typography variant="body2" fontWeight={600}>
+                                  <Typography variant="body2" fontWeight={600} noWrap>
                                     {item.name}
                                   </Typography>
-                                  {item.characteristics ? (
-                                    <Typography variant="caption" color="text.secondary" display="block">
-                                      {item.characteristics}
-                                    </Typography>
-                                  ) : null}
                                 </TableCell>
-                                <TableCell>{barcodeForItem(item)}</TableCell>
+                                <TableCell>{item.barcode || barcodeForItem(item)}</TableCell>
                                 <TableCell align="right">{item.quantity} ta</TableCell>
                               </TableRow>
                             ))}
@@ -312,14 +323,14 @@ export const MeningOmborimPage = () => {
       <Dialog open={Boolean(detailItem)} onClose={() => setDetailItem(null)} maxWidth="sm" fullWidth>
         <DialogTitle>Tovar ma’lumoti</DialogTitle>
         <DialogContent dividers>
-          {detailItem ? (
+          {detailForModal ? (
             <Stack spacing={1}>
               <Box>
                 <Typography variant="caption" color="text.secondary" display="block">
                   Tovar
                 </Typography>
                 <Typography variant="body1" fontWeight={700}>
-                  {detailItem.name}
+                  {detailForModal.name}
                 </Typography>
               </Box>
               <Box>
@@ -327,21 +338,43 @@ export const MeningOmborimPage = () => {
                   Barcode
                 </Typography>
                 <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                  {barcodeForItem(detailItem)}
+                  {detailForModal.barcode || barcodeForItem(detailForModal)}
                 </Typography>
               </Box>
               <Box>
                 <Typography variant="caption" color="text.secondary" display="block">
                   Xususiyat
                 </Typography>
-                <Typography variant="body2">{detailItem.characteristics}</Typography>
+                <Typography variant="body2">
+                  {detailForModal.characteristics?.trim() ? detailForModal.characteristics : '—'}
+                </Typography>
               </Box>
               <Box>
                 <Typography variant="caption" color="text.secondary" display="block">
                   Miqdor
                 </Typography>
                 <Typography variant="body2" fontWeight={700}>
-                  {detailItem.quantity} ta
+                  {detailForModal.quantity} ta
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary" display="block">
+                  1 dona narxi
+                </Typography>
+                <Typography variant="body2" fontWeight={600}>
+                  {detailPricing?.unitPrice > 0
+                    ? `${formatUzs(detailPricing.unitPrice)} so‘m`
+                    : '—'}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary" display="block">
+                  Jami summa
+                </Typography>
+                <Typography variant="body2" fontWeight={700}>
+                  {detailPricing?.lineTotal > 0
+                    ? `${formatUzs(detailPricing.lineTotal)} so‘m`
+                    : '—'}
                 </Typography>
               </Box>
               <Box>
@@ -349,7 +382,9 @@ export const MeningOmborimPage = () => {
                   Oxirgi qabul
                 </Typography>
                 <Typography variant="body2">
-                  {detailItem.lastReceiptAt ? formatDateTime(detailItem.lastReceiptAt) : '—'}
+                  {detailForModal.lastReceiptAt
+                    ? formatDateTime(detailForModal.lastReceiptAt)
+                    : '—'}
                 </Typography>
               </Box>
             </Stack>

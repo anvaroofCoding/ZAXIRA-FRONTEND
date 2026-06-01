@@ -36,7 +36,7 @@ export const PermissionRoute = () => {
   }
 
   return (
-    <Suspense fallback={<RoutePageSkeleton />}>
+    <Suspense key={path} fallback={<RoutePageSkeleton />}>
       <RouteKeyOutlet />
     </Suspense>
   )

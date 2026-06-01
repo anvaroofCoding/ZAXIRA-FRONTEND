@@ -1,8 +1,12 @@
-import { Outlet, useLocation } from 'react-router-dom'
+import { useLocation, useOutlet } from 'react-router-dom'
 
-/** Har bir route almashishda Outlet child komponentini majburan yangilaydi. */
+/**
+ * Har bir marshrut almashganda sahifa komponentini majburan yangilaydi.
+ * `key` ni `<Outlet />` ga emas, `useOutlet()` natijasiga qo‘yish kerak (RR7).
+ */
 export const RouteKeyOutlet = () => {
   const location = useLocation()
+  const outlet = useOutlet()
 
-  return <Outlet key={location.pathname} />
+  return <div key={location.pathname}>{outlet}</div>
 }

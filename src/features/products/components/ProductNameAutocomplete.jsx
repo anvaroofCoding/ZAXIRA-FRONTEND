@@ -3,6 +3,7 @@ import Autocomplete, { createFilterOptions } from '@mui/material/Autocomplete'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
+import Skeleton from '@mui/material/Skeleton'
 import { useLazySearchProductsQuery } from '@/features/products/api/productsApi'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { truncateText } from '@/features/products/utils/truncateText'
@@ -22,6 +23,7 @@ export const ProductNameAutocomplete = ({
   onNameChange,
   onProductSelect,
   disabled = false,
+  aiLoading = false,
 }) => {
   const [inputValue, setInputValue] = useState(value ?? '')
   const debouncedInput = useDebouncedValue(inputValue, 300)
@@ -129,13 +131,33 @@ export const ProductNameAutocomplete = ({
           </Box>
         )
       }}
-      renderInput={(params) => (
-        <TextField
-          {...params}
-          label="Tovar nomi"
-          placeholder="Nomini yozing yoki skladdan tanlang"
-        />
-      )}
+      renderInput={(params) => {
+        const inputProps = params.InputProps ?? {}
+
+        return (
+          <TextField
+            {...params}
+            label="Tovar nomi"
+            placeholder="Nomini yozing yoki skladdan tanlang"
+            InputProps={{
+              ...inputProps,
+              endAdornment: (
+                <>
+                  {aiLoading ? (
+                    <Skeleton
+                      variant="rounded"
+                      width={56}
+                      height={16}
+                      sx={{ borderRadius: 1, mr: 0.5 }}
+                    />
+                  ) : null}
+                  {inputProps.endAdornment ?? null}
+                </>
+              ),
+            }}
+          />
+        )
+      }}
     />
   )
 }

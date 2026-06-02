@@ -195,35 +195,33 @@ export const DashboardPage = () => {
     [activeStructures],
   )
 
-  const defaultStructureId = isSuperAdmin ? 'all' : viewerStructureId
+  const defaultStructureId = isSuperAdmin ? 'all' : (viewerStructureId || 'all')
   const [structureId, setStructureId] = useState(defaultStructureId)
   const [offsetDays, setOffsetDays] = useState(0)
   const [calendarOpen, setCalendarOpen] = useState(false)
 
   useEffect(() => {
-    if (!isSuperAdmin && !structureId) {
-      setStructureId(viewerStructureId)
+    if (!structureId) {
+      setStructureId(viewerStructureId || structureOptions[0]?.id || 'all')
       return
     }
     if (structureId === 'all') return
     const exists = structureOptions.some((s) => s.id === structureId)
     if (!exists) {
-      setStructureId(isSuperAdmin ? 'all' : (viewerStructureId || structureOptions[0]?.id || ''))
+      setStructureId(structureOptions[0]?.id || viewerStructureId || 'all')
     }
   }, [isSuperAdmin, structureId, structureOptions, viewerStructureId])
 
-  const scopeParam = isSuperAdmin
-    ? (structureId && structureId !== 'all' ? structureId : 'all')
-    : (structureId || undefined)
-  const canQuery = Boolean(hasDashboardAccess && (isSuperAdmin || scopeParam))
+  const scopeParam = structureId || 'all'
+  const canQuery = Boolean(hasDashboardAccess)
 
   const summaryQuery = useGetDashboardSummaryQuery(
     { structureId: scopeParam },
-    { skip: !canQuery },
+    { skip: !canQuery, refetchOnMountOrArgChange: true },
   )
   const dailyQuery = useGetDashboardDailyMaxQuery(
     { structureId: scopeParam, days: DAILY_WINDOW_DAYS, offsetDays },
-    { skip: !canQuery },
+    { skip: !canQuery, refetchOnMountOrArgChange: true },
   )
 
   const summary = summaryQuery.data
@@ -323,7 +321,7 @@ export const DashboardPage = () => {
               }}
               disabled={!hasDashboardAccess}
             >
-              {isSuperAdmin ? <MenuItem value="all">Barchasi</MenuItem> : null}
+              <MenuItem value="all">Barchasi</MenuItem>
               {structureOptions.map((s) => (
                 <MenuItem key={s.id} value={s.id}>
                 {s.shortName}

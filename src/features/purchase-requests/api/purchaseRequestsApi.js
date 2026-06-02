@@ -132,6 +132,13 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: [API_TAGS.PURCHASE_REQUEST],
     }),
+    polishPurchaseRequestItemText: builder.mutation({
+      query: (body) => ({
+        url: '/purchase-requests/ai/polish-item-text',
+        method: 'POST',
+        body,
+      }),
+    }),
     getPurchaseRequestHistory: builder.query({
       query: ({ page = 1, limit = 25, search = '', status = '', eventType = '' } = {}) => ({
         url: '/purchase-requests/history',
@@ -228,4 +235,5 @@ export const {
   useCompletePurchaseMutation,
   useRejectPurchaseMutation,
   useDeletePurchaseRequestMutation,
+  usePolishPurchaseRequestItemTextMutation,
 } = purchaseRequestsApi

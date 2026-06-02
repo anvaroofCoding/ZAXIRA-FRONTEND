@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import AddIcon from '@mui/icons-material/Add'
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh'
 import DeleteIcon from '@mui/icons-material/Delete'
 import Alert from '@mui/material/Alert'
 import Autocomplete from '@mui/material/Autocomplete'
@@ -18,11 +19,13 @@ import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
+import Skeleton from '@mui/material/Skeleton'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import dayjs from 'dayjs'
 import { formatMemberLabel as formatUserLabel } from '@/features/purchase-requests/utils/formatMemberLabel'
+import { usePolishPurchaseRequestItemTextMutation } from '@/features/purchase-requests/api/purchaseRequestsApi'
 import { useGetUsersLookupQuery } from '@/features/users/api/usersApi'
 import { usePermissions } from '@/shared/hooks/usePermissions'
 import { ProductNameAutocomplete } from '@/features/products/components/ProductNameAutocomplete'
@@ -64,6 +67,8 @@ export const PurchaseRequestFormDialog = ({
   const [purchaseDeadline, setPurchaseDeadline] = useState(null)
   const [purchaseDeadlineMandatory, setPurchaseDeadlineMandatory] = useState(false)
   const [error, setError] = useState('')
+  const [aiLoadingByIndex, setAiLoadingByIndex] = useState({})
+  const [polishItemText] = usePolishPurchaseRequestItemTextMutation()
 
   const bossOptions = useMemo(
     () => users.filter((user) => !commissionMembers.some((member) => member.id === user.id)),
@@ -100,6 +105,7 @@ export const PurchaseRequestFormDialog = ({
     }
 
     setError('')
+    setAiLoadingByIndex({})
   }, [open, request])
 
   const resetForm = () => {
@@ -110,6 +116,7 @@ export const PurchaseRequestFormDialog = ({
     setPurchaseDeadline(null)
     setPurchaseDeadlineMandatory(false)
     setError('')
+    setAiLoadingByIndex({})
   }
 
   const handleClose = () => {
@@ -136,6 +143,15 @@ export const PurchaseRequestFormDialog = ({
   }
 
   const handleRemoveItem = (index) => {
+    setAiLoadingByIndex((prev) => {
+      const next = {}
+      Object.keys(prev).forEach((key) => {
+        const currentIndex = Number.parseInt(key, 10)
+        if (currentIndex < index) next[currentIndex] = prev[currentIndex]
+        if (currentIndex > index) next[currentIndex - 1] = prev[currentIndex]
+      })
+      return next
+    })
     setItems((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== index)))
   }
 
@@ -195,6 +211,40 @@ export const PurchaseRequestFormDialog = ({
       resetForm()
     } catch (submitError) {
       setError(submitError.message || 'Saqlashda xatolik')
+    }
+  }
+
+  const handlePolishWithAi = async (index) => {
+    const current = items[index]
+    if (!current) return
+
+    const rawName = current.name.trim()
+    const rawCharacteristics = current.characteristics.trim()
+
+    if (!rawName || !rawCharacteristics) {
+      setError('AI ishlatish uchun avval tovar nomi va xususiyatini kiriting')
+      return
+    }
+
+    setError('')
+    setAiLoadingByIndex((prev) => ({ ...prev, [index]: true }))
+
+    try {
+      const polished = await polishItemText({
+        name: rawName,
+        characteristics: rawCharacteristics,
+      }).unwrap()
+
+      handleItemChange(index, 'name', polished.name ?? rawName)
+      handleItemChange(
+        index,
+        'characteristics',
+        polished.characteristics ?? rawCharacteristics,
+      )
+    } catch (aiError) {
+      setError(aiError?.data?.message || 'AI matnni qayta ishlay olmadi')
+    } finally {
+      setAiLoadingByIndex((prev) => ({ ...prev, [index]: false }))
     }
   }
 
@@ -301,7 +351,8 @@ export const PurchaseRequestFormDialog = ({
                     <Stack spacing={2}>
                       <ProductNameAutocomplete
                         value={item.name}
-                        disabled={loading}
+                        disabled={loading || Boolean(aiLoadingByIndex[index])}
+                        aiLoading={Boolean(aiLoadingByIndex[index])}
                         onNameChange={(name) => handleItemChange(index, 'name', name)}
                         onProductSelect={(product) => {
                           handleItemChange(index, 'name', product.name)
@@ -319,20 +370,40 @@ export const PurchaseRequestFormDialog = ({
                         multiline
                         minRows={2}
                         maxRows={6}
-                        disabled={loading}
+                        disabled={loading || Boolean(aiLoadingByIndex[index])}
                         placeholder="Model, o‘lcham, rang va boshqalar — qisqa va aniq yozing"
-                        helperText={
-                          item.characteristics.length > 500
-                            ? `${item.characteristics.length} belgi — jadvalda qulay ko‘rinish uchun qisqaroq yozish tavsiya etiladi`
-                            : 'Ustav tekshiruvi va jadval uchun qisqa, aniq tavsif (tavsiya: 500 belgigacha)'
-                        }
+                        helperText={`Ustav tekshiruvi va jadval uchun qisqa, aniq tavsif (${item.characteristics.length}/500)`}
                         slotProps={{
                           htmlInput: {
                             style: { resize: 'vertical' },
-                            maxLength: 4000,
+                            maxLength: 500,
                           },
                         }}
+                        InputProps={{
+                          endAdornment: aiLoadingByIndex[index] ? (
+                            <Skeleton
+                              variant="rounded"
+                              width={72}
+                              height={18}
+                              sx={{ borderRadius: 1, alignSelf: 'flex-start', mt: 1 }}
+                            />
+                          ) : null,
+                        }}
                       />
+
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <Button
+                          type="button"
+                          size="small"
+                          variant="text"
+                          startIcon={<AutoFixHighIcon fontSize="small" />}
+                          onClick={() => handlePolishWithAi(index)}
+                          disabled={loading || Boolean(aiLoadingByIndex[index])}
+                          sx={{ textTransform: 'none', minWidth: 'auto' }}
+                        >
+                          {aiLoadingByIndex[index] ? 'AI ishlamoqda...' : 'AI bilan ishlash'}
+                        </Button>
+                      </Box>
 
                       <TextField
                         label="Soni"
@@ -340,7 +411,7 @@ export const PurchaseRequestFormDialog = ({
                         onChange={(event) =>
                           handleQuantityChange(index, event.target.value)
                         }
-                        disabled={loading}
+                        disabled={loading || Boolean(aiLoadingByIndex[index])}
                         placeholder="1"
                         slotProps={{
                           htmlInput: {

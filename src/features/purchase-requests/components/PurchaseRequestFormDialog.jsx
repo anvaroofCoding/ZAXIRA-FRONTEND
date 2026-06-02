@@ -5,12 +5,14 @@ import Alert from '@mui/material/Alert'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Checkbox from '@mui/material/Checkbox'
 import CircularProgress from '@mui/material/CircularProgress'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
@@ -18,9 +20,12 @@ import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import { DatePicker } from '@mui/x-date-pickers/DatePicker'
+import dayjs from 'dayjs'
 import { formatMemberLabel as formatUserLabel } from '@/features/purchase-requests/utils/formatMemberLabel'
 import { useGetUsersLookupQuery } from '@/features/users/api/usersApi'
 import { usePermissions } from '@/shared/hooks/usePermissions'
+import { ProductNameAutocomplete } from '@/features/products/components/ProductNameAutocomplete'
 
 const emptyItem = () => ({
   name: '',
@@ -28,7 +33,21 @@ const emptyItem = () => ({
   quantity: '1',
 })
 
-export const PurchaseRequestFormDialog = ({ open, loading, onClose, onSubmit }) => {
+const mapMemberToUserOption = (member) => ({
+  id: member.userId,
+  displayName: member.displayName,
+  login: member.login,
+  structureShortName: member.structureShortName ?? null,
+})
+
+export const PurchaseRequestFormDialog = ({
+  open,
+  loading,
+  request,
+  onClose,
+  onSubmit,
+}) => {
+  const isEdit = Boolean(request?.id)
   const { user: authUser } = usePermissions()
   const currentUserId = authUser?.id
 
@@ -42,6 +61,8 @@ export const PurchaseRequestFormDialog = ({ open, loading, onClose, onSubmit }) 
   const [bossId, setBossId] = useState('')
   const [items, setItems] = useState([emptyItem()])
   const [comment, setComment] = useState('')
+  const [purchaseDeadline, setPurchaseDeadline] = useState(null)
+  const [purchaseDeadlineMandatory, setPurchaseDeadlineMandatory] = useState(false)
   const [error, setError] = useState('')
 
   const bossOptions = useMemo(
@@ -51,18 +72,43 @@ export const PurchaseRequestFormDialog = ({ open, loading, onClose, onSubmit }) 
 
   useEffect(() => {
     if (!open) return
-    setCommissionMembers([])
-    setBossId('')
-    setItems([emptyItem()])
-    setComment('')
+
+    if (request) {
+      setCommissionMembers((request.commissionMembers ?? []).map(mapMemberToUserOption))
+      setBossId(request.boss?.userId ?? '')
+      setItems(
+        request.items?.length
+          ? request.items.map((item) => ({
+              name: item.name,
+              characteristics: item.characteristics,
+              quantity: String(item.quantity),
+            }))
+          : [emptyItem()],
+      )
+      setComment(request.comment ?? '')
+      setPurchaseDeadline(
+        request.purchaseDeadline ? dayjs(request.purchaseDeadline) : null,
+      )
+      setPurchaseDeadlineMandatory(Boolean(request.purchaseDeadlineMandatory))
+    } else {
+      setCommissionMembers([])
+      setBossId('')
+      setItems([emptyItem()])
+      setComment('')
+      setPurchaseDeadline(null)
+      setPurchaseDeadlineMandatory(false)
+    }
+
     setError('')
-  }, [open])
+  }, [open, request])
 
   const resetForm = () => {
     setCommissionMembers([])
     setBossId('')
     setItems([emptyItem()])
     setComment('')
+    setPurchaseDeadline(null)
+    setPurchaseDeadlineMandatory(false)
     setError('')
   }
 
@@ -128,12 +174,23 @@ export const PurchaseRequestFormDialog = ({ open, loading, onClose, onSubmit }) 
       return
     }
 
+    if (purchaseDeadlineMandatory && !purchaseDeadline) {
+      setError('Muddat majburiy deb belgilangan — sanani tanlang')
+      return
+    }
+
     try {
       await onSubmit({
         commissionMemberIds: commissionMembers.map((member) => member.id),
         bossId,
         items: normalizedItems,
         comment: comment.trim(),
+        ...(purchaseDeadline
+          ? {
+              purchaseDeadline: dayjs(purchaseDeadline).format('YYYY-MM-DD'),
+              purchaseDeadlineMandatory,
+            }
+          : {}),
       })
       resetForm()
     } catch (submitError) {
@@ -144,7 +201,9 @@ export const PurchaseRequestFormDialog = ({ open, loading, onClose, onSubmit }) 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
       <form onSubmit={handleSubmit} noValidate>
-        <DialogTitle>Yangi ariza</DialogTitle>
+        <DialogTitle>
+          {isEdit ? `Arizani tahrirlash — ${request.requestCode}` : 'Yangi ariza'}
+        </DialogTitle>
         <DialogContent sx={{ pb: 1 }}>
           <Stack spacing={2.5} sx={{ mt: 0.5 }}>
             {error ? <Alert severity="error">{error}</Alert> : null}
@@ -240,14 +299,14 @@ export const PurchaseRequestFormDialog = ({ open, loading, onClose, onSubmit }) 
                     </Box>
 
                     <Stack spacing={2}>
-                      <TextField
-                        label="Tovar nomi"
+                      <ProductNameAutocomplete
                         value={item.name}
-                        onChange={(event) =>
-                          handleItemChange(index, 'name', event.target.value)
-                        }
-                        fullWidth
                         disabled={loading}
+                        onNameChange={(name) => handleItemChange(index, 'name', name)}
+                        onProductSelect={(product) => {
+                          handleItemChange(index, 'name', product.name)
+                          handleItemChange(index, 'characteristics', product.characteristics)
+                        }}
                       />
 
                       <TextField
@@ -258,13 +317,19 @@ export const PurchaseRequestFormDialog = ({ open, loading, onClose, onSubmit }) 
                         }
                         fullWidth
                         multiline
-                        minRows={3}
-                        maxRows={10}
+                        minRows={2}
+                        maxRows={6}
                         disabled={loading}
-                        placeholder="Batafsil xususiyatlarni yozing..."
+                        placeholder="Model, o‘lcham, rang va boshqalar — qisqa va aniq yozing"
+                        helperText={
+                          item.characteristics.length > 500
+                            ? `${item.characteristics.length} belgi — jadvalda qulay ko‘rinish uchun qisqaroq yozish tavsiya etiladi`
+                            : 'Ustav tekshiruvi va jadval uchun qisqa, aniq tavsif (tavsiya: 500 belgigacha)'
+                        }
                         slotProps={{
                           htmlInput: {
                             style: { resize: 'vertical' },
+                            maxLength: 4000,
                           },
                         }}
                       />
@@ -312,6 +377,43 @@ export const PurchaseRequestFormDialog = ({ open, loading, onClose, onSubmit }) 
               </Button>
             </Box>
 
+            <Box>
+              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
+                Sotib olish muddati
+              </Typography>
+              <Stack spacing={1.5}>
+                <DatePicker
+                  label="Muddat (ixtiyoriy)"
+                  value={purchaseDeadline}
+                  onChange={(value) => {
+                    setPurchaseDeadline(value)
+                    if (!value) {
+                      setPurchaseDeadlineMandatory(false)
+                    }
+                  }}
+                  format="DD.MM.YYYY"
+                  disablePast
+                  disabled={loading}
+                  slotProps={{
+                    textField: { fullWidth: true },
+                    field: { clearable: true },
+                  }}
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={purchaseDeadlineMandatory}
+                      onChange={(event) =>
+                        setPurchaseDeadlineMandatory(event.target.checked)
+                      }
+                      disabled={loading || !purchaseDeadline}
+                    />
+                  }
+                  label="Muddat majburiy (sotib olish shu sanagacha amalga oshirilishi kerak)"
+                />
+              </Stack>
+            </Box>
+
             <TextField
               label="Izoh"
               value={comment}
@@ -334,7 +436,13 @@ export const PurchaseRequestFormDialog = ({ open, loading, onClose, onSubmit }) 
             Bekor qilish
           </Button>
           <Button type="submit" variant="contained" disabled={loading}>
-            {loading ? <CircularProgress size={22} color="inherit" /> : 'Yuborish'}
+            {loading ? (
+              <CircularProgress size={22} color="inherit" />
+            ) : isEdit ? (
+              'Saqlash'
+            ) : (
+              'Yuborish'
+            )}
           </Button>
         </DialogActions>
       </form>

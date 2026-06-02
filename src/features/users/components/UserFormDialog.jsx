@@ -24,11 +24,8 @@ import {
   normalizePermissions,
   pickGrantedPermissions,
   setPageAccess,
-  setPageAction,
 } from '@/features/permissions/utils/permissions'
 
-const WAREHOUSE_EXPENSE_PATH = '/omborlar/chiqim-qilish'
-const TICKET_PERMISSION_PATH = '/xarid-qilish/xaridni-qabul-qilish'
 const DASHBOARD_PATH = '/dashboard'
 
 const buildFormState = (mode, initialUser) => ({
@@ -68,14 +65,6 @@ const UserFormFields = ({
   )
   const [error, setError] = useState('')
   const dashboardChecked = Boolean(permissions?.[DASHBOARD_PATH]?.access)
-  const expensePermission = permissions?.[WAREHOUSE_EXPENSE_PATH]
-  const ticketPermission = permissions?.[TICKET_PERMISSION_PATH]
-  const expenseChecked = Boolean(
-    expensePermission?.access &&
-      expensePermission?.actions?.create &&
-      ticketPermission?.access &&
-      ticketPermission?.actions?.create,
-  )
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -221,7 +210,7 @@ const UserFormFields = ({
             {!catalogLoading && catalog ? (
               <Stack spacing={0.5} alignItems="flex-start">
                 <FormControlLabel
-                  sx={{ mb: 0.5 }}
+                  sx={{ mb: 1 }}
                   control={
                     <Checkbox
                       checked={dashboardChecked}
@@ -234,43 +223,6 @@ const UserFormFields = ({
                     />
                   }
                   label="Dashboard ruxsati"
-                />
-                <FormControlLabel
-                  sx={{ mb: 1 }}
-                  control={
-                    <Checkbox
-                      checked={expenseChecked}
-                      disabled={loading}
-                      onChange={(event) => {
-                        const enabled = event.target.checked
-                        const withExpenseAccess = setPageAccess(
-                          permissions,
-                          WAREHOUSE_EXPENSE_PATH,
-                          enabled,
-                        )
-                        const withTicketAccess = setPageAccess(
-                          withExpenseAccess,
-                          TICKET_PERMISSION_PATH,
-                          enabled,
-                        )
-                        const withExpenseCreate = setPageAction(
-                          withTicketAccess,
-                          WAREHOUSE_EXPENSE_PATH,
-                          'create',
-                          enabled,
-                        )
-                        setPermissions(
-                          setPageAction(
-                            withExpenseCreate,
-                            TICKET_PERMISSION_PATH,
-                            'create',
-                            enabled,
-                          ),
-                        )
-                      }}
-                    />
-                  }
-                  label="Chiqim qilish ruxsati"
                 />
               </Stack>
             ) : null}

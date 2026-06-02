@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined'
 import RemoveIcon from '@mui/icons-material/Remove'
@@ -54,14 +54,37 @@ export const TransferQilishPage = () => {
 
   const locationsQuery = useGetWarehouseLocationsQuery()
   const locations = locationsQuery.data ?? []
-  const effectiveLocationId = selectedLocationId || locations[0]?.id || ''
 
-  const inventoryQuery = useGetWarehouseInventoryByLocationQuery(
-    { locationId: effectiveLocationId, ...queryParams },
-    { skip: !effectiveLocationId },
+  useEffect(() => {
+    if (!selectedLocationId && locations.length) {
+      setSelectedLocationId(locations[0].id)
+    }
+  }, [locations, selectedLocationId])
+
+  const inventoryQueryArgs = useMemo(
+    () => ({
+      locationId: selectedLocationId,
+      page: queryParams.page,
+      limit: queryParams.limit,
+      search: queryParams.search,
+    }),
+    [queryParams.limit, queryParams.page, queryParams.search, selectedLocationId],
   )
+
+  const inventoryQuery = useGetWarehouseInventoryByLocationQuery(inventoryQueryArgs, {
+    skip: !selectedLocationId,
+    refetchOnMountOrArgChange: true,
+  })
   const items = inventoryQuery.data?.items ?? []
   const total = inventoryQuery.data?.total ?? 0
+
+  const locationsReady =
+    !locationsQuery.isLoading && !locationsQuery.isUninitialized
+  const inventoryReady =
+    Boolean(selectedLocationId) &&
+    !inventoryQuery.isLoading &&
+    !inventoryQuery.isUninitialized
+  const pageReady = locationsReady && (!selectedLocationId || inventoryReady)
 
   const selectedMap = useMemo(
     () =>
@@ -79,7 +102,7 @@ export const TransferQilishPage = () => {
     : null
 
   const addOne = (row) => {
-    const key = `${effectiveLocationId}|${row.barcode}`
+    const key = `${selectedLocationId}|${row.barcode}`
     setSelectedItems((prev) => {
       const existing = prev.find((item) => `${item.locationId}|${item.barcode}` === key)
       if (existing) {
@@ -93,7 +116,7 @@ export const TransferQilishPage = () => {
       return [
         ...prev,
         {
-          locationId: effectiveLocationId,
+          locationId: selectedLocationId,
           barcode: row.barcode,
           name: row.name,
           quantity: 1,
@@ -104,7 +127,7 @@ export const TransferQilishPage = () => {
   }
 
   const decreaseOne = (row) => {
-    const key = `${effectiveLocationId}|${row.barcode}`
+    const key = `${selectedLocationId}|${row.barcode}`
     setSelectedItems((prev) => {
       const existing = prev.find((item) => `${item.locationId}|${item.barcode}` === key)
       if (!existing) return prev
@@ -120,7 +143,7 @@ export const TransferQilishPage = () => {
   }
 
   const removeItem = (row) => {
-    const key = `${effectiveLocationId}|${row.barcode}`
+    const key = `${selectedLocationId}|${row.barcode}`
     setSelectedItems((prev) =>
       prev.filter((item) => `${item.locationId}|${item.barcode}` !== key),
     )
@@ -129,10 +152,10 @@ export const TransferQilishPage = () => {
   return (
     <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
       <QuerySkeleton
-        isLoading={inventoryQuery.isLoading || locationsQuery.isLoading}
-        isFetching={inventoryQuery.isFetching}
-        isUninitialized={inventoryQuery.isUninitialized}
-        hasData={!inventoryQuery.isUninitialized}
+        isLoading={locationsQuery.isLoading || (Boolean(selectedLocationId) && inventoryQuery.isLoading)}
+        isFetching={locationsQuery.isFetching || inventoryQuery.isFetching}
+        isUninitialized={locationsQuery.isUninitialized}
+        hasData={pageReady}
         skeleton={
           <Box sx={{ p: 4, textAlign: 'center' }}>
             <CircularProgress size={26} />
@@ -140,6 +163,18 @@ export const TransferQilishPage = () => {
         }
       >
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {locationsQuery.isError ? (
+            <Alert severity="error">
+              {getApiErrorMessage(locationsQuery.error, 'Ombor joylarini yuklab bo‘lmadi')}
+            </Alert>
+          ) : null}
+
+          {locationsReady && !locations.length ? (
+            <Alert severity="info">
+              Transfer qilish uchun avval «Mening omborim» bo‘limida ombor joyi yarating.
+            </Alert>
+          ) : null}
+
           {inventoryQuery.isError ? (
             <Alert severity="error">
               {getApiErrorMessage(inventoryQuery.error, 'Transfer tovarlarini yuklab bo‘lmadi')}
@@ -170,30 +205,32 @@ export const TransferQilishPage = () => {
             hasActiveFilters={hasActiveFilters}
           />
 
-          <FormControl size="small" sx={{ minWidth: 260 }}>
-            <InputLabel id="transfer-location">Manba ombor joyi</InputLabel>
-            <Select
-              labelId="transfer-location"
-              label="Manba ombor joyi"
-              value={effectiveLocationId}
-              onChange={(event) => {
-                setSelectedLocationId(event.target.value)
-                setPage(0)
-              }}
-            >
-              {locations.map((loc) => (
-                <MenuItem key={loc.id} value={loc.id}>
-                  {loc.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          {locations.length ? (
+            <FormControl size="small" sx={{ minWidth: 260 }}>
+              <InputLabel id="transfer-location">Manba ombor joyi</InputLabel>
+              <Select
+                labelId="transfer-location"
+                label="Manba ombor joyi"
+                value={selectedLocationId}
+                onChange={(event) => {
+                  setSelectedLocationId(event.target.value)
+                  setPage(0)
+                }}
+              >
+                {locations.map((loc) => (
+                  <MenuItem key={loc.id} value={loc.id}>
+                    {loc.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          ) : null}
 
-          {!items.length ? (
+          {selectedLocationId && inventoryReady && !items.length ? (
             <Paper variant="outlined" sx={{ py: 6, textAlign: 'center' }}>
               <Typography color="text.secondary">Bu ombor joyida transfer uchun tovar topilmadi</Typography>
             </Paper>
-          ) : (
+          ) : selectedLocationId && inventoryReady && items.length ? (
             <TableContainer component={Paper} variant="outlined">
               <Table size="small">
                 <TableHead>
@@ -215,7 +252,7 @@ export const TransferQilishPage = () => {
                       <TableCell>{item.quantity} ta</TableCell>
                       <TableCell>
                         {(() => {
-                          const selected = selectedMap.get(`${effectiveLocationId}|${item.barcode}`)
+                          const selected = selectedMap.get(`${selectedLocationId}|${item.barcode}`)
                           const selectedQty = selected?.quantity ?? 0
                           return (
                         <Chip
@@ -228,7 +265,7 @@ export const TransferQilishPage = () => {
                       </TableCell>
                       <TableCell align="right">
                         {(() => {
-                          const selected = selectedMap.get(`${effectiveLocationId}|${item.barcode}`)
+                          const selected = selectedMap.get(`${selectedLocationId}|${item.barcode}`)
                           const selectedQty = selected?.quantity ?? 0
                           const canIncrease = selectedQty < item.quantity
 
@@ -267,8 +304,9 @@ export const TransferQilishPage = () => {
                 </TableBody>
               </Table>
             </TableContainer>
-          )}
+          ) : null}
 
+          {selectedLocationId && inventoryReady ? (
           <TablePagination
             component="div"
             count={total}
@@ -282,6 +320,7 @@ export const TransferQilishPage = () => {
             rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
             labelRowsPerPage="Qatorlar:"
           />
+          ) : null}
         </Box>
       </QuerySkeleton>
 

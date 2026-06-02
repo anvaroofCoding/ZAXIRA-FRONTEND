@@ -1,4 +1,26 @@
+import { DISABLED_PAGE_ACTIONS } from '@/features/permissions/constants'
 import { NAV_ITEMS } from '@/shared/config/navigation'
+
+const disabledActionsForPath = (path) => DISABLED_PAGE_ACTIONS[path] ?? []
+
+export const isPageActionDisabled = (path, actionKey) =>
+  disabledActionsForPath(path).includes(actionKey)
+
+const sanitizePageActions = (path, actions = {}) => {
+  const next = { ...actions }
+  disabledActionsForPath(path).forEach((key) => {
+    next[key] = false
+  })
+  return next
+}
+
+const sanitizePagePermission = (path, page) => {
+  if (!page) return page
+  return {
+    ...page,
+    actions: sanitizePageActions(path, page.actions),
+  }
+}
 
 const WAREHOUSE_EXPENSE_PATH = '/omborlar/chiqim-qilish'
 const WAREHOUSE_EXPENSE_LABEL = 'Chiqim qilish (Dashboard tugmasi)'
@@ -90,7 +112,7 @@ export const normalizePermissions = (catalog, input) => {
     const current = input?.[path]
     const access = Boolean(current?.access)
 
-    base[path] = {
+    base[path] = sanitizePagePermission(path, {
       access,
       actions: access
         ? {
@@ -99,7 +121,7 @@ export const normalizePermissions = (catalog, input) => {
             delete: current?.actions?.delete ?? true,
           }
         : createDefaultActions(false),
-    }
+    })
   })
 
   return base
@@ -116,20 +138,31 @@ export const getGroupCheckState = (permissions, paths) => {
 }
 
 export const getGroupActionState = (permissions, paths, actionKey) => {
-  const enabledCount = paths.filter(
+  const eligiblePaths = paths.filter((path) => !isPageActionDisabled(path, actionKey))
+
+  if (!eligiblePaths.length) {
+    return { checked: false, indeterminate: false, disabled: true }
+  }
+
+  const enabledCount = eligiblePaths.filter(
     (path) => permissions[path]?.access && permissions[path]?.actions?.[actionKey],
   ).length
 
-  if (enabledCount === 0) return { checked: false, indeterminate: false }
-  if (enabledCount === paths.length) return { checked: true, indeterminate: false }
-  return { checked: false, indeterminate: true }
+  if (enabledCount === 0) return { checked: false, indeterminate: false, disabled: false }
+  if (enabledCount === eligiblePaths.length) {
+    return { checked: true, indeterminate: false, disabled: false }
+  }
+  return { checked: false, indeterminate: true, disabled: false }
 }
 
 export const setGroupAccess = (permissions, paths, access) => {
   const next = { ...permissions }
 
   paths.forEach((path) => {
-    next[path] = createDefaultPagePermission(access, access)
+    next[path] = sanitizePagePermission(
+      path,
+      createDefaultPagePermission(access, access),
+    )
   })
 
   return next
@@ -141,17 +174,17 @@ export const setGroupAction = (permissions, paths, actionKey, enabled) => {
   paths.forEach((path) => {
     const current = next[path] ?? createDefaultPagePermission(false, false)
 
-    if (!current.access) {
+    if (!current.access || isPageActionDisabled(path, actionKey)) {
       return
     }
 
-    next[path] = {
+    next[path] = sanitizePagePermission(path, {
       ...current,
       actions: {
         ...current.actions,
         [actionKey]: enabled,
       },
-    }
+    })
   })
 
   return next
@@ -159,10 +192,14 @@ export const setGroupAction = (permissions, paths, actionKey, enabled) => {
 
 export const setPageAccess = (permissions, path, access) => ({
   ...permissions,
-  [path]: createDefaultPagePermission(access, access),
+  [path]: sanitizePagePermission(path, createDefaultPagePermission(access, access)),
 })
 
 export const setPageAction = (permissions, path, actionKey, enabled) => {
+  if (isPageActionDisabled(path, actionKey)) {
+    return permissions
+  }
+
   const current = permissions[path] ?? createDefaultPagePermission(false, false)
 
   if (!current.access) {
@@ -171,13 +208,13 @@ export const setPageAction = (permissions, path, actionKey, enabled) => {
 
   return {
     ...permissions,
-    [path]: {
+    [path]: sanitizePagePermission(path, {
       ...current,
       actions: {
         ...current.actions,
         [actionKey]: enabled,
       },
-    },
+    }),
   }
 }
 
@@ -198,13 +235,11 @@ const INVERTARIZATSIYA_PATHS = new Set([
   '/invertarizatsiya/barcha-invertarizatsiyalar',
 ])
 
-const CHIQIM_PERMISSION_PATHS = new Set([
-  WAREHOUSE_EXPENSE_PATH,
-  '/omborlar/chiqim-tarixi',
-])
+/** /omborlar/chiqim-tarixi — alohida ruxsat yo‘q; Chiqim qilish bilan bir xil */
+const CHIQIM_HISTORY_PATH = '/omborlar/chiqim-tarixi'
 
 const resolvePermissionLookupPaths = (path) => {
-  if (CHIQIM_PERMISSION_PATHS.has(path)) {
+  if (path === CHIQIM_HISTORY_PATH || path === WAREHOUSE_EXPENSE_PATH) {
     return [WAREHOUSE_EXPENSE_PATH]
   }
   if (!INVERTARIZATSIYA_PATHS.has(path)) {

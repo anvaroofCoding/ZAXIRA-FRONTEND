@@ -39,6 +39,8 @@ import { dispatchCodeSx } from '@/features/warehouse-dispatches/utils/dispatchCo
 import { downloadAuthenticatedFile } from '@/shared/utils/downloadFile'
 import { getDispatchStatusChipProps } from '@/features/warehouse-dispatches/utils/dispatchStatusDisplay'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
+import { WAREHOUSE_RECEIPT_PAGE_PATH } from '@/features/permissions/constants'
+import { usePermissions } from '@/shared/hooks/usePermissions'
 
 const REJECT_REASON = 'Kelmadi'
 
@@ -75,7 +77,17 @@ const canSubmitItemDraft = (item, draft) => {
   return rejectedQty <= pending
 }
 
-export const ReceiveWarehouseDispatchDialog = ({ open, dispatchId, onClose, onSuccess, title = 'Omborga qabul qilish' }) => {
+export const ReceiveWarehouseDispatchDialog = ({
+  open,
+  dispatchId,
+  onClose,
+  onSuccess,
+  title = 'Omborga qabul qilish',
+  permissionPath = WAREHOUSE_RECEIPT_PAGE_PATH,
+}) => {
+  const { canCreate } = usePermissions()
+  const canReceiveItems = canCreate(permissionPath)
+
   const [error, setError] = useState('')
   const [locationId, setLocationId] = useState('')
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
@@ -295,7 +307,12 @@ export const ReceiveWarehouseDispatchDialog = ({ open, dispatchId, onClose, onSu
 
                 {hasLocations ? (
                   <Box sx={{ mt: 2, maxWidth: 420 }}>
-                    <FormControl size="small" fullWidth required disabled={locationsQuery.isLoading}>
+                    <FormControl
+                      size="small"
+                      fullWidth
+                      required
+                      disabled={locationsQuery.isLoading || !canReceiveItems}
+                    >
                       <InputLabel id="warehouse-location-select">Ombor joyi</InputLabel>
                       <Select
                         labelId="warehouse-location-select"
@@ -341,7 +358,9 @@ export const ReceiveWarehouseDispatchDialog = ({ open, dispatchId, onClose, onSu
                             <TableCell width={100} align="center">
                               Kelmadi
                             </TableCell>
-                            <TableCell width={72} align="center" />
+                            {canReceiveItems ? (
+                              <TableCell width={72} align="center" />
+                            ) : null}
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -386,7 +405,7 @@ export const ReceiveWarehouseDispatchDialog = ({ open, dispatchId, onClose, onSu
                                         style: { textAlign: 'center' },
                                       },
                                     }}
-                                    disabled={itemLoading}
+                                    disabled={itemLoading || !canReceiveItems}
                                     error={receivedExceeds || (receivedFilled && rejectedFilled)}
                                     sx={{ width: 88 }}
                                   />
@@ -404,44 +423,46 @@ export const ReceiveWarehouseDispatchDialog = ({ open, dispatchId, onClose, onSu
                                         style: { textAlign: 'center' },
                                       },
                                     }}
-                                    disabled={itemLoading}
+                                    disabled={itemLoading || !canReceiveItems}
                                     error={rejectedExceeds || (receivedFilled && rejectedFilled)}
                                     sx={{ width: 88 }}
                                   />
                                 </TableCell>
-                                <TableCell align="center" sx={{ verticalAlign: 'middle' }}>
-                                  <Tooltip
-                                    title={
-                                      canSubmit
-                                        ? 'Qabul qilish'
-                                        : receivedFilled && rejectedFilled
-                                          ? 'Faqat bitta maydonni to‘ldiring'
-                                          : 'Qabul yoki kelmadi sonini kiriting'
-                                    }
-                                  >
-                                    <span>
-                                      <IconButton
-                                        type="button"
-                                        color="primary"
-                                        disabled={itemLoading || !canSubmit}
-                                        onClick={() => handleSaveItem(item)}
-                                        sx={{
-                                          bgcolor: canSubmit ? 'primary.main' : undefined,
-                                          color: canSubmit ? 'primary.contrastText' : undefined,
-                                          '&:hover': canSubmit
-                                            ? { bgcolor: 'primary.dark' }
-                                            : undefined,
-                                        }}
-                                      >
-                                        {itemLoading ? (
-                                          <CircularProgress size={20} color="inherit" />
-                                        ) : (
-                                          <AddIcon />
-                                        )}
-                                      </IconButton>
-                                    </span>
-                                  </Tooltip>
-                                </TableCell>
+                                {canReceiveItems ? (
+                                  <TableCell align="center" sx={{ verticalAlign: 'middle' }}>
+                                    <Tooltip
+                                      title={
+                                        canSubmit
+                                          ? 'Qabul qilish'
+                                          : receivedFilled && rejectedFilled
+                                            ? 'Faqat bitta maydonni to‘ldiring'
+                                            : 'Qabul yoki kelmadi sonini kiriting'
+                                      }
+                                    >
+                                      <span>
+                                        <IconButton
+                                          type="button"
+                                          color="primary"
+                                          disabled={itemLoading || !canSubmit}
+                                          onClick={() => handleSaveItem(item)}
+                                          sx={{
+                                            bgcolor: canSubmit ? 'primary.main' : undefined,
+                                            color: canSubmit ? 'primary.contrastText' : undefined,
+                                            '&:hover': canSubmit
+                                              ? { bgcolor: 'primary.dark' }
+                                              : undefined,
+                                          }}
+                                        >
+                                          {itemLoading ? (
+                                            <CircularProgress size={20} color="inherit" />
+                                          ) : (
+                                            <AddIcon />
+                                          )}
+                                        </IconButton>
+                                      </span>
+                                    </Tooltip>
+                                  </TableCell>
+                                ) : null}
                               </TableRow>
                             )
                           })}

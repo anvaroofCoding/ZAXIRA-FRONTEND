@@ -119,7 +119,7 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
           }}
         >
           <Typography variant="h6" component="span" sx={{ flex: 1, fontWeight: 600 }}>
-            Sotib olish — {request.requestCode}
+            Xarid qilish — {request.requestCode}
           </Typography>
           <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
             <Button
@@ -358,7 +358,7 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
             Bekor qilish
           </Button>
           <Button type="submit" variant="contained" disabled={isLoading}>
-            Xarid qilindi deb belgilash
+            Xarid qilish
           </Button>
         </DialogActions>
       </Box>

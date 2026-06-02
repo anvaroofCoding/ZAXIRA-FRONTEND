@@ -1,4 +1,6 @@
+import BlockIcon from '@mui/icons-material/Block'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import EditIcon from '@mui/icons-material/Edit'
 import EditNoteIcon from '@mui/icons-material/EditNote'
 import GavelIcon from '@mui/icons-material/Gavel'
 import SendIcon from '@mui/icons-material/Send'
@@ -11,15 +13,18 @@ import StepLabel from '@mui/material/StepLabel'
 import Stepper from '@mui/material/Stepper'
 import Typography from '@mui/material/Typography'
 import { getDecisionChipColor } from '@/features/purchase-requests/utils/purchaseRequestStatus'
+import { formatPurchaseDeadline } from '@/features/purchase-requests/utils/formatPurchaseDeadline'
 import { formatDateTime } from '@/shared/utils/formatDate'
 
 const STEP_META = {
   SUBMITTED: { label: 'Ariza yuborildi', icon: SendIcon, color: 'primary' },
+  UPDATED: { label: 'Ariza tahrirlandi', icon: EditIcon, color: 'info' },
   DECISION: { label: 'Komissiya qarori', icon: GavelIcon, color: 'secondary' },
   RESUBMITTED: { label: 'Qayta yuborildi', icon: EditNoteIcon, color: 'info' },
   BOSS_CONFIRMED: { label: 'Boshliq qarorini tasdiqladi', icon: CheckCircleIcon, color: 'success' },
   BOSS_DECISION: { label: 'Boshliq qarori', icon: GavelIcon, color: 'secondary' },
   PURCHASED: { label: 'Xarid qilindi', icon: ShoppingCartIcon, color: 'success' },
+  PURCHASE_REJECTED: { label: 'Xarid rad etildi (atkaz)', icon: BlockIcon, color: 'error' },
 }
 
 export const ApprovalTimelineSteps = ({ history = [] }) => {
@@ -65,6 +70,9 @@ export const ApprovalTimelineSteps = ({ history = [] }) => {
                 <Typography variant="subtitle2" fontWeight={600}>
                   {meta.label}
                 </Typography>
+                {step.rejectionReasonLabel ? (
+                  <Chip size="small" color="error" variant="outlined" label={step.rejectionReasonLabel} />
+                ) : null}
                 {step.decision ? (
                   <Chip
                     size="small"
@@ -89,6 +97,25 @@ export const ApprovalTimelineSteps = ({ history = [] }) => {
                 >
                   {step.comment}
                 </Typography>
+              ) : null}
+              {step.purchaseDeadline ? (
+                <Box
+                  sx={{
+                    mt: 1,
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    gap: 1,
+                    bgcolor: 'action.hover',
+                    p: 1.5,
+                    borderRadius: 1,
+                  }}
+                >
+                  <Typography variant="body2">
+                    Sotib olish muddati:{' '}
+                    {formatPurchaseDeadline(step.purchaseDeadline, step.purchaseDeadlineMandatory)}
+                  </Typography>
+                </Box>
               ) : null}
             </StepContent>
           </Step>

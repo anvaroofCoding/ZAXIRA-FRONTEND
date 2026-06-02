@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import DescriptionIcon from '@mui/icons-material/Description'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
@@ -15,6 +17,12 @@ export const PurchaseRequestRowActionsMenu = ({
   onView,
   onDownloadPdf,
   onDownloadDocx,
+  onDelete,
+  canDelete = false,
+  onEdit,
+  canEdit = false,
+  onResubmit,
+  canResubmit = false,
 }) => {
   const [anchorEl, setAnchorEl] = useState(null)
   const open = Boolean(anchorEl)
@@ -56,6 +64,33 @@ export const PurchaseRequestRowActionsMenu = ({
           </ListItemIcon>
           <ListItemText>Word yuklab olish</ListItemText>
         </MenuItem>
+        {canEdit && onEdit ? (
+          <MenuItem onClick={() => runAction(() => onEdit(item))}>
+            <ListItemIcon>
+              <EditOutlinedIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Tahrirlash</ListItemText>
+          </MenuItem>
+        ) : null}
+        {canResubmit && onResubmit ? (
+          <MenuItem onClick={() => runAction(() => onResubmit(item))}>
+            <ListItemIcon>
+              <EditOutlinedIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Qayta yuborish</ListItemText>
+          </MenuItem>
+        ) : null}
+        {canDelete && onDelete ? (
+          <MenuItem
+            onClick={() => runAction(() => onDelete(item))}
+            sx={{ color: 'error.main' }}
+          >
+            <ListItemIcon sx={{ color: 'inherit' }}>
+              <DeleteOutlinedIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>O‘chirish</ListItemText>
+          </MenuItem>
+        ) : null}
       </Menu>
     </>
   )

@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import SearchIcon from '@mui/icons-material/Search'
 import AddIcon from '@mui/icons-material/Add'
+import EditIcon from '@mui/icons-material/Edit'
+import DeleteIcon from '@mui/icons-material/Delete'
 import PrintIcon from '@mui/icons-material/Print'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
@@ -24,7 +28,14 @@ import TablePagination from '@mui/material/TablePagination'
 import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import { useCreateWarehouseLocationMutation, useGetWarehouseInventoryByLocationQuery, useGetWarehouseLocationsQuery } from '@/features/warehouse/api/warehouseApi'
+import {
+  useCreateWarehouseLocationMutation,
+  useDeleteWarehouseLocationMutation,
+  useGetWarehouseInventoryByLocationQuery,
+  useGetWarehouseLocationsQuery,
+  useUpdateWarehouseLocationMutation,
+} from '@/features/warehouse/api/warehouseApi'
+import { usePermissions } from '@/shared/hooks/usePermissions'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { SkeletonBlock } from '@/shared/components/skeleton'
 import { formatDateTime } from '@/shared/utils/formatDate'
@@ -50,14 +61,25 @@ const InventorySkeleton = () => (
   </Stack>
 )
 
+const MY_WAREHOUSE_PAGE_PATH = '/omborlar/mening-omborim'
+
 export const MeningOmborimPage = () => {
+  const { canCreate, canUpdate, canDelete } = usePermissions()
+  const canAddLocation = canCreate(MY_WAREHOUSE_PAGE_PATH)
+  const canEditLocation = canUpdate(MY_WAREHOUSE_PAGE_PATH)
+  const canDeleteLocation = canDelete(MY_WAREHOUSE_PAGE_PATH)
+
   const locationsQuery = useGetWarehouseLocationsQuery()
   const [createLocation, createLocationState] = useCreateWarehouseLocationMutation()
+  const [updateLocation, updateLocationState] = useUpdateWarehouseLocationMutation()
+  const [deleteLocation, deleteLocationState] = useDeleteWarehouseLocationMutation()
 
   const locations = locationsQuery.data ?? []
   const [selectedLocationId, setSelectedLocationId] = useState(null)
   const [pageError, setPageError] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   useEffect(() => {
     if (!selectedLocationId && locations.length) {
@@ -66,7 +88,13 @@ export const MeningOmborimPage = () => {
   }, [locations, selectedLocationId])
 
   const [newLocationName, setNewLocationName] = useState('')
-  const canCreate = newLocationName.trim().length >= 2 && !createLocationState.isLoading
+  const [editLocationName, setEditLocationName] = useState('')
+  const canSaveNewLocation = newLocationName.trim().length >= 2 && !createLocationState.isLoading
+
+  const selectedLocation = useMemo(
+    () => locations.find((loc) => loc.id === selectedLocationId) ?? null,
+    [locations, selectedLocationId],
+  )
 
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
@@ -148,6 +176,46 @@ export const MeningOmborimPage = () => {
     }
   }
 
+  const openEditLocation = () => {
+    if (!selectedLocation) return
+    setEditLocationName(selectedLocation.name)
+    setEditOpen(true)
+  }
+
+  const handleUpdateLocation = async () => {
+    if (!selectedLocationId) return
+    setPageError('')
+    const name = editLocationName.trim()
+    if (!name) return
+
+    try {
+      await updateLocation({ id: selectedLocationId, name }).unwrap()
+      setEditOpen(false)
+    } catch (e) {
+      setPageError(e?.data?.message || 'Joy nomini saqlashda xatolik')
+    }
+  }
+
+  const handleDeleteLocation = async () => {
+    if (!selectedLocationId) return
+    setPageError('')
+
+    try {
+      const deletedId = selectedLocationId
+      await deleteLocation(deletedId).unwrap()
+      setDeleteOpen(false)
+      const remaining = locations.filter((loc) => loc.id !== deletedId)
+      setSelectedLocationId(remaining[0]?.id ?? null)
+    } catch (e) {
+      setPageError(e?.data?.message || 'Joyni o‘chirishda xatolik')
+    }
+  }
+
+  const canSaveEditLocation =
+    editLocationName.trim().length >= 2 &&
+    editLocationName.trim() !== selectedLocation?.name &&
+    !updateLocationState.isLoading
+
   return (
     <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Box
@@ -162,9 +230,11 @@ export const MeningOmborimPage = () => {
         <Typography variant="h6" fontWeight={700}>
           Mening omborim
         </Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
-          Joy qo‘shish
-        </Button>
+        {canAddLocation ? (
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
+            Joy qo‘shish
+          </Button>
+        ) : null}
       </Box>
 
       {pageError ? <Alert severity="error">{pageError}</Alert> : null}
@@ -179,26 +249,58 @@ export const MeningOmborimPage = () => {
         <Box>
           {!locations.length ? (
             <Typography variant="body2" color="text.secondary">
-              Hali joy yaratilmagan. Yuqoridagi <b>Joy qo‘shish</b> tugmasi orqali joy yarating.
+              {canAddLocation
+                ? 'Hali joy yaratilmagan. Yuqoridagi Joy qo‘shish tugmasi orqali joy yarating.'
+                : 'Hali joy yaratilmagan.'}
             </Typography>
           ) : (
             <>
-              <Tabs
-                value={selectedTabIndex}
-                onChange={(_e, nextIndex) => {
-                  const next = locations[nextIndex]
-                  if (!next) return
-                  setSelectedLocationId(next.id)
-                  setSearch('')
-                  setPage(0)
-                }}
-                variant="scrollable"
-                scrollButtons="auto"
-              >
-                {locations.map((loc) => (
-                  <Tab key={loc.id} label={loc.name} />
-                ))}
-              </Tabs>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Tabs
+                  value={selectedTabIndex}
+                  onChange={(_e, nextIndex) => {
+                    const next = locations[nextIndex]
+                    if (!next) return
+                    setSelectedLocationId(next.id)
+                    setSearch('')
+                    setPage(0)
+                  }}
+                  variant="scrollable"
+                  scrollButtons="auto"
+                  sx={{ flex: 1, minWidth: 0 }}
+                >
+                  {locations.map((loc) => (
+                    <Tab key={loc.id} label={loc.name} />
+                  ))}
+                </Tabs>
+                {selectedLocation ? (
+                  <Stack direction="row" spacing={0.25}>
+                    {canEditLocation ? (
+                      <Tooltip title="Joy nomini tahrirlash">
+                        <IconButton
+                          size="small"
+                          aria-label="Joy nomini tahrirlash"
+                          onClick={openEditLocation}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    ) : null}
+                    {canDeleteLocation ? (
+                      <Tooltip title="Joyni o‘chirish">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          aria-label="Joyni o‘chirish"
+                          onClick={() => setDeleteOpen(true)}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    ) : null}
+                  </Stack>
+                ) : null}
+              </Box>
               <Divider sx={{ mb: 1.5 }} />
 
               {!selectedLocationId ? (
@@ -314,7 +416,55 @@ export const MeningOmborimPage = () => {
           <Button onClick={() => setCreateOpen(false)} disabled={createLocationState.isLoading}>
             Bekor
           </Button>
-          <Button variant="contained" onClick={handleCreateLocation} disabled={!canCreate}>
+          <Button variant="contained" onClick={handleCreateLocation} disabled={!canSaveNewLocation}>
+            Saqlash
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Joyni o‘chirish</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2">
+            <b>{selectedLocation?.name}</b> joyini o‘chirmoqchimisiz? Joyda tovarlar bo‘lsa, o‘chirib
+            bo‘lmaydi.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteOpen(false)} disabled={deleteLocationState.isLoading}>
+            Bekor
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDeleteLocation}
+            disabled={deleteLocationState.isLoading}
+          >
+            O‘chirish
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Joy nomini tahrirlash</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={1}>
+            <TextField
+              autoFocus
+              size="small"
+              label="Joy nomi"
+              value={editLocationName}
+              onChange={(e) => setEditLocationName(e.target.value)}
+              fullWidth
+              slotProps={{ htmlInput: { maxLength: 80 } }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditOpen(false)} disabled={updateLocationState.isLoading}>
+            Bekor
+          </Button>
+          <Button variant="contained" onClick={handleUpdateLocation} disabled={!canSaveEditLocation}>
             Saqlash
           </Button>
         </DialogActions>

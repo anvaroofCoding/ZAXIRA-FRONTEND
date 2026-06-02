@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import SearchIcon from '@mui/icons-material/Search'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -23,6 +23,7 @@ import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { downloadAuthenticatedFile } from '@/shared/utils/downloadFile'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
+import { useQueryParamOpen } from '@/shared/hooks/useQueryParamOpen'
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50, 100]
 
@@ -34,6 +35,9 @@ export const ArizalarTarixiPage = () => {
   const [rowsPerPage, setRowsPerPage] = useState(25)
   const [downloadingId, setDownloadingId] = useState(null)
   const [detailRequestId, setDetailRequestId] = useState(null)
+
+  const openDetailFromQuery = useCallback((id) => setDetailRequestId(id), [])
+  useQueryParamOpen('detail', openDetailFromQuery)
 
   const debouncedSearch = useDebouncedValue(search, 350)
 
@@ -59,7 +63,7 @@ export const ArizalarTarixiPage = () => {
     try {
       const extension = type === 'pdf' ? 'pdf' : 'docx'
       await downloadAuthenticatedFile(
-        `/purchase-requests/${request.id}/export/${extension}`,
+        `/purchase-requests/${request.id}/export/${extension}?historyView=1`,
         `buyurtma-${request.requestCode}.${extension}`,
       )
     } catch (error) {
@@ -179,6 +183,7 @@ export const ArizalarTarixiPage = () => {
       <PurchaseRequestReadOnlyDetailDialog
         open={Boolean(detailRequestId)}
         requestId={detailRequestId}
+        historyView
         downloading={downloadingId === detailRequestId}
         onClose={() => setDetailRequestId(null)}
         onDownloadPdf={(request) => handleDownload(request, 'pdf')}

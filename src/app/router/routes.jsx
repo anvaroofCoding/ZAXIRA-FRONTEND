@@ -6,6 +6,10 @@ import { PermissionRoute } from './PermissionRoute'
 import { RequireAuth } from './RequireAuth'
 
 const { DashboardPage } = lazyImport(() => import('@/pages/dashboard'), 'DashboardPage')
+const { MaxsulotlarPage } = lazyImport(
+  () => import('@/pages/dashboard'),
+  'MaxsulotlarPage',
+)
 const { LoginPage } = lazyImport(() => import('@/pages/LoginPage'), 'LoginPage')
 const { NotFoundPage } = lazyImport(
   () => import('@/pages/NotFoundPage'),
@@ -113,6 +117,10 @@ export const routes = [
           {
             path: 'dashboard',
             Component: DashboardPage,
+          },
+          {
+            path: 'dashboard/maxsulotlar',
+            Component: MaxsulotlarPage,
           },
           {
             path: 'xaridlar/arizalar-yuborish',

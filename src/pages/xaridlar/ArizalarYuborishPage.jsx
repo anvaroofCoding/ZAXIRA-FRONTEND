@@ -1,9 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import AddIcon from '@mui/icons-material/Add'
 import SearchIcon from '@mui/icons-material/Search'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import CircularProgress from '@mui/material/CircularProgress'
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogContentText from '@mui/material/DialogContentText'
+import DialogTitle from '@mui/material/DialogTitle'
 import InputAdornment from '@mui/material/InputAdornment'
 import Snackbar from '@mui/material/Snackbar'
 import TablePagination from '@mui/material/TablePagination'
@@ -16,9 +22,16 @@ import { PurchaseRequestsPageSkeleton } from '@/features/purchase-requests/compo
 import { PurchaseRequestsTable } from '@/features/purchase-requests/components/PurchaseRequestsTable'
 import {
   useCreatePurchaseRequestMutation,
+  useDeletePurchaseRequestMutation,
   useGetPurchaseRequestsQuery,
   useResubmitPurchaseRequestMutation,
+  useUpdatePurchaseRequestMutation,
 } from '@/features/purchase-requests/api/purchaseRequestsApi'
+import { canDeletePurchaseRequest } from '@/features/purchase-requests/utils/purchaseRequestDelete'
+import {
+  canEditPurchaseRequestInReview,
+  canResubmitPurchaseRequest,
+} from '@/features/purchase-requests/utils/purchaseRequestEdit'
 import { hasPageAction } from '@/features/permissions/utils/permissions'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
@@ -30,7 +43,8 @@ const PAGE_PATH = '/xaridlar/arizalar-yuborish'
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
 
 export const ArizalarYuborishPage = () => {
-  const { user: authUser } = usePermissions()
+  const { user: authUser, canDelete: canDeletePage, canUpdate: canUpdatePage } =
+    usePermissions()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
   const [search, setSearch] = useState('')
@@ -39,6 +53,8 @@ export const ArizalarYuborishPage = () => {
   const [downloadingId, setDownloadingId] = useState(null)
   const [detailTarget, setDetailTarget] = useState(null)
   const [resubmitTarget, setResubmitTarget] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [editTarget, setEditTarget] = useState(null)
 
   const debouncedSearch = useDebouncedValue(search, 350)
 
@@ -53,6 +69,8 @@ export const ArizalarYuborishPage = () => {
   })
   const [createPurchaseRequest, createState] = useCreatePurchaseRequestMutation()
   const [resubmitPurchaseRequest, resubmitState] = useResubmitPurchaseRequestMutation()
+  const [deletePurchaseRequest, deleteState] = useDeletePurchaseRequestMutation()
+  const [updatePurchaseRequest, updateState] = useUpdatePurchaseRequestMutation()
 
   const items = useMemo(() => requestsQuery.data?.items ?? [], [requestsQuery.data?.items])
   const total = requestsQuery.data?.total ?? 0
@@ -61,6 +79,23 @@ export const ArizalarYuborishPage = () => {
     authUser?.isSuperAdmin || authUser?.role === 'SUPER_ADMIN'
   const canCreate =
     isSuperAdmin || hasPageAction(authUser, PAGE_PATH, 'create')
+
+  const canDeleteItem = useCallback(
+    (item) =>
+      canDeletePage(PAGE_PATH) &&
+      canDeletePurchaseRequest(item, { isSuperAdmin }),
+    [canDeletePage, isSuperAdmin],
+  )
+
+  const canEditItem = useCallback(
+    (item) => canEditPurchaseRequestInReview(item, authUser, canUpdatePage),
+    [authUser, canUpdatePage],
+  )
+
+  const canResubmitItem = useCallback(
+    (item) => canResubmitPurchaseRequest(item, authUser, canUpdatePage),
+    [authUser, canUpdatePage],
+  )
 
   const isRequestsReady = !requestsQuery.isLoading && !requestsQuery.isUninitialized
 
@@ -90,6 +125,41 @@ export const ArizalarYuborishPage = () => {
     } catch (error) {
       const message = getApiErrorMessage(error, 'Qayta yuborishda xatolik')
       throw new Error(message, { cause: error })
+    }
+  }
+
+  const handleDeleteRequest = (item) => {
+    setDeleteTarget(item)
+  }
+
+  const handleEditRequest = (item) => {
+    setEditTarget(item)
+  }
+
+  const handleUpdate = async (payload) => {
+    if (!editTarget?.id) return
+
+    try {
+      const updated = await updatePurchaseRequest({ id: editTarget.id, ...payload }).unwrap()
+      setEditTarget(null)
+      setDetailTarget(null)
+      showSnackbar(`Ariza ${updated.requestCode} yangilandi`)
+    } catch (error) {
+      const message = getApiErrorMessage(error, 'Tahrirlashda xatolik')
+      throw new Error(message, { cause: error })
+    }
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget?.id) return
+
+    try {
+      await deletePurchaseRequest(deleteTarget.id).unwrap()
+      setDeleteTarget(null)
+      setDetailTarget(null)
+      showSnackbar(`Ariza ${deleteTarget.requestCode} o‘chirildi`)
+    } catch (error) {
+      showSnackbar(getApiErrorMessage(error, 'Arizani o‘chirishda xatolik'), 'error')
     }
   }
 
@@ -177,6 +247,12 @@ export const ArizalarYuborishPage = () => {
                 onView={(item) => setDetailTarget(item)}
                 onDownloadPdf={(item) => handleDownload(item, 'pdf')}
                 onDownloadDocx={(item) => handleDownload(item, 'docx')}
+                onDelete={canDeletePage(PAGE_PATH) ? handleDeleteRequest : undefined}
+                canDeleteItem={canDeleteItem}
+                onEdit={handleEditRequest}
+                canEditItem={canEditItem}
+                onResubmit={(item) => setResubmitTarget(item)}
+                canResubmitItem={canResubmitItem}
               />
 
               <TablePagination
@@ -207,17 +283,57 @@ export const ArizalarYuborishPage = () => {
         onSubmit={handleSubmit}
       />
 
+      <PurchaseRequestFormDialog
+        open={Boolean(editTarget)}
+        request={editTarget}
+        loading={updateState.isLoading}
+        onClose={() => setEditTarget(null)}
+        onSubmit={handleUpdate}
+      />
+
       <PurchaseRequestDetailDialog
         open={Boolean(detailTarget)}
         requestId={detailTarget?.id}
         downloading={downloadingId === detailTarget?.id}
+        deleting={deleteState.isLoading}
         onClose={() => setDetailTarget(null)}
         onDownloadPdf={(item) => handleDownload(item, 'pdf')}
         onDownloadDocx={(item) => handleDownload(item, 'docx')}
+        onDelete={canDeletePage(PAGE_PATH) ? handleDeleteRequest : undefined}
+        onEdit={handleEditRequest}
         onResubmit={(item) => {
           setResubmitTarget(item)
         }}
       />
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={() => !deleteState.isLoading && setDeleteTarget(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Arizani o‘chirish</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            <strong>{deleteTarget?.requestCode}</strong> arizasini butunlay o‘chirasizmi? Bu amalni
+            qaytarib bo‘lmaydi.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)} disabled={deleteState.isLoading}>
+            Bekor qilish
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={deleteState.isLoading}
+            onClick={handleConfirmDelete}
+            startIcon={deleteState.isLoading ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            O‘chirish
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <ResubmitPurchaseRequestDialog
         open={Boolean(resubmitTarget)}

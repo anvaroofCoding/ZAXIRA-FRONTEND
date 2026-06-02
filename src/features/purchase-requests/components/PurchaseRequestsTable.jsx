@@ -16,6 +16,12 @@ export const PurchaseRequestsTable = ({
   onView,
   onDownloadPdf,
   onDownloadDocx,
+  onDelete,
+  canDeleteItem,
+  onEdit,
+  canEditItem,
+  onResubmit,
+  canResubmitItem,
   downloadingId,
 }) => {
   if (!items.length) {
@@ -81,6 +87,12 @@ export const PurchaseRequestsTable = ({
                     onView={onView}
                     onDownloadPdf={onDownloadPdf}
                     onDownloadDocx={onDownloadDocx}
+                    onDelete={onDelete}
+                    canDelete={canDeleteItem?.(item) ?? false}
+                    onEdit={onEdit}
+                    canEdit={canEditItem?.(item) ?? false}
+                    onResubmit={onResubmit}
+                    canResubmit={canResubmitItem?.(item) ?? false}
                   />
                 </TableCell>
               </TableRow>

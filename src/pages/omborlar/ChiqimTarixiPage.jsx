@@ -46,24 +46,21 @@ import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
 const CHIQIM_QILISH_PATH = '/omborlar/chiqim-qilish'
+const ALL_STRUCTURES_VALUE = ''
 
 export const ChiqimTarixiPage = () => {
   const dispatch = useAppDispatch()
-  const { user, canAccess, canDelete } = usePermissions()
+  const { user, canDelete } = usePermissions()
+  const viewerStructureId = user?.structureId ?? ''
   const canDeleteExpense =
     user?.isSuperAdmin ||
     user?.role === 'SUPER_ADMIN' ||
     user?.role === 'ADMIN' ||
     canDelete(CHIQIM_QILISH_PATH)
-  const canFilterByStructure =
-    user?.isSuperAdmin ||
-    user?.role === 'SUPER_ADMIN' ||
-    user?.role === 'ADMIN' ||
-    canAccess('/omborlar/boshqa-omborlar')
 
   const [search, setSearch] = useState('')
   const [reasonKey, setReasonKey] = useState('')
-  const [structureFilter, setStructureFilter] = useState('')
+  const [structureFilter, setStructureFilter] = useState(null)
   const [dateFrom, setDateFrom] = useState(null)
   const [dateTo, setDateTo] = useState(null)
   const [page, setPage] = useState(0)
@@ -87,7 +84,12 @@ export const ChiqimTarixiPage = () => {
     setPage(0)
   }, [debouncedSearch, reasonKey, structureFilter, dateFromParam, dateToParam])
 
-  const structuresQuery = useGetStructuresQuery(undefined, { skip: !canFilterByStructure })
+  useEffect(() => {
+    if (structureFilter !== null) return
+    setStructureFilter(viewerStructureId || ALL_STRUCTURES_VALUE)
+  }, [structureFilter, viewerStructureId])
+
+  const structuresQuery = useGetStructuresQuery()
   const structuresForFilter = useMemo(() => {
     const list = structuresQuery.data ?? []
     return [...list]
@@ -95,19 +97,28 @@ export const ChiqimTarixiPage = () => {
       .sort((a, b) => a.shortName.localeCompare(b.shortName, 'uz'))
   }, [structuresQuery.data])
 
-  const structureIdParam = structureFilter || undefined
-  const showAllStructures = canFilterByStructure && !structureFilter
+  const resolvedStructureFilter =
+    structureFilter === null ? viewerStructureId || ALL_STRUCTURES_VALUE : structureFilter
+
+  const structureIdParam =
+    resolvedStructureFilter === ALL_STRUCTURES_VALUE ? undefined : resolvedStructureFilter
+
+  const showAllStructures = resolvedStructureFilter === ALL_STRUCTURES_VALUE
+  const showStructureColumn = showAllStructures || structuresForFilter.length > 1
 
   const reasonsQuery = useGetWarehouseExpenseReasonsQuery()
-  const historyQuery = useGetWarehouseExpensesQuery({
-    page: page + 1,
-    limit: rowsPerPage,
-    search: debouncedSearch,
-    dateFrom: dateFromParam,
-    dateTo: dateToParam,
-    reasonKey,
-    structureId: structureIdParam,
-  })
+  const historyQuery = useGetWarehouseExpensesQuery(
+    {
+      page: page + 1,
+      limit: rowsPerPage,
+      search: debouncedSearch,
+      dateFrom: dateFromParam,
+      dateTo: dateToParam,
+      reasonKey,
+      structureId: structureIdParam,
+    },
+    { skip: structureFilter === null },
+  )
 
   const detailQuery = useGetWarehouseExpenseByCodeQuery(
     {
@@ -243,26 +254,29 @@ export const ChiqimTarixiPage = () => {
                 }}
               />
 
-              {canFilterByStructure ? (
-                <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 240 } }}>
-                  <InputLabel id="expense-structure-filter-label">Tuzilma</InputLabel>
-                  <Select
-                    labelId="expense-structure-filter-label"
-                    label="Tuzilma"
-                    value={structureFilter}
-                    onChange={(event) => setStructureFilter(event.target.value)}
-                  >
-                    <MenuItem value="">
-                      <em>Barchasi</em>
+              <FormControl
+                size="small"
+                sx={{ minWidth: { xs: '100%', md: 240 } }}
+                disabled={structureFilter === null}
+              >
+                <InputLabel id="expense-structure-filter-label">Tuzilma</InputLabel>
+                <Select
+                  labelId="expense-structure-filter-label"
+                  label="Tuzilma"
+                  value={resolvedStructureFilter}
+                  onChange={(event) => setStructureFilter(event.target.value)}
+                >
+                  <MenuItem value={ALL_STRUCTURES_VALUE}>
+                    <em>Barcha tuzilmalar</em>
+                  </MenuItem>
+                  {structuresForFilter.map((structure) => (
+                    <MenuItem key={structure.id} value={structure.id}>
+                      {structure.shortName || structure.fullName}
+                      {structure.id === viewerStructureId ? ' (sizniki)' : ''}
                     </MenuItem>
-                    {structuresForFilter.map((structure) => (
-                      <MenuItem key={structure.id} value={structure.id}>
-                        {structure.shortName || structure.fullName}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              ) : null}
+                  ))}
+                </Select>
+              </FormControl>
 
               <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 220 } }}>
                 <InputLabel id="expense-reason-filter-label">Sabab</InputLabel>
@@ -292,7 +306,7 @@ export const ChiqimTarixiPage = () => {
                   <TableHead>
                     <TableRow>
                       <TableCell>Kod</TableCell>
-                      {showAllStructures ? <TableCell>Tuzilma</TableCell> : null}
+                      {showStructureColumn ? <TableCell>Tuzilma</TableCell> : null}
                       <TableCell>Sabab</TableCell>
                       <TableCell width={180}>Sana</TableCell>
                       <TableCell>Kim</TableCell>
@@ -322,7 +336,7 @@ export const ChiqimTarixiPage = () => {
                             {item.code}
                           </Typography>
                         </TableCell>
-                        {showAllStructures ? (
+                        {showStructureColumn ? (
                           <TableCell>
                             <Typography variant="body2" noWrap>
                               {item.structureName ?? '—'}
@@ -391,16 +405,14 @@ export const ChiqimTarixiPage = () => {
                     {detailQuery.data.code}
                   </Typography>
                 </Box>
-                {canFilterByStructure ? (
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">
-                      Tuzilma
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {detailQuery.data.structureName ?? '—'}
-                    </Typography>
-                  </Box>
-                ) : null}
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Tuzilma
+                  </Typography>
+                  <Typography variant="body2" fontWeight={600}>
+                    {detailQuery.data.structureName ?? '—'}
+                  </Typography>
+                </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
                     Sabab

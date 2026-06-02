@@ -14,7 +14,11 @@ const skeletonByVariant = {
   [SKELETON_VARIANTS.users]: UsersPageSkeleton,
   [SKELETON_VARIANTS.structures]: StructuresPageSkeleton,
   [SKELETON_VARIANTS.purchasingQueue]: () => (
-    <PurchasingInboxSkeleton ariaLabel="Sotib olinadigan tavarlar yuklanmoqda" />
+    <PurchasingInboxSkeleton
+      variant="queue"
+      showPurchaseTotal
+      ariaLabel="Sotib olinadigan maxsulotlar yuklanmoqda"
+    />
   ),
   [SKELETON_VARIANTS.purchasingPurchased]: () => (
     <PurchasingInboxSkeleton

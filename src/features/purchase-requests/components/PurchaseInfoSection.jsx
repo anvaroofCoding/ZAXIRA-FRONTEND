@@ -12,7 +12,7 @@ import { formatDateTime } from '@/shared/utils/formatDate'
 import { formatUzs } from '@/shared/utils/formatUzs'
 import { downloadAuthenticatedFile } from '@/shared/utils/downloadFile'
 
-export const PurchaseInfoSection = ({ request }) => {
+export const PurchaseInfoSection = ({ request, showItemsTable = true }) => {
   const purchase = request?.purchase
 
   if (!purchase) {
@@ -99,63 +99,65 @@ export const PurchaseInfoSection = ({ request }) => {
         </Stack>
       </Paper>
 
-      <TableContainer component={Paper} variant="outlined">
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Tovar</TableCell>
-              <TableCell width={140} align="right">
-                Miqdor
-              </TableCell>
-              <TableCell width={160} align="right">
-                1 dona narxi
-              </TableCell>
-              <TableCell width={190} align="right">
-                Jami
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {request.items.map((item, index) => (
-              (() => {
-                const unit = Number(item.purchaseAmount ?? 0)
-                const total = unit * Number(item.quantity ?? 0)
-                return (
-              <TableRow key={`${item.name}-${index}`}>
-                <TableCell>
-                  <Typography variant="body2" fontWeight={600}>
-                    {item.name}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    {item.characteristics}
-                  </Typography>
+      {showItemsTable ? (
+        <TableContainer component={Paper} variant="outlined">
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Tovar</TableCell>
+                <TableCell width={140} align="right">
+                  Miqdor
                 </TableCell>
-                <TableCell align="right">
-                  <Typography variant="body2">{item.quantity} ta</Typography>
+                <TableCell width={160} align="right">
+                  1 dona narxi
                 </TableCell>
-                <TableCell align="right">
-                  <Typography variant="body2">{formatUzs(unit)}</Typography>
-                </TableCell>
-                <TableCell align="right">
-                  <Typography variant="body2" fontWeight={700}>
-                    {formatUzs(total)}
-                  </Typography>
+                <TableCell width={190} align="right">
+                  Jami
                 </TableCell>
               </TableRow>
-                )
-              })()
-            ))}
-            <TableRow>
-              <TableCell sx={{ fontWeight: 700 }}>Jami</TableCell>
-              <TableCell />
-              <TableCell />
-              <TableCell sx={{ fontWeight: 700 }} align="right">
-                <Typography variant="body2">{formatUzs(request.purchaseTotalAmount)}</Typography>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {request.items.map((item, index) => (
+                (() => {
+                  const unit = Number(item.purchaseAmount ?? 0)
+                  const total = unit * Number(item.quantity ?? 0)
+                  return (
+                    <TableRow key={`${item.name}-${index}`}>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={600}>
+                          {item.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {item.characteristics}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2">{item.quantity} ta</Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2">{formatUzs(unit)}</Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2" fontWeight={700}>
+                          {formatUzs(total)}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })()
+              ))}
+              <TableRow>
+                <TableCell sx={{ fontWeight: 700 }}>Jami</TableCell>
+                <TableCell />
+                <TableCell />
+                <TableCell sx={{ fontWeight: 700 }} align="right">
+                  <Typography variant="body2">{formatUzs(request.purchaseTotalAmount)}</Typography>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </TableContainer>
+      ) : null}
     </Stack>
   )
 }

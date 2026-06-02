@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import Box from '@mui/material/Box'
 import Snackbar from '@mui/material/Snackbar'
 import TablePagination from '@mui/material/TablePagination'
 import Alert from '@mui/material/Alert'
 import { useGetPurchasingInboxQuery } from '@/features/purchase-requests/api/purchaseRequestsApi'
 import { CompletePurchaseDialog } from '@/features/purchase-requests/components/CompletePurchaseDialog'
+import { RejectPurchaseDialog } from '@/features/purchase-requests/components/RejectPurchaseDialog'
 import { DispatchToWarehouseDialog } from '@/features/warehouse-dispatches/components/DispatchToWarehouseDialog'
 import { PurchaseRequestReadOnlyDetailDialog } from '@/features/purchase-requests/components/PurchaseRequestReadOnlyDetailDialog'
 import { PurchasingPageFilters } from '@/features/purchase-requests/components/PurchasingPageFilters'
@@ -13,6 +14,7 @@ import { PurchasingQueueTable } from '@/features/purchase-requests/components/Pu
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { usePurchasingListFilters } from '@/shared/hooks/usePurchasingListFilters'
 import { downloadAuthenticatedFile } from '@/shared/utils/downloadFile'
+import { useQueryParamOpen } from '@/shared/hooks/useQueryParamOpen'
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
 
@@ -34,7 +36,10 @@ export const SotibOlinadiganTovarlarPage = () => {
   } = usePurchasingListFilters()
 
   const [detailTarget, setDetailTarget] = useState(null)
+  const openDetailFromQuery = useCallback((id) => setDetailTarget({ id }), [])
+  useQueryParamOpen('detail', openDetailFromQuery)
   const [purchaseTarget, setPurchaseTarget] = useState(null)
+  const [rejectTarget, setRejectTarget] = useState(null)
   const [dispatchTarget, setDispatchTarget] = useState(null)
   const [downloadingId, setDownloadingId] = useState(null)
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
@@ -72,11 +77,17 @@ export const SotibOlinadiganTovarlarPage = () => {
         isFetching={inboxQuery.isFetching}
         isUninitialized={inboxQuery.isUninitialized}
         hasData={isReady}
-        skeleton={<PurchasingInboxSkeleton variant="queue" ariaLabel="Sotib olinadigan tavarlar yuklanmoqda" />}
+        skeleton={
+          <PurchasingInboxSkeleton
+            variant="queue"
+            showPurchaseTotal
+            ariaLabel="Sotib olinadigan maxsulotlar yuklanmoqda"
+          />
+        }
       >
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <PurchasingPageFilters
-            title="Sotib olinadigan tavarlar"
+            title="Sotib olinadigan maxsulotlar"
             search={search}
             onSearchChange={setSearch}
             dateFrom={dateFrom}
@@ -91,8 +102,11 @@ export const SotibOlinadiganTovarlarPage = () => {
 
           <PurchasingQueueTable
             items={items}
-            emptyMessage="Sotib olinadigan arizalar topilmadi"
+            emptyMessage="Sotib olinadigan maxsulotlar topilmadi"
             onView={setDetailTarget}
+            onPurchase={setPurchaseTarget}
+            onReject={setRejectTarget}
+            onDispatch={setDispatchTarget}
           />
 
           <TablePagination
@@ -120,6 +134,10 @@ export const SotibOlinadiganTovarlarPage = () => {
           setDetailTarget(null)
           setPurchaseTarget(request)
         }}
+        onReject={(request) => {
+          setDetailTarget(null)
+          setRejectTarget(request)
+        }}
         onDispatch={(request) => {
           setDetailTarget(null)
           setDispatchTarget(request)
@@ -134,6 +152,13 @@ export const SotibOlinadiganTovarlarPage = () => {
         request={purchaseTarget}
         onClose={() => setPurchaseTarget(null)}
         onSuccess={() => showSnackbar('Xarid muvaffaqiyatli qayd etildi')}
+      />
+
+      <RejectPurchaseDialog
+        open={Boolean(rejectTarget)}
+        request={rejectTarget}
+        onClose={() => setRejectTarget(null)}
+        onSuccess={() => showSnackbar('Ariza rad etildi (atkaz)')}
       />
 
       <DispatchToWarehouseDialog

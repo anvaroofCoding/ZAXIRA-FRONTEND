@@ -1,5 +1,7 @@
+import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Paper from '@mui/material/Paper'
+import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -8,11 +10,21 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import { getStatusChipColor } from '@/features/purchase-requests/utils/purchaseRequestStatus'
-import { dispatchCodeSx } from '@/features/warehouse-dispatches/utils/dispatchCodeDisplay'
 import { formatDateTime } from '@/shared/utils/formatDate'
 import { formatUzs } from '@/shared/utils/formatUzs'
 
-export const PurchasingQueueTable = ({ items, emptyMessage, onView, showPurchaseTotal }) => {
+const stopRowClick = (event) => {
+  event.stopPropagation()
+}
+
+export const PurchasingQueueTable = ({
+  items,
+  emptyMessage,
+  onView,
+  onPurchase,
+  onReject,
+  onDispatch,
+}) => {
   if (!items.length) {
     return (
       <Paper variant="outlined" sx={{ py: 6, textAlign: 'center' }}>
@@ -27,76 +39,116 @@ export const PurchasingQueueTable = ({ items, emptyMessage, onView, showPurchase
         <TableHead>
           <TableRow>
             <TableCell width={120}>Ariza ID</TableCell>
-            <TableCell width={150}>Sana</TableCell>
+            <TableCell width={130}>Holat</TableCell>
             <TableCell>Ariza beruvchi</TableCell>
-            <TableCell width={110}>Tuzilma</TableCell>
-            <TableCell width={100}>Tovarlar</TableCell>
-            <TableCell sx={{ minWidth: 140, whiteSpace: 'nowrap' }}>Nakladnoy</TableCell>
-            <TableCell width={140}>Yetkazuvchi</TableCell>
-            {showPurchaseTotal ? <TableCell width={160}>Jami summa</TableCell> : null}
-            <TableCell width={200}>Holat</TableCell>
+            <TableCell width={100}>Tuzilma</TableCell>
+            <TableCell width={80} align="right">
+              Tovarlar
+            </TableCell>
+            <TableCell width={150}>Sana</TableCell>
+            <TableCell width={160}>Yetkazuvchi</TableCell>
+            <TableCell width={130} align="right">
+              Jami summa
+            </TableCell>
+            <TableCell width={280} align="right">
+              Amallar
+            </TableCell>
           </TableRow>
         </TableHead>
 
         <TableBody>
-          {items.map((item) => (
-            <TableRow
-              key={item.id}
-              hover
-              sx={{ cursor: 'pointer' }}
-              onClick={() => onView(item)}
-            >
-              <TableCell sx={{ fontWeight: 600 }}>{item.requestCode}</TableCell>
-              <TableCell>
-                <Typography variant="body2" noWrap>
-                  {formatDateTime(showPurchaseTotal ? item.purchase?.purchasedAt : item.createdAt)}
-                </Typography>
-              </TableCell>
-              <TableCell>
-                <Typography variant="body2" noWrap>
-                  {item.applicant.displayName}
-                </Typography>
-              </TableCell>
-              <TableCell>
-                <Typography variant="body2" noWrap fontWeight={600}>
-                  {item.applicantStructure?.shortName ?? '—'}
-                </Typography>
-              </TableCell>
-              <TableCell>
-                <Typography variant="body2">{item.items.length} ta</Typography>
-              </TableCell>
-              <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                {item.warehouseDispatch?.dispatchCode ? (
-                  <Typography component="span" variant="body2" sx={dispatchCodeSx}>
-                    {item.warehouseDispatch.dispatchCode}
-                  </Typography>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    —
-                  </Typography>
-                )}
-              </TableCell>
-              <TableCell>
-                <Typography variant="body2" noWrap>
-                  {item.purchase?.vendorName ?? '—'}
-                </Typography>
-              </TableCell>
-              {showPurchaseTotal ? (
+          {items.map((item) => {
+            const hasPurchase = Boolean(item.purchase)
+            const displayDate = hasPurchase ? item.purchase?.purchasedAt : item.createdAt
+
+            return (
+              <TableRow
+                key={item.id}
+                hover
+                sx={{ cursor: 'pointer' }}
+                onClick={() => onView(item)}
+              >
+                <TableCell sx={{ fontWeight: 600 }}>{item.requestCode}</TableCell>
                 <TableCell>
-                  <Typography variant="body2" noWrap>
-                    {formatUzs(item.purchaseTotalAmount)}
+                  <Chip
+                    size="small"
+                    color={getStatusChipColor(item.status)}
+                    label={item.statusLabel}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Typography variant="body2" noWrap title={item.applicant.login}>
+                    {item.applicant.displayName}
                   </Typography>
                 </TableCell>
-              ) : null}
-              <TableCell>
-                <Chip
-                  size="small"
-                  color={getStatusChipColor(item.status)}
-                  label={item.statusLabel}
-                />
-              </TableCell>
-            </TableRow>
-          ))}
+                <TableCell>
+                  <Typography variant="body2" noWrap fontWeight={600}>
+                    {item.applicantStructure?.shortName ?? '—'}
+                  </Typography>
+                </TableCell>
+                <TableCell align="right">
+                  <Typography variant="body2">{item.items.length} ta</Typography>
+                </TableCell>
+                <TableCell>
+                  <Typography variant="body2" noWrap>
+                    {displayDate ? formatDateTime(displayDate) : '—'}
+                  </Typography>
+                </TableCell>
+                <TableCell>
+                  <Typography variant="body2" noWrap>
+                    {item.purchase?.vendorName ?? '—'}
+                  </Typography>
+                </TableCell>
+                <TableCell align="right">
+                  <Typography variant="body2" noWrap>
+                    {hasPurchase ? formatUzs(item.purchaseTotalAmount) : '—'}
+                  </Typography>
+                </TableCell>
+                <TableCell align="right" onClick={stopRowClick}>
+                  <Stack
+                    direction="row"
+                    spacing={0.75}
+                    justifyContent="flex-end"
+                    flexWrap="wrap"
+                    useFlexGap
+                  >
+                    {item.canRejectPurchase && onReject ? (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="error"
+                        onClick={() => onReject(item)}
+                      >
+                        Atkaz qilish
+                      </Button>
+                    ) : null}
+                    {item.canCompletePurchase && onPurchase ? (
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="success"
+                        onClick={() => onPurchase(item)}
+                      >
+                        Xarid qilish
+                      </Button>
+                    ) : null}
+                    {item.canDispatchToWarehouse && onDispatch ? (
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={() => onDispatch(item)}
+                      >
+                        Omborga jo‘natish
+                      </Button>
+                    ) : null}
+                    <Button size="small" variant="outlined" onClick={() => onView(item)}>
+                      Batafsil
+                    </Button>
+                  </Stack>
+                </TableCell>
+              </TableRow>
+            )
+          })}
         </TableBody>
       </Table>
     </TableContainer>

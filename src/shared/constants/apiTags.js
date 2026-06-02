@@ -12,4 +12,5 @@ export const API_TAGS = {
   STOCKTAKE: 'Stocktake',
   NOTIFICATION: 'Notification',
   CHAT: 'Chat',
+  PRODUCT: 'Product',
 }

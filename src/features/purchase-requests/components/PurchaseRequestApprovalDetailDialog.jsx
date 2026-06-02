@@ -29,6 +29,9 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { ApprovalDecisionDialog } from '@/features/purchase-requests/components/ApprovalDecisionDialog'
 import { ApprovalTimelineSteps } from '@/features/purchase-requests/components/ApprovalTimelineSteps'
+import { PurchaseDeadlineDetailRow } from '@/features/purchase-requests/components/PurchaseDeadlineDetailRow'
+import { PurchaseRequestItemsTable } from '@/features/purchase-requests/components/PurchaseRequestItemsTable'
+import { ProductPriceCompareDialog } from '@/features/product-prices/components/ProductPriceCompareDialog'
 import {
   useConfirmBossDecisionMutation,
   useGetPurchaseRequestByIdQuery,
@@ -39,8 +42,11 @@ import {
   getDecisionChipColor,
   getStatusChipColor,
 } from '@/features/purchase-requests/utils/purchaseRequestStatus'
+import { usePermissions } from '@/shared/hooks/usePermissions'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 import { formatDateTime } from '@/shared/utils/formatDate'
+
+const APPROVAL_PAGE_PATH = '/xaridlar/arizalarni-tasdiqlash'
 
 const DetailRow = ({ label, value }) => (
   <Box>
@@ -63,6 +69,7 @@ export const PurchaseRequestApprovalDetailDialog = ({
   onSuccess,
 }) => {
   const [copied, setCopied] = useState(false)
+  const [priceItem, setPriceItem] = useState(null)
   const [decisionOpen, setDecisionOpen] = useState(false)
   const [bossOpen, setBossOpen] = useState(false)
   const [bossPreset, setBossPreset] = useState(null)
@@ -72,12 +79,15 @@ export const PurchaseRequestApprovalDetailDialog = ({
   })
   const [submitDecision, submitState] = useSubmitApprovalDecisionMutation()
   const [confirmBoss, bossState] = useConfirmBossDecisionMutation()
+  const { canCreate } = usePermissions()
+  const canSubmitApproval = canCreate(APPROVAL_PAGE_PATH)
 
   const request = detailQuery.data
 
   useEffect(() => {
     if (!open) {
       setCopied(false)
+      setPriceItem(null)
       setDecisionOpen(false)
       setBossOpen(false)
       setBossPreset(null)
@@ -252,37 +262,19 @@ export const PurchaseRequestApprovalDetailDialog = ({
                 </TableContainer>
               </Box>
 
-              <Box>
-                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
-                  Tovarlar va xususiyatlar (ustavga mosligi)
-                </Typography>
-                <TableContainer component={Paper} variant="outlined">
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell width={48}>T/R</TableCell>
-                        <TableCell>Tovar nomi</TableCell>
-                        <TableCell>Tovar xususiyati</TableCell>
-                        <TableCell width={72}>Soni</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {request.items.map((item, index) => (
-                        <TableRow key={`${item.name}-${index}`}>
-                          <TableCell>{index + 1}</TableCell>
-                          <TableCell sx={{ fontWeight: 500 }}>{item.name}</TableCell>
-                          <TableCell sx={{ whiteSpace: 'pre-wrap', bgcolor: 'action.hover' }}>
-                            {item.characteristics}
-                          </TableCell>
-                          <TableCell>{item.quantity}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Box>
+              <PurchaseRequestItemsTable
+                items={request.items}
+                title="Tovarlar va xususiyatlar (ustavga mosligi)"
+                subtitle="Bozor narxini ko‘rish uchun qatorni bosing · uzun matn — «To‘liq ko‘rish»"
+                onItemClick={setPriceItem}
+              />
 
               <DetailRow label="Ariza izohi" value={request.comment} />
+
+              <PurchaseDeadlineDetailRow
+                deadline={request.purchaseDeadline}
+                mandatory={request.purchaseDeadlineMandatory}
+              />
 
               <BossDecisionAlert request={request} />
 
@@ -361,7 +353,7 @@ export const PurchaseRequestApprovalDetailDialog = ({
                 Word
               </Button>
 
-              {request.canSubmitDecision ? (
+              {request.canSubmitDecision && canSubmitApproval ? (
                 <Button
                   size="small"
                   variant="contained"
@@ -381,6 +373,12 @@ export const PurchaseRequestApprovalDetailDialog = ({
         loading={submitState.isLoading}
         onClose={() => setDecisionOpen(false)}
         onSubmit={handleSubmitDecision}
+      />
+
+      <ProductPriceCompareDialog
+        open={Boolean(priceItem)}
+        item={priceItem}
+        onClose={() => setPriceItem(null)}
       />
 
       <ApprovalDecisionDialog

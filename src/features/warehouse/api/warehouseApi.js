@@ -21,6 +21,28 @@ export const warehouseApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: [API_TAGS.WAREHOUSE_LOCATION],
     }),
+    updateWarehouseLocation: builder.mutation({
+      query: ({ id, name }) => ({
+        url: `/warehouse/locations/${id}`,
+        method: 'PATCH',
+        body: { name },
+      }),
+      invalidatesTags: (_result, _error, arg) => [
+        { type: API_TAGS.WAREHOUSE_LOCATION, id: arg.id },
+        API_TAGS.WAREHOUSE_LOCATION,
+      ],
+    }),
+    deleteWarehouseLocation: builder.mutation({
+      query: (id) => ({
+        url: `/warehouse/locations/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_result, _error, id) => [
+        { type: API_TAGS.WAREHOUSE_LOCATION, id },
+        API_TAGS.WAREHOUSE_LOCATION,
+        API_TAGS.WAREHOUSE_INVENTORY,
+      ],
+    }),
     getWarehouseInventoryByLocation: builder.query({
       query: ({ locationId, page = 1, limit = 10, search = '' }) => ({
         url: `/warehouse/locations/${locationId}/inventory`,
@@ -117,6 +139,8 @@ export const warehouseApi = baseApi.injectEndpoints({
 export const {
   useGetWarehouseLocationsQuery,
   useCreateWarehouseLocationMutation,
+  useUpdateWarehouseLocationMutation,
+  useDeleteWarehouseLocationMutation,
   useGetWarehouseInventoryByLocationQuery,
   useGetAllWarehousesOverviewQuery,
   useGetWarehouseInventoryByAnyLocationQuery,

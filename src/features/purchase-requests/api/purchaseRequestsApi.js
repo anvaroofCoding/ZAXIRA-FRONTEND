@@ -38,10 +38,16 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
         const id = typeof arg === 'string' ? arg : arg?.id
         const purchasingView =
           typeof arg === 'object' && arg?.purchasingView ? '1' : undefined
+        const historyView =
+          typeof arg === 'object' && arg?.historyView ? '1' : undefined
+
+        const params = {}
+        if (purchasingView) params.purchasingView = purchasingView
+        if (historyView) params.historyView = historyView
 
         return {
           url: `/purchase-requests/${id}`,
-          params: purchasingView ? { purchasingView } : undefined,
+          params: Object.keys(params).length ? params : undefined,
         }
       },
       providesTags: (_result, _error, arg) => {
@@ -85,11 +91,33 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
         return tags
       },
     }),
+    rejectPurchase: builder.mutation({
+      query: ({ id, reasonKey, comment }) => ({
+        url: `/purchase-requests/${id}/purchase/reject`,
+        method: 'POST',
+        body: { reasonKey, comment },
+      }),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: API_TAGS.PURCHASE_REQUEST, id },
+        API_TAGS.PURCHASE_REQUEST,
+      ],
+    }),
     completePurchase: builder.mutation({
       query: ({ id, formData }) => ({
         url: `/purchase-requests/${id}/purchase`,
         method: 'POST',
         body: formData,
+      }),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: API_TAGS.PURCHASE_REQUEST, id },
+        API_TAGS.PURCHASE_REQUEST,
+      ],
+    }),
+    updatePurchaseRequest: builder.mutation({
+      query: ({ id, ...body }) => ({
+        url: `/purchase-requests/${id}/update`,
+        method: 'POST',
+        body,
       }),
       invalidatesTags: (_result, _error, { id }) => [
         { type: API_TAGS.PURCHASE_REQUEST, id },
@@ -172,6 +200,16 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
         API_TAGS.PURCHASE_REQUEST,
       ],
     }),
+    deletePurchaseRequest: builder.mutation({
+      query: (id) => ({
+        url: `/purchase-requests/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_result, _error, id) => [
+        { type: API_TAGS.PURCHASE_REQUEST, id },
+        API_TAGS.PURCHASE_REQUEST,
+      ],
+    }),
   }),
 })
 
@@ -179,6 +217,7 @@ export const {
   useGetPurchaseRequestsQuery,
   useGetPurchaseRequestByIdQuery,
   useCreatePurchaseRequestMutation,
+  useUpdatePurchaseRequestMutation,
   useGetPurchaseRequestHistoryQuery,
   useGetApprovalInboxQuery,
   useSubmitApprovalDecisionMutation,
@@ -187,4 +226,6 @@ export const {
   useGetPurchasingInboxQuery,
   useGetPurchasedInboxQuery,
   useCompletePurchaseMutation,
+  useRejectPurchaseMutation,
+  useDeletePurchaseRequestMutation,
 } = purchaseRequestsApi

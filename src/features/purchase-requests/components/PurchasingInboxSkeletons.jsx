@@ -34,34 +34,34 @@ const FiltersSkeleton = () => (
 
 const QueueTableRowSkeleton = ({ showPurchaseTotal }) => (
   <TableRow>
-    <TableCell width={120}>
+    <TableCell>
       <SkeletonBlock height={18} width="70%" />
     </TableCell>
-    <TableCell width={150}>
-      <SkeletonBlock height={18} width="85%" />
+    <TableCell>
+      <SkeletonBlock height={24} width={100} sx={{ borderRadius: 2 }} />
     </TableCell>
     <TableCell>
       <SkeletonBlock height={18} width="75%" />
     </TableCell>
-    <TableCell width={110}>
+    <TableCell>
       <SkeletonBlock height={18} width="60%" />
     </TableCell>
-    <TableCell width={100}>
-      <SkeletonBlock height={18} width="45%" />
+    <TableCell align="right">
+      <SkeletonBlock height={18} width={36} sx={{ ml: 'auto' }} />
     </TableCell>
     <TableCell>
-      <SkeletonBlock height={18} width="80%" />
+      <SkeletonBlock height={18} width="85%" />
     </TableCell>
-    <TableCell width={140}>
+    <TableCell>
       <SkeletonBlock height={18} width="70%" />
     </TableCell>
     {showPurchaseTotal ? (
-      <TableCell width={160}>
-        <SkeletonBlock height={18} width="65%" />
+      <TableCell align="right">
+        <SkeletonBlock height={18} width={72} sx={{ ml: 'auto' }} />
       </TableCell>
     ) : null}
-    <TableCell width={200}>
-      <SkeletonBlock height={24} width={120} sx={{ borderRadius: 2 }} />
+    <TableCell align="right">
+      <SkeletonBlock height={28} width={200} sx={{ ml: 'auto', borderRadius: 2 }} />
     </TableCell>
   </TableRow>
 )
@@ -72,14 +72,22 @@ const QueueTableSkeleton = ({ showPurchaseTotal = false }) => (
       <TableHead>
         <TableRow>
           <TableCell width={120}>Ariza ID</TableCell>
-          <TableCell width={150}>Sana</TableCell>
+          <TableCell width={130}>Holat</TableCell>
           <TableCell>Ariza beruvchi</TableCell>
           <TableCell width={110}>Tuzilma</TableCell>
-          <TableCell width={100}>Tovarlar</TableCell>
-          <TableCell>Nakladnoy</TableCell>
-          <TableCell width={140}>Yetkazuvchi</TableCell>
-          {showPurchaseTotal ? <TableCell width={160}>Jami summa</TableCell> : null}
-          <TableCell width={200}>Holat</TableCell>
+          <TableCell width={80} align="right">
+            Tovarlar
+          </TableCell>
+          <TableCell width={150}>Sana</TableCell>
+          <TableCell width={160}>Yetkazuvchi</TableCell>
+          {showPurchaseTotal ? (
+            <TableCell width={130} align="right">
+              Jami summa
+            </TableCell>
+          ) : null}
+          <TableCell width={280} align="right">
+            Amallar
+          </TableCell>
         </TableRow>
       </TableHead>
       <TableBody>

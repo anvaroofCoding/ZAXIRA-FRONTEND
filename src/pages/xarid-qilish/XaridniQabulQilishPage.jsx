@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Badge from '@mui/material/Badge'
 import Box from '@mui/material/Box'
@@ -22,6 +22,7 @@ import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { usePurchasingListFilters } from '@/shared/hooks/usePurchasingListFilters'
 import { dispatchCodeSx } from '@/features/warehouse-dispatches/utils/dispatchCodeDisplay'
 import { formatDateTime } from '@/shared/utils/formatDate'
+import { useQueryParamOpen } from '@/shared/hooks/useQueryParamOpen'
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
 
@@ -43,6 +44,8 @@ export const XaridniQabulQilishPage = () => {
   } = usePurchasingListFilters()
 
   const [detailTarget, setDetailTarget] = useState(null)
+  const openDispatchFromQuery = useCallback((id) => setDetailTarget({ id }), [])
+  useQueryParamOpen('dispatch', openDispatchFromQuery)
 
   useEffect(
     () => () => {

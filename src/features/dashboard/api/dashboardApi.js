@@ -31,6 +31,17 @@ export const dashboardApi = baseApi.injectEndpoints({
       }),
       providesTags: [API_TAGS.DASHBOARD],
     }),
+    getDashboardCalendar: builder.query({
+      query: ({ structureId, from, to } = {}) => ({
+        url: '/dashboard/calendar',
+        params: {
+          ...(structureId ? { structureId } : {}),
+          from,
+          to,
+        },
+      }),
+      providesTags: [API_TAGS.DASHBOARD],
+    }),
   }),
 })
 
@@ -38,5 +49,6 @@ export const {
   useGetDashboardSummaryQuery,
   useGetDashboardMonthlyMaxQuery,
   useGetDashboardDailyMaxQuery,
+  useGetDashboardCalendarQuery,
 } = dashboardApi
 

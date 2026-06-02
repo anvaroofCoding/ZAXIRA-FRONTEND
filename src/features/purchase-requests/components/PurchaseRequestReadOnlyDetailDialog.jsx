@@ -26,7 +26,9 @@ import TableRow from '@mui/material/TableRow'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { ApprovalTimelineSteps } from '@/features/purchase-requests/components/ApprovalTimelineSteps'
+import { PurchaseDeadlineDetailRow } from '@/features/purchase-requests/components/PurchaseDeadlineDetailRow'
 import { PurchaseInfoSection } from '@/features/purchase-requests/components/PurchaseInfoSection'
+import { PurchaseRequestItemsTable } from '@/features/purchase-requests/components/PurchaseRequestItemsTable'
 import { useGetPurchaseRequestByIdQuery } from '@/features/purchase-requests/api/purchaseRequestsApi'
 import { formatMemberLabel } from '@/features/purchase-requests/utils/formatMemberLabel'
 import {
@@ -52,16 +54,18 @@ export const PurchaseRequestReadOnlyDetailDialog = ({
   open,
   requestId,
   purchasingView = false,
+  historyView = false,
   onClose,
   onDownloadPdf,
   onDownloadDocx,
   downloading,
   onPurchase,
+  onReject,
   onDispatch,
 }) => {
   const [copied, setCopied] = useState(false)
   const detailQuery = useGetPurchaseRequestByIdQuery(
-    { id: requestId, purchasingView },
+    { id: requestId, purchasingView, historyView },
     {
       skip: !open || !requestId,
     },
@@ -208,35 +212,14 @@ export const PurchaseRequestReadOnlyDetailDialog = ({
               </TableContainer>
             </Box>
 
-            <Box>
-              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
-                Tovarlar
-              </Typography>
-              <TableContainer component={Paper} variant="outlined">
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell width={48}>T/R</TableCell>
-                      <TableCell>Tovar nomi</TableCell>
-                      <TableCell>Tovar xususiyati</TableCell>
-                      <TableCell width={72}>Soni</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {request.items.map((item, index) => (
-                      <TableRow key={`${item.name}-${index}`}>
-                        <TableCell>{index + 1}</TableCell>
-                        <TableCell>{item.name}</TableCell>
-                        <TableCell sx={{ whiteSpace: 'pre-wrap' }}>{item.characteristics}</TableCell>
-                        <TableCell>{item.quantity}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
+            <PurchaseRequestItemsTable items={request.items} title="Tovarlar" />
 
             <DetailRow label="Ariza izohi" value={request.comment} />
+
+            <PurchaseDeadlineDetailRow
+              deadline={request.purchaseDeadline}
+              mandatory={request.purchaseDeadlineMandatory}
+            />
 
             <BossDecisionAlert request={request} />
 
@@ -263,9 +246,19 @@ export const PurchaseRequestReadOnlyDetailDialog = ({
         <Button size="small" onClick={onClose}>
           Yopish
         </Button>
+        {request?.canRejectPurchase && onReject ? (
+          <Button
+            size="small"
+            variant="outlined"
+            color="error"
+            onClick={() => onReject(request)}
+          >
+            Atkaz qilish
+          </Button>
+        ) : null}
         {request?.canCompletePurchase && onPurchase ? (
           <Button size="small" variant="contained" color="success" onClick={() => onPurchase(request)}>
-            Sotib olish
+            Xarid qilish
           </Button>
         ) : null}
         {request?.canDispatchToWarehouse && onDispatch ? (

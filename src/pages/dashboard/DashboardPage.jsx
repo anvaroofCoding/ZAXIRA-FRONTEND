@@ -14,6 +14,7 @@ import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import { LineChart } from '@mui/x-charts/LineChart'
@@ -22,6 +23,7 @@ import dayjs from 'dayjs'
 import { useNavigate } from 'react-router-dom'
 import { useGetStructuresQuery } from '@/features/structures/api/structuresApi'
 import { useGetDashboardDailyMaxQuery, useGetDashboardSummaryQuery } from '@/features/dashboard/api/dashboardApi'
+import { DashboardCalendarDialog } from '@/features/dashboard/components/DashboardCalendarDialog'
 import { usePermissions } from '@/shared/hooks/usePermissions'
 import { formatUzs } from '@/shared/utils/formatUzs'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
@@ -183,6 +185,7 @@ export const DashboardPage = () => {
   const hasExpensePermission = canCreate('/omborlar/chiqim-qilish')
   const hasTicketPermission = canCreate('/xarid-qilish/xaridni-qabul-qilish')
   const hasDashboardAccess = canAccess('/dashboard')
+  const canViewProducts = canAccess('/dashboard/maxsulotlar')
   const canExpense = Boolean(isSuperAdmin || (hasExpensePermission && hasTicketPermission))
 
   const { data: structures = [] } = useGetStructuresQuery()
@@ -195,6 +198,7 @@ export const DashboardPage = () => {
   const defaultStructureId = isSuperAdmin ? 'all' : viewerStructureId
   const [structureId, setStructureId] = useState(defaultStructureId)
   const [offsetDays, setOffsetDays] = useState(0)
+  const [calendarOpen, setCalendarOpen] = useState(false)
 
   useEffect(() => {
     if (!isSuperAdmin && !structureId) {
@@ -268,6 +272,25 @@ export const DashboardPage = () => {
         </Typography>
 
         <Stack direction="row" alignItems="center" spacing={1.25} sx={{ ml: 'auto' }}>
+          {hasDashboardAccess ? (
+            <Button
+              variant="outlined"
+              startIcon={<CalendarMonthIcon />}
+              onClick={() => setCalendarOpen(true)}
+            >
+              Kalendar
+            </Button>
+          ) : null}
+
+          {canViewProducts ? (
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/dashboard/maxsulotlar')}
+            >
+              Maxsulotlar
+            </Button>
+          ) : null}
+
           {canExpense ? (
             <Button
               variant="contained"
@@ -460,6 +483,13 @@ export const DashboardPage = () => {
           </ChartCard>
         )}
       </Box>
+
+      <DashboardCalendarDialog
+        open={calendarOpen}
+        onClose={() => setCalendarOpen(false)}
+        structureId={scopeParam}
+        onNavigate={(path) => navigate(path)}
+      />
     </Box>
   )
 }

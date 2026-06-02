@@ -263,7 +263,7 @@ export const ProductPriceCompareDialog = ({ open, item, onClose }) => {
             >
               <CircularProgress size={22} />
               <Typography variant="body2" color="text.secondary">
-                Internetdan narxlar qidirilmoqda…
+                Google Shopping va xalqaro do‘konlardan narxlar qidirilmoqda…
               </Typography>
             </Stack>
             <OfferSkeleton />
@@ -287,8 +287,9 @@ export const ProductPriceCompareDialog = ({ open, item, onClose }) => {
 
         {!isLoading && !isError && offers.length === 0 ? (
           <Alert severity="info">
-            Ushbu tovar bo‘yicha onlayn do‘konlarda aniq narx topilmadi. Google Shopping
-            orqali qo‘lda qidiring.
+            Ushbu model bo‘yicha avtomatik narx topilmadi (yangi yoki kam sotiladigan tovar
+            bo‘lishi mumkin). «Google Shopping» tugmasi orqali qo‘lda qidiring yoki «Yangilash»
+            ni bosing.
           </Alert>
         ) : null}
 

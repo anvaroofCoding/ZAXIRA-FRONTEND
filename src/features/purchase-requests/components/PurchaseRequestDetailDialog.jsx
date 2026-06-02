@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import CheckIcon from '@mui/icons-material/Check'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import DescriptionIcon from '@mui/icons-material/Description'
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
 import Alert from '@mui/material/Alert'
@@ -13,24 +15,27 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
-import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Tooltip from '@mui/material/Tooltip'
 import { ProductPriceCompareDialog } from '@/features/product-prices/components/ProductPriceCompareDialog'
+import { PurchaseRequestItemsTable } from '@/features/purchase-requests/components/PurchaseRequestItemsTable'
 import Typography from '@mui/material/Typography'
 import { ApprovalTimelineSteps } from '@/features/purchase-requests/components/ApprovalTimelineSteps'
+import { PurchaseDeadlineDetailRow } from '@/features/purchase-requests/components/PurchaseDeadlineDetailRow'
 import { formatMemberLabel } from '@/features/purchase-requests/utils/formatMemberLabel'
 import { BossDecisionAlert } from '@/features/purchase-requests/components/BossDecisionAlert'
 import { useGetPurchaseRequestByIdQuery } from '@/features/purchase-requests/api/purchaseRequestsApi'
+import { canDeletePurchaseRequest } from '@/features/purchase-requests/utils/purchaseRequestDelete'
+import {
+  canEditPurchaseRequestInReview,
+  canResubmitPurchaseRequest,
+} from '@/features/purchase-requests/utils/purchaseRequestEdit'
 import { getStatusChipColor } from '@/features/purchase-requests/utils/purchaseRequestStatus'
+import { usePermissions } from '@/shared/hooks/usePermissions'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 import { formatDateTime } from '@/shared/utils/formatDate'
+
+const SUBMIT_PAGE_PATH = '/xaridlar/arizalar-yuborish'
 
 const DetailRow = ({ label, value }) => (
   <Box>
@@ -51,7 +56,15 @@ export const PurchaseRequestDetailDialog = ({
   onDownloadDocx,
   downloading,
   onResubmit,
+  onEdit,
+  onDelete,
+  deleting = false,
 }) => {
+  const { user: authUser, canDelete: canDeletePage, canUpdate: canUpdatePage } =
+    usePermissions()
+  const isSuperAdmin =
+    authUser?.isSuperAdmin || authUser?.role === 'SUPER_ADMIN'
+  const hasDeletePermission = canDeletePage(SUBMIT_PAGE_PATH)
   const [copied, setCopied] = useState(false)
   const [priceItem, setPriceItem] = useState(null)
   const detailQuery = useGetPurchaseRequestByIdQuery(requestId, {
@@ -59,6 +72,17 @@ export const PurchaseRequestDetailDialog = ({
   })
 
   const request = detailQuery.data
+  const showDelete =
+    hasDeletePermission &&
+    Boolean(onDelete && request) &&
+    canDeletePurchaseRequest(request, { isSuperAdmin })
+
+  const showEdit = Boolean(
+    onEdit && request && canEditPurchaseRequestInReview(request, authUser, canUpdatePage),
+  )
+  const showResubmit = Boolean(
+    onResubmit && request && canResubmitPurchaseRequest(request, authUser, canUpdatePage),
+  )
 
   useEffect(() => {
     if (!open) {
@@ -186,51 +210,12 @@ export const PurchaseRequestDetailDialog = ({
               </Stack>
             </Box>
 
-            <Box>
-              <Stack
-                direction="row"
-                sx={{ mb: 1, alignItems: 'center', justifyContent: 'space-between' }}
-              >
-                <Typography variant="subtitle2" fontWeight={600}>
-                  Tovarlar
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Narxni ko‘rish uchun qatorni bosing
-                </Typography>
-              </Stack>
-              <TableContainer component={Paper} variant="outlined">
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell width={48}>T/R</TableCell>
-                      <TableCell>Tovar nomi</TableCell>
-                      <TableCell>Tovar xususiyati</TableCell>
-                      <TableCell width={72}>Soni</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {request.items.map((item, index) => (
-                      <TableRow
-                        key={`${item.name}-${index}`}
-                        hover
-                        onClick={() => setPriceItem(item)}
-                        sx={{
-                          cursor: 'pointer',
-                          '&:last-child td': { borderBottom: 0 },
-                        }}
-                      >
-                        <TableCell>{index + 1}</TableCell>
-                        <TableCell>{item.name}</TableCell>
-                        <TableCell sx={{ whiteSpace: 'pre-wrap' }}>
-                          {item.characteristics}
-                        </TableCell>
-                        <TableCell>{item.quantity}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
+            <PurchaseRequestItemsTable
+              items={request.items}
+              title="Tovarlar"
+              subtitle="Bozor narxini ko‘rish uchun qatorni bosing"
+              onItemClick={setPriceItem}
+            />
 
             <Box>
               <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 0.5 }}>
@@ -240,6 +225,11 @@ export const PurchaseRequestDetailDialog = ({
                 {request.comment?.trim() ? request.comment : '—'}
               </Typography>
             </Box>
+
+            <PurchaseDeadlineDetailRow
+              deadline={request.purchaseDeadline}
+              mandatory={request.purchaseDeadlineMandatory}
+            />
 
             <BossDecisionAlert request={request} />
 
@@ -256,8 +246,31 @@ export const PurchaseRequestDetailDialog = ({
       </DialogContent>
 
       <DialogActions sx={{ px: 3, py: 2, flexWrap: 'wrap', gap: 1 }}>
-        <Button onClick={onClose}>Yopish</Button>
-        {request?.canResubmit && onResubmit ? (
+        <Button onClick={onClose} disabled={deleting}>
+          Yopish
+        </Button>
+        {showEdit ? (
+          <Button
+            variant="contained"
+            startIcon={<EditOutlinedIcon />}
+            disabled={downloading}
+            onClick={() => onEdit(request)}
+          >
+            Tahrirlash
+          </Button>
+        ) : null}
+        {showDelete ? (
+          <Button
+            color="error"
+            variant="outlined"
+            startIcon={deleting ? <CircularProgress size={16} color="inherit" /> : <DeleteOutlinedIcon />}
+            disabled={deleting || downloading}
+            onClick={() => onDelete(request)}
+          >
+            O‘chirish
+          </Button>
+        ) : null}
+        {showResubmit ? (
           <Button variant="contained" color="info" onClick={() => onResubmit(request)}>
             Qayta yuborish
           </Button>

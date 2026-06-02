@@ -1,11 +1,13 @@
 export const HISTORY_EVENT_TYPE_OPTIONS = [
   { value: '', label: 'Barcha hodisalar' },
   { value: 'SUBMITTED', label: 'Ariza yuborildi' },
+  { value: 'UPDATED', label: 'Ariza tahrirlandi' },
   { value: 'DECISION', label: 'Komissiya qarori' },
   { value: 'RESUBMITTED', label: 'Qayta yuborildi' },
   { value: 'BOSS_DECISION', label: 'Boshliq qarori' },
   { value: 'BOSS_CONFIRMED', label: 'Boshliq tasdiqladi' },
   { value: 'PURCHASED', label: 'Xarid qilindi' },
+  { value: 'PURCHASE_REJECTED', label: 'Xarid rad etildi (atkaz)' },
 ]
 
 export const PURCHASE_REQUEST_STATUS_OPTIONS = [

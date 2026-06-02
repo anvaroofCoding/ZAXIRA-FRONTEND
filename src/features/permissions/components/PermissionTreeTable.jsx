@@ -13,54 +13,27 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
-import { PERMISSION_COLUMNS } from '@/features/permissions/constants'
+import { DISABLED_PAGE_ACTION_TICKETS, PERMISSION_COLUMNS } from '@/features/permissions/constants'
 import {
   getGroupActionState,
   getGroupCheckState,
   getGroupPaths,
+  isPageActionDisabled,
   setGroupAccess,
   setGroupAction,
   setPageAccess,
   setPageAction,
 } from '@/features/permissions/utils/permissions'
 
-const WAREHOUSE_EXPENSE_PATH = '/omborlar/chiqim-qilish'
-
-const ExpensePermissionHintRow = ({ permissions, onChange, disabled }) => {
-  const page = permissions[WAREHOUSE_EXPENSE_PATH] ?? { access: false, actions: {} }
-  const checked = Boolean(page.access && page.actions?.create)
-
-  return (
-    <TableRow hover>
-      <TableCell sx={{ pl: 5 }}>
-        <Typography variant="caption" color="text.secondary">
-          Dashboarddagi tugma uchun qo'shimcha ruxsat (ticket bilan birga)
-        </Typography>
-      </TableCell>
-      <TableCell align="center" padding="checkbox" />
-      {PERMISSION_COLUMNS.slice(1).map((column) => (
-        <TableCell key={column.key} align="center" padding="checkbox">
-          {column.key === 'create' ? (
-            <Checkbox
-              checked={checked}
-              disabled={disabled || !page.access}
-              onChange={(event) =>
-                onChange(
-                  setPageAction(
-                    permissions,
-                    WAREHOUSE_EXPENSE_PATH,
-                    'create',
-                    event.target.checked,
-                  ),
-                )
-              }
-            />
-          ) : null}
-        </TableCell>
-      ))}
-    </TableRow>
-  )
-}
+const DisabledActionsHintRow = ({ ticketText }) => (
+  <TableRow hover>
+    <TableCell sx={{ pl: 5 }} colSpan={PERMISSION_COLUMNS.length + 1}>
+      <Typography variant="caption" color="text.secondary">
+        {ticketText}
+      </Typography>
+    </TableCell>
+  </TableRow>
+)
 
 const PageRow = ({ label, indent = 0, permissions, path, onChange, disabled }) => {
   const page = permissions[path] ?? { access: false, actions: {} }
@@ -83,26 +56,29 @@ const PageRow = ({ label, indent = 0, permissions, path, onChange, disabled }) =
           />
         </TableCell>
 
-        {PERMISSION_COLUMNS.slice(1).map((column) => (
-          <TableCell key={column.key} align="center" padding="checkbox">
-            <Checkbox
-              checked={Boolean(page.access && page.actions?.[column.key])}
-              disabled={accessDisabled || !page.access}
-              onChange={(event) =>
-                onChange(
-                  setPageAction(permissions, path, column.key, event.target.checked),
-                )
-              }
-            />
-          </TableCell>
-        ))}
+        {PERMISSION_COLUMNS.slice(1).map((column) => {
+          const actionDisabled =
+            accessDisabled ||
+            !page.access ||
+            isPageActionDisabled(path, column.key)
+
+          return (
+            <TableCell key={column.key} align="center" padding="checkbox">
+              <Checkbox
+                checked={Boolean(page.access && page.actions?.[column.key])}
+                disabled={actionDisabled}
+                onChange={(event) =>
+                  onChange(
+                    setPageAction(permissions, path, column.key, event.target.checked),
+                  )
+                }
+              />
+            </TableCell>
+          )
+        })}
       </TableRow>
-      {path === WAREHOUSE_EXPENSE_PATH ? (
-        <ExpensePermissionHintRow
-          permissions={permissions}
-          onChange={onChange}
-          disabled={disabled}
-        />
+      {DISABLED_PAGE_ACTION_TICKETS[path] ? (
+        <DisabledActionsHintRow ticketText={DISABLED_PAGE_ACTION_TICKETS[path]} />
       ) : null}
     </>
   )
@@ -140,13 +116,17 @@ const GroupSection = ({ group, permissions, onChange, disabled }) => {
 
         {PERMISSION_COLUMNS.slice(1).map((column) => {
           const actionState = getGroupActionState(permissions, paths, column.key)
+          const groupActionDisabled =
+            disabled ||
+            actionState.disabled ||
+            !paths.some((path) => permissions[path]?.access)
 
           return (
             <TableCell key={column.key} align="center" padding="checkbox">
               <Checkbox
                 checked={actionState.checked}
                 indeterminate={actionState.indeterminate}
-                disabled={disabled || !paths.some((path) => permissions[path]?.access)}
+                disabled={groupActionDisabled}
                 onChange={(event) =>
                   onChange(
                     setGroupAction(permissions, paths, column.key, event.target.checked),

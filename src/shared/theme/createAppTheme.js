@@ -1,13 +1,21 @@
 import { createTheme } from '@mui/material/styles'
+import { DEFAULT_PRIMARY_COLOR } from './themeColor'
 
-export const createAppTheme = (mode) =>
-  createTheme({
+export const createAppTheme = (mode, primaryMain = DEFAULT_PRIMARY_COLOR) => {
+  const baseTheme = createTheme({
+    palette: { mode },
+  })
+
+  const primary = baseTheme.palette.augmentColor({
+    color: { main: primaryMain },
+    name: 'primary',
+  })
+
+  return createTheme({
     cssVariables: true,
     palette: {
       mode,
-      primary: {
-        main: mode === 'dark' ? '#90caf9' : '#1565c0',
-      },
+      primary,
       background: {
         default: mode === 'dark' ? '#0f1115' : '#f5f7fa',
         paper: mode === 'dark' ? '#171a21' : '#ffffff',
@@ -35,3 +43,4 @@ export const createAppTheme = (mode) =>
       },
     },
   })
+}

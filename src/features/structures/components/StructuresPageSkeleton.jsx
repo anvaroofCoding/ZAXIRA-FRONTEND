@@ -19,6 +19,12 @@ const StructuresTableRowSkeleton = () => (
     <TableCell width={140}>
       <SkeletonBlock height={18} width={48} />
     </TableCell>
+    <TableCell width={100}>
+      <SkeletonBlock height={24} width={40} sx={{ borderRadius: 2 }} />
+    </TableCell>
+    <TableCell width={100}>
+      <SkeletonBlock height={24} width={40} sx={{ borderRadius: 2 }} />
+    </TableCell>
     <TableCell width={120}>
       <SkeletonBlock height={24} width={56} sx={{ borderRadius: 2 }} />
     </TableCell>
@@ -67,6 +73,8 @@ export const StructuresPageSkeleton = ({ showAddButton = true }) => (
           <TableRow>
             <TableCell>To‘liq nomi</TableCell>
             <TableCell width={140}>Qisqa nomi</TableCell>
+            <TableCell width={100}>Ombor</TableCell>
+            <TableCell width={100}>Raxbar</TableCell>
             <TableCell width={120}>Holat</TableCell>
             <TableCell width={72} align="right">
               Amallar

@@ -6,13 +6,34 @@ import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
+import FormControl from '@mui/material/FormControl'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import FormLabel from '@mui/material/FormLabel'
+import Radio from '@mui/material/Radio'
+import RadioGroup from '@mui/material/RadioGroup'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 
 const buildFormState = (initialStructure) => ({
   fullName: initialStructure?.fullName ?? '',
   shortName: initialStructure?.shortName ?? '',
+  hasWarehouse: initialStructure?.hasWarehouse ?? false,
+  hasLeader: initialStructure?.hasLeader ?? false,
 })
+
+const BooleanChoiceField = ({ label, value, onChange, disabled }) => (
+  <FormControl disabled={disabled}>
+    <FormLabel sx={{ fontWeight: 600, fontSize: '0.875rem', mb: 0.5 }}>{label}</FormLabel>
+    <RadioGroup
+      row
+      value={value ? 'yes' : 'no'}
+      onChange={(event) => onChange(event.target.value === 'yes')}
+    >
+      <FormControlLabel value="yes" control={<Radio size="small" />} label="Ha" />
+      <FormControlLabel value="no" control={<Radio size="small" />} label="Yo‘q" />
+    </RadioGroup>
+  </FormControl>
+)
 
 const StructureFormFields = ({
   mode,
@@ -42,7 +63,12 @@ const StructureFormFields = ({
     }
 
     try {
-      await onSubmit({ fullName, shortName })
+      await onSubmit({
+        fullName,
+        shortName,
+        hasWarehouse: form.hasWarehouse,
+        hasLeader: form.hasLeader,
+      })
     } catch (submitError) {
       setError(submitError.message || 'Saqlashda xatolik')
     }
@@ -80,6 +106,20 @@ const StructureFormFields = ({
             fullWidth
             disabled={loading}
             slotProps={{ htmlInput: { maxLength: 32 } }}
+          />
+
+          <BooleanChoiceField
+            label="Ombori bormi?"
+            value={form.hasWarehouse}
+            onChange={(value) => setForm((prev) => ({ ...prev, hasWarehouse: value }))}
+            disabled={loading}
+          />
+
+          <BooleanChoiceField
+            label="Raxbarmi?"
+            value={form.hasLeader}
+            onChange={(value) => setForm((prev) => ({ ...prev, hasLeader: value }))}
+            disabled={loading}
           />
         </Stack>
       </DialogContent>

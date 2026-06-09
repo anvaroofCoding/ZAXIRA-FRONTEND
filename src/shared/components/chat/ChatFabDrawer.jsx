@@ -46,6 +46,7 @@ import { selectAuthUser } from '@/features/auth/model/authSlice'
 import { useGetUsersLookupQuery } from '@/features/users/api/usersApi'
 import { ChatUserAvatar } from '@/shared/components/chat/ChatUserAvatar'
 import { useAppSelector } from '@/shared/hooks/useAppSelector'
+import { setChatUiState } from '@/shared/realtime/chatUiState'
 import { useChatRealtime } from '@/shared/hooks/useChatRealtime'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
@@ -312,6 +313,26 @@ export const ChatFabDrawer = () => {
       view,
     ],
   )
+
+  useEffect(() => {
+    setChatUiState({
+      open,
+      view,
+      tab,
+      selectedPeerId,
+      selectedSupportRequesterId,
+      userId: user?.id ?? '',
+      isSupportOperator,
+    })
+  }, [
+    isSupportOperator,
+    open,
+    selectedPeerId,
+    selectedSupportRequesterId,
+    tab,
+    user?.id,
+    view,
+  ])
 
   useChatRealtime({
     activeRoom,

@@ -1,8 +1,15 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import CssBaseline from '@mui/material/CssBaseline'
 import { ThemeProvider } from '@mui/material/styles'
 import { ColorModeContext } from './ColorModeContext'
 import { createAppTheme } from './createAppTheme'
+import {
+  DEFAULT_PRIMARY_COLOR,
+  THEME_COLOR_CHANGED,
+  getStoredThemeColor,
+  resetStoredThemeColor,
+  setStoredThemeColor,
+} from './themeColor'
 
 const STORAGE_KEY = 'zaxira-color-mode'
 
@@ -16,6 +23,16 @@ const getInitialMode = () => {
 
 export const ColorModeProvider = ({ children }) => {
   const [mode, setMode] = useState(getInitialMode)
+  const [primaryColor, setPrimaryColorState] = useState(getStoredThemeColor)
+
+  useEffect(() => {
+    const syncThemeColor = () => {
+      setPrimaryColorState(getStoredThemeColor())
+    }
+
+    window.addEventListener(THEME_COLOR_CHANGED, syncThemeColor)
+    return () => window.removeEventListener(THEME_COLOR_CHANGED, syncThemeColor)
+  }, [])
 
   const toggleMode = useCallback(() => {
     setMode((prev) => {
@@ -25,11 +42,29 @@ export const ColorModeProvider = ({ children }) => {
     })
   }, [])
 
-  const theme = useMemo(() => createAppTheme(mode), [mode])
+  const setPrimaryColor = useCallback((value) => {
+    setPrimaryColorState(setStoredThemeColor(value))
+  }, [])
+
+  const resetPrimaryColor = useCallback(() => {
+    setPrimaryColorState(resetStoredThemeColor())
+  }, [])
+
+  const theme = useMemo(
+    () => createAppTheme(mode, primaryColor),
+    [mode, primaryColor],
+  )
 
   const contextValue = useMemo(
-    () => ({ mode, toggleMode }),
-    [mode, toggleMode],
+    () => ({
+      mode,
+      toggleMode,
+      primaryColor,
+      setPrimaryColor,
+      resetPrimaryColor,
+      defaultPrimaryColor: DEFAULT_PRIMARY_COLOR,
+    }),
+    [mode, primaryColor, resetPrimaryColor, setPrimaryColor, toggleMode],
   )
 
   return (

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Collapse from '@mui/material/Collapse'
 import Dialog from '@mui/material/Dialog'
@@ -18,12 +19,15 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import {
   useChangePasswordMutation,
+  useGetCurrentUserQuery,
   useUpdateProfileMutation,
 } from '@/features/auth/api/authApi'
 import { setUser } from '@/features/auth/model/authSlice'
 import { useGetStructuresQuery } from '@/features/structures/api/structuresApi'
 import { useAppDispatch } from '@/shared/hooks/useAppDispatch'
 import { usePermissions } from '@/shared/hooks/usePermissions'
+import { isRealtimeConnected } from '@/shared/realtime/realtimeConnectionState'
+import { formatLastOnline } from '@/shared/utils/formatLastOnline'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
 const buildProfileForm = (user) => ({
@@ -40,6 +44,10 @@ const emptyPasswordForm = {
 export const ProfileModal = ({ open, onClose }) => {
   const dispatch = useAppDispatch()
   const { user } = usePermissions()
+  const profileQuery = useGetCurrentUserQuery(undefined, {
+    skip: !open,
+    refetchOnMountOrArgChange: true,
+  })
   const structuresQuery = useGetStructuresQuery(undefined, { skip: !open })
   const [updateProfile, updateState] = useUpdateProfileMutation()
   const [changePassword, passwordState] = useChangePasswordMutation()
@@ -49,6 +57,9 @@ export const ProfileModal = ({ open, onClose }) => {
   const [showPasswordSection, setShowPasswordSection] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [onlineNow, setOnlineNow] = useState(isRealtimeConnected)
+
+  const profileUser = profileQuery.data ?? user
 
   const isSuperAdmin = user?.isSuperAdmin || user?.role === 'SUPER_ADMIN'
   const showStructureField = !isSuperAdmin
@@ -59,14 +70,40 @@ export const ProfileModal = ({ open, onClose }) => {
   )
 
   useEffect(() => {
-    if (open && user) {
-      setProfileForm(buildProfileForm(user))
+    if (open && profileUser) {
+      setProfileForm(buildProfileForm(profileUser))
       setPasswordForm(emptyPasswordForm)
       setShowPasswordSection(false)
       setError('')
       setSuccess('')
     }
-  }, [open, user])
+  }, [open, profileUser])
+
+  useEffect(() => {
+    if (!open) return undefined
+
+    setOnlineNow(isRealtimeConnected())
+    const timer = window.setInterval(() => {
+      setOnlineNow(isRealtimeConnected())
+    }, 5000)
+
+    return () => window.clearInterval(timer)
+  }, [open])
+
+  const presenceLabel = useMemo(() => {
+    if (onlineNow || profileUser?.isOnline) {
+      return 'Hozir onlayn'
+    }
+
+    const formatted = formatLastOnline(profileUser?.lastOnline)
+    return formatted ? `Oxirgi faollik: ${formatted}` : 'Oxirgi faollik: ma’lumot yo‘q'
+  }, [onlineNow, profileUser?.isOnline, profileUser?.lastOnline])
+
+  useEffect(() => {
+    if (profileQuery.isSuccess && profileQuery.data) {
+      dispatch(setUser(profileQuery.data))
+    }
+  }, [dispatch, profileQuery.data, profileQuery.isSuccess])
 
   const handleClose = () => {
     if (updateState.isLoading || passwordState.isLoading) return
@@ -84,7 +121,7 @@ export const ProfileModal = ({ open, onClose }) => {
 
     try {
       const body = {
-        displayName: profileForm.displayName.trim() || user.login,
+        displayName: profileForm.displayName.trim() || profileUser.login,
         ...(showStructureField ? { structureId: profileForm.structureId } : {}),
       }
 
@@ -144,11 +181,20 @@ export const ProfileModal = ({ open, onClose }) => {
             <Stack spacing={1.5}>
               <TextField
                 label="Login"
-                value={user?.login ?? ''}
+                value={profileUser?.login ?? ''}
                 size="small"
                 fullWidth
                 disabled
               />
+
+              <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
+                <Typography variant="body2" color="text.secondary">
+                  {presenceLabel}
+                </Typography>
+                {onlineNow || profileUser?.isOnline ? (
+                  <Chip label="Onlayn" size="small" color="success" variant="outlined" />
+                ) : null}
+              </Stack>
 
               <TextField
                 label="Ism"

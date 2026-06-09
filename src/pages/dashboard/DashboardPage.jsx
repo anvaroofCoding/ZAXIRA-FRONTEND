@@ -13,6 +13,7 @@ import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
+import { useTheme } from '@mui/material/styles'
 import Button from '@mui/material/Button'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
@@ -28,7 +29,7 @@ import { usePermissions } from '@/shared/hooks/usePermissions'
 import { formatUzs } from '@/shared/utils/formatUzs'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
-const SummaryCard = ({ label, value, rawValue, series }) => {
+const SummaryCard = ({ label, value, rawValue, series, chartColor }) => {
   const [displayValue, setDisplayValue] = useState(0)
 
   useEffect(() => {
@@ -81,7 +82,7 @@ const SummaryCard = ({ label, value, rawValue, series }) => {
                 showTooltip={false}
                 showHighlight={false}
                 curve="linear"
-                colors={['#5B7CFF']}
+                colors={[chartColor]}
                 area
               />
             </Box>
@@ -178,6 +179,8 @@ const formatDateRangeToken = (value) => {
 }
 
 export const DashboardPage = () => {
+  const theme = useTheme()
+  const chartColor = theme.palette.primary.main
   const { user, canAccess, canCreate } = usePermissions()
   const navigate = useNavigate()
   const isSuperAdmin = user?.isSuperAdmin || user?.role === 'SUPER_ADMIN'
@@ -361,6 +364,7 @@ export const DashboardPage = () => {
               value={summary ? formatUzs(summary.itemTypesCount) : '—'}
               rawValue={summary?.itemTypesCount}
               series={sparkSeries}
+              chartColor={chartColor}
             />
           )}
         </Grid>
@@ -373,6 +377,7 @@ export const DashboardPage = () => {
               value={summary ? formatUzs(summary.totalQuantity) : '—'}
               rawValue={summary?.totalQuantity}
               series={sparkSeries}
+              chartColor={chartColor}
             />
           )}
         </Grid>
@@ -385,6 +390,7 @@ export const DashboardPage = () => {
               value={summary ? formatUzs(summary.totalSum) : '—'}
               rawValue={summary?.totalSum}
               series={sparkSeries}
+              chartColor={chartColor}
             />
           )}
         </Grid>
@@ -463,7 +469,7 @@ export const DashboardPage = () => {
                     valueFormatter: (v) => formatUzs(v),
                     area: true,
                     showMark: false,
-                    color: '#5B7CFF',
+                    color: chartColor,
                   },
                 ]}
                 height={440}

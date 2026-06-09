@@ -9,6 +9,15 @@ import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import { StructureRowActionsMenu } from './StructureRowActionsMenu'
 
+const BooleanChip = ({ value }) => (
+  <Chip
+    size="small"
+    color={value ? 'primary' : 'default'}
+    variant={value ? 'filled' : 'outlined'}
+    label={value ? 'Ha' : 'Yo‘q'}
+  />
+)
+
 export const StructuresTable = ({
   structures,
   canUpdate,
@@ -33,6 +42,8 @@ export const StructuresTable = ({
           <TableRow>
             <TableCell>To‘liq nomi</TableCell>
             <TableCell width={140}>Qisqa nomi</TableCell>
+            <TableCell width={100}>Ombor</TableCell>
+            <TableCell width={100}>Raxbar</TableCell>
             <TableCell width={120}>Holat</TableCell>
             <TableCell width={120} align="right">
               Amallar
@@ -52,6 +63,12 @@ export const StructuresTable = ({
                 >
                   {structure.shortName}
                 </Typography>
+              </TableCell>
+              <TableCell>
+                <BooleanChip value={structure.hasWarehouse} />
+              </TableCell>
+              <TableCell>
+                <BooleanChip value={structure.hasLeader} />
               </TableCell>
               <TableCell>
                 <Chip

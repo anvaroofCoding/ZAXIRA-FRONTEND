@@ -54,6 +54,7 @@ export const warehouseDispatchesApi = baseApi.injectEndpoints({
 
 export const {
   useGetWarehouseReceiptInboxQuery,
+  useLazyGetWarehouseReceiptInboxQuery,
   useGetWarehouseReceiptPendingCountQuery,
   useGetWarehouseDispatchByIdQuery,
   useCreateWarehouseDispatchMutation,

@@ -130,7 +130,7 @@ const ReceiptTableSkeleton = () => (
     <Table size="small" stickyHeader>
       <TableHead>
         <TableRow>
-          <TableCell>Nakladnoy</TableCell>
+          <TableCell>Nomeklatura raqami</TableCell>
           <TableCell width={120}>Ariza</TableCell>
           <TableCell width={150}>Sana</TableCell>
           <TableCell width={140}>Jo‘natuvchi</TableCell>

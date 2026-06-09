@@ -21,10 +21,6 @@ export const PRODUCTS_PAGE_PATH = '/dashboard/maxsulotlar'
 export const TRANSFER_PAGE_PATH = '/transfer/transfer-qilish'
 export const TRANSFER_RECEIPT_PAGE_PATH = '/transfer/transferni-qabul-qilish'
 export const TRANSFER_HISTORY_PAGE_PATH = '/transfer/transferlar-tarixi'
-export const STOCKTAKE_PAGE_PATH = '/invertarizatsiya/invertarizatsiya-qilish'
-export const STOCKTAKE_ALL_PAGE_PATH = '/invertarizatsiya/barcha-invertarizatsiyalar'
-export const STOCKTAKE_MGMT_PAGE_PATH = '/invertarizatsiya/boshqaruv'
-
 export const DISABLED_PAGE_ACTIONS = {
   [PURCHASE_APPROVAL_PAGE_PATH]: ['update', 'delete'],
   [PURCHASE_HISTORY_PAGE_PATH]: ['create', 'update', 'delete'],
@@ -37,9 +33,6 @@ export const DISABLED_PAGE_ACTIONS = {
   [TRANSFER_PAGE_PATH]: ['create', 'update', 'delete'],
   [TRANSFER_RECEIPT_PAGE_PATH]: ['create', 'update', 'delete'],
   [TRANSFER_HISTORY_PAGE_PATH]: ['create', 'update', 'delete'],
-  [STOCKTAKE_PAGE_PATH]: ['create', 'update', 'delete'],
-  [STOCKTAKE_ALL_PAGE_PATH]: ['create', 'update', 'delete'],
-  [STOCKTAKE_MGMT_PAGE_PATH]: ['create', 'update', 'delete'],
 }
 
 export const DISABLED_PAGE_ACTION_TICKETS = {
@@ -65,10 +58,4 @@ export const DISABLED_PAGE_ACTION_TICKETS = {
     "Ticket: Transferni qabul qilish sahifasida Jo'natish, Tahrirlash va O'chirish vaqtincha o'chirilgan",
   [TRANSFER_HISTORY_PAGE_PATH]:
     "Ticket: Transferlar tarixi sahifasida Jo'natish, Tahrirlash va O'chirish vaqtincha o'chirilgan",
-  [STOCKTAKE_PAGE_PATH]:
-    "Ticket: Invertarizatsiya qilish sahifasida Jo'natish, Tahrirlash va O'chirish vaqtincha o'chirilgan",
-  [STOCKTAKE_ALL_PAGE_PATH]:
-    "Ticket: Barcha invertarizatsiyalar sahifasida Jo'natish, Tahrirlash va O'chirish vaqtincha o'chirilgan",
-  [STOCKTAKE_MGMT_PAGE_PATH]:
-    "Ticket: Boshqaruv sahifasida Jo'natish, Tahrirlash va O'chirish vaqtincha o'chirilgan",
 }

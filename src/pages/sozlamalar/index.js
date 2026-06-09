@@ -1,0 +1,1 @@
+export { SozlamalarPage } from './SozlamalarPage'

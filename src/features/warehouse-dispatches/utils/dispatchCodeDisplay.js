@@ -1,4 +1,4 @@
-/** Nakladnoy raqami (NK-…) — qatorga bo‘linmasin */
+/** Nomeklatura raqami (NK-…) — qatorga bo‘linmasin */
 export const dispatchCodeSx = {
   whiteSpace: 'nowrap',
   fontWeight: 600,

@@ -1,11 +1,17 @@
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined'
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined'
+import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined'
 import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
+import CircularProgress from '@mui/material/CircularProgress'
 import Grid from '@mui/material/Grid'
+import IconButton from '@mui/material/IconButton'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
+import TextField from '@mui/material/TextField'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { formatDateTime } from '@/shared/utils/formatDate'
 
@@ -48,10 +54,97 @@ const SummaryItem = ({ icon: Icon, label, primary, secondary }) => (
   </Stack>
 )
 
-export const WarehouseDispatchSummaryPanel = ({ dispatch }) => {
+export const NomenclatureTextField = ({
+  value,
+  onChange,
+  onSubmit,
+  inputRef,
+  error = '',
+  loading = false,
+  disabled = false,
+  stacked = false,
+}) => {
+  const textField = (
+    <TextField
+      inputRef={inputRef}
+      label="Nomeklatura raqami"
+      size="small"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault()
+          onSubmit()
+        }
+      }}
+      disabled={disabled || loading}
+      error={Boolean(error)}
+      helperText={error || undefined}
+      autoComplete="off"
+      fullWidth={stacked}
+      sx={{
+        width: stacked ? '100%' : 220,
+        '& .MuiOutlinedInput-root': {
+          bgcolor: '#fff',
+        },
+      }}
+    />
+  )
+
+  if (stacked) {
+    return (
+      <Stack spacing={1} sx={{ width: '100%' }}>
+        {textField}
+        <Button
+          type="button"
+          variant="contained"
+          size="small"
+          startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <SaveOutlinedIcon />}
+          disabled={disabled || loading || !value.trim()}
+          onClick={onSubmit}
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          Saqlash
+        </Button>
+      </Stack>
+    )
+  }
+
+  return (
+    <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
+      {textField}
+      <Tooltip title="Saqlash">
+        <span>
+          <IconButton
+            type="button"
+            size="small"
+            color="primary"
+            disabled={disabled || loading || !value.trim()}
+            onClick={onSubmit}
+            sx={{ mt: 0.75 }}
+          >
+            {loading ? <CircularProgress size={18} /> : <SaveOutlinedIcon fontSize="small" />}
+          </IconButton>
+        </span>
+      </Tooltip>
+    </Stack>
+  )
+}
+
+export const WarehouseDispatchSummaryPanel = ({
+  dispatch,
+  nomenclatureVerified = false,
+  confirmedNomenclature = '',
+  nomenclatureAnchorRef,
+  nomenclatureInput,
+  nomenclatureFocusActive = true,
+}) => {
   if (!dispatch) {
     return null
   }
+
+  const displayNomenclature = confirmedNomenclature || dispatch.dispatchCode
+  const showInlineInput = nomenclatureInput && !nomenclatureVerified && !nomenclatureFocusActive
 
   return (
     <Paper variant="outlined" sx={{ width: '100%' }}>
@@ -81,12 +174,32 @@ export const WarehouseDispatchSummaryPanel = ({ dispatch }) => {
       <Box sx={{ p: 2 }}>
         <Grid container spacing={2.5}>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <SummaryItem
-              icon={AssignmentOutlinedIcon}
-              label="Nakladnoy"
-              primary={dispatch.dispatchCode}
-              secondary={dispatch.requestCode || undefined}
-            />
+            <Box
+              ref={nomenclatureAnchorRef}
+              sx={{
+                visibility:
+                  nomenclatureInput && !nomenclatureVerified && nomenclatureFocusActive
+                    ? 'hidden'
+                    : 'visible',
+              }}
+            >
+              {nomenclatureVerified ? (
+                <SummaryItem
+                  icon={AssignmentOutlinedIcon}
+                  label="Nomeklatura raqami"
+                  primary={displayNomenclature}
+                  secondary={dispatch.requestCode || undefined}
+                />
+              ) : showInlineInput ? (
+                <NomenclatureTextField {...nomenclatureInput} />
+              ) : (
+                <SummaryItem
+                  icon={AssignmentOutlinedIcon}
+                  label="Nomeklatura raqami"
+                  primary="—"
+                />
+              )}
+            </Box>
           </Grid>
           {dispatch.sourceStructure ? (
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>

@@ -169,11 +169,11 @@ export const InvertarizatsiyaPage = () => {
 
               {session ? (
                 <StocktakeSessionPanel session={session} onSessionChange={handleSessionChange} />
-              ) : (
+              ) : canStart ? (
                 <Alert severity="info">
                   Faol invertarizatsiya yo‘q. Boshlash uchun «Yaratish» tugmasini bosing.
                 </Alert>
-              )}
+              ) : null}
             </QuerySkeleton>
           </Stack>
         ) : (

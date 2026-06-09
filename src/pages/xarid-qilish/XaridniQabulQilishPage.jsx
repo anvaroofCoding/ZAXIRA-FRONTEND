@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
 import Badge from '@mui/material/Badge'
 import Box from '@mui/material/Box'
@@ -43,7 +44,16 @@ export const XaridniQabulQilishPage = () => {
     hasActiveFilters,
   } = usePurchasingListFilters()
 
-  const [detailTarget, setDetailTarget] = useState(null)
+  const [searchParams] = useSearchParams()
+  const [savedNomenclatureCode, setSavedNomenclatureCode] = useState('')
+  const [detailTarget, setDetailTarget] = useState(() => {
+    const dispatchId = searchParams.get('dispatch')?.trim()
+    return dispatchId ? { id: dispatchId } : null
+  })
+
+  const handleNomenclatureVerified = useCallback((code) => {
+    setSavedNomenclatureCode((prev) => prev || code)
+  }, [])
   const openDispatchFromQuery = useCallback((id) => setDetailTarget({ id }), [])
   useQueryParamOpen('dispatch', openDispatchFromQuery)
 
@@ -101,7 +111,7 @@ export const XaridniQabulQilishPage = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell sx={{ minWidth: 200, width: '1%', whiteSpace: 'nowrap' }}>
-                      Nakladnoy
+                      Nomeklatura raqami
                     </TableCell>
                     <TableCell width={120}>Ariza</TableCell>
                     <TableCell width={150}>Sana</TableCell>
@@ -117,7 +127,7 @@ export const XaridniQabulQilishPage = () => {
                       key={item.id}
                       hover
                       sx={{ cursor: 'pointer' }}
-                      onClick={() => setDetailTarget(item)}
+                      onClick={() => setDetailTarget({ id: item.id })}
                     >
                       <TableCell sx={{ minWidth: 200, width: '1%', whiteSpace: 'nowrap' }}>
                         <Stack
@@ -180,6 +190,9 @@ export const XaridniQabulQilishPage = () => {
         <ReceiveWarehouseDispatchDialog
           open
           dispatchId={detailTarget.id}
+          requireNomenclatureVerification
+          savedNomenclatureCode={savedNomenclatureCode}
+          onNomenclatureVerified={handleNomenclatureVerified}
           onClose={() => setDetailTarget(null)}
           onSuccess={() => setDetailTarget(null)}
         />

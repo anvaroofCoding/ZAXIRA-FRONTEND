@@ -15,6 +15,10 @@ const { NotFoundPage } = lazyImport(
   () => import('@/pages/NotFoundPage'),
   'NotFoundPage',
 )
+const { ForbiddenPage } = lazyImport(
+  () => import('@/pages/ForbiddenPage'),
+  'ForbiddenPage',
+)
 
 const { ArizalarYuborishPage } = lazyImport(
   () => import('@/pages/xaridlar'),
@@ -89,8 +93,16 @@ const { TuzilmalarPage } = lazyImport(
   () => import('@/pages/tuzilmalar'),
   'TuzilmalarPage',
 )
+const { SozlamalarPage } = lazyImport(
+  () => import('@/pages/sozlamalar'),
+  'SozlamalarPage',
+)
 
 export const routes = [
+  {
+    path: '/403',
+    Component: ForbiddenPage,
+  },
   {
     element: <GuestRoute />,
     children: [
@@ -193,6 +205,10 @@ export const routes = [
           {
             path: 'invertarizatsiya/boshqaruv',
             Component: BoshqaruvPage,
+          },
+          {
+            path: 'sozlamalar',
+            Component: SozlamalarPage,
           },
           {
             path: 'royxatga-olish/foydalanuvchilar',

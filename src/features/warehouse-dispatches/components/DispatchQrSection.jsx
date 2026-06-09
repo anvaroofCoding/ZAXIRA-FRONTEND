@@ -3,39 +3,26 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Link from '@mui/material/Link'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
-import Typography from '@mui/material/Typography'
 import QRCode from 'qrcode'
+import { buildNakladnoyPublicUrl } from '@/features/warehouse-dispatches/utils/nakladnoyPublicUrl'
 
 export const DispatchQrSection = ({ dispatch }) => {
   const [qrDataUrl, setQrDataUrl] = useState('')
 
-  const payload = useMemo(() => {
-    if (!dispatch) return ''
-
-    return JSON.stringify(
-      {
-        dispatchCode: dispatch.dispatchCode,
-        requestCode: dispatch.requestCode,
-        status: dispatch.status,
-        targetStructure: dispatch.targetStructure?.shortName,
-        items: (dispatch.items ?? []).map((item) => ({
-          name: item.name,
-          qty: item.quantityDispatched,
-        })),
-      },
-      null,
-      2,
-    )
+  const nakladnoyUrl = useMemo(() => {
+    if (!dispatch?.id) return ''
+    return buildNakladnoyPublicUrl(dispatch.id)
   }, [dispatch])
 
   useEffect(() => {
     let isMounted = true
 
-    if (!payload) return undefined
+    if (!nakladnoyUrl) return undefined
 
-    QRCode.toDataURL(payload, { width: 220, margin: 1 })
+    QRCode.toDataURL(nakladnoyUrl, { width: 220, margin: 1 })
       .then((url) => {
         if (isMounted) {
           setQrDataUrl(url)
@@ -50,15 +37,15 @@ export const DispatchQrSection = ({ dispatch }) => {
     return () => {
       isMounted = false
     }
-  }, [payload])
+  }, [nakladnoyUrl])
 
-  const handleCopyPayload = async () => {
-    if (!payload || !navigator?.clipboard?.writeText) {
+  const handleCopyLink = async () => {
+    if (!nakladnoyUrl || !navigator?.clipboard?.writeText) {
       return
     }
 
     try {
-      await navigator.clipboard.writeText(payload)
+      await navigator.clipboard.writeText(nakladnoyUrl)
     } catch {
       // ignore copy errors in unsupported environments
     }
@@ -71,9 +58,6 @@ export const DispatchQrSection = ({ dispatch }) => {
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
       <Stack spacing={1.5}>
-        <Typography variant="subtitle2" fontWeight={700}>
-          QR kod (telefon bilan skaner qilish uchun)
-        </Typography>
         {qrDataUrl ? (
           <Box
             component="img"
@@ -93,15 +77,27 @@ export const DispatchQrSection = ({ dispatch }) => {
           <Alert severity="warning">QR kodni yaratib bo‘lmadi</Alert>
         )}
 
+        {nakladnoyUrl ? (
+          <Link
+            href={nakladnoyUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="body2"
+            sx={{ wordBreak: 'break-all' }}
+          >
+            {nakladnoyUrl}
+          </Link>
+        ) : null}
+
         <Button
           type="button"
           variant="text"
           size="small"
           startIcon={<ContentCopyIcon fontSize="small" />}
-          onClick={handleCopyPayload}
+          onClick={handleCopyLink}
           sx={{ alignSelf: 'flex-start' }}
         >
-          QR ichidagi matnni nusxalash
+          Nakladnoy havolasini nusxalash
         </Button>
       </Stack>
     </Paper>

@@ -13,3 +13,13 @@ body,
 body {
   margin: 0;
 }
+
+/* Scrollbar ko'rinmasin, lekin scroll ishlashi davom etsin */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}

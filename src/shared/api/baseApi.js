@@ -4,6 +4,11 @@ import { env } from '@/shared/config/env'
 import { API_TAGS } from '@/shared/constants/apiTags'
 import { PERMISSION_DENIED_MESSAGE } from '@/shared/constants/messages'
 import { showNotification } from '@/shared/model/notificationSlice'
+import {
+  getApiErrorText,
+  handleSessionExpired,
+  shouldHandleSessionExpired,
+} from '@/shared/utils/sessionExpired'
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: env.apiBaseUrl,
@@ -19,7 +24,13 @@ const rawBaseQuery = fetchBaseQuery({
 })
 
 const baseQuery = async (args, api, extraOptions) => {
+  const hadToken = Boolean(selectAccessToken(api.getState()))
   const result = await rawBaseQuery(args, api, extraOptions)
+
+  if (shouldHandleSessionExpired(result.error, args, hadToken)) {
+    handleSessionExpired(api.dispatch, getApiErrorText(result.error))
+    return result
+  }
 
   if (result.error?.status === 403) {
     api.dispatch(

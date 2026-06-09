@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import AddIcon from '@mui/icons-material/Add'
 import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
@@ -34,7 +34,10 @@ import {
 } from '@/features/warehouse-dispatches/api/warehouseDispatchesApi'
 import { useGetWarehouseLocationsQuery } from '@/features/warehouse/api/warehouseApi'
 import { DispatchQrSection } from '@/features/warehouse-dispatches/components/DispatchQrSection'
-import { WarehouseDispatchSummaryPanel } from '@/features/warehouse-dispatches/components/WarehouseDispatchSummaryPanel'
+import {
+  NomenclatureTextField,
+  WarehouseDispatchSummaryPanel,
+} from '@/features/warehouse-dispatches/components/WarehouseDispatchSummaryPanel'
 import { dispatchCodeSx } from '@/features/warehouse-dispatches/utils/dispatchCodeDisplay'
 import { downloadAuthenticatedFile } from '@/shared/utils/downloadFile'
 import { getDispatchStatusChipProps } from '@/features/warehouse-dispatches/utils/dispatchStatusDisplay'
@@ -84,15 +87,26 @@ export const ReceiveWarehouseDispatchDialog = ({
   onSuccess,
   title = 'Omborga qabul qilish',
   permissionPath = WAREHOUSE_RECEIPT_PAGE_PATH,
+  requireNomenclatureVerification = false,
+  savedNomenclatureCode = '',
+  onNomenclatureVerified,
 }) => {
   const { canCreate } = usePermissions()
   const canReceiveItems = canCreate(permissionPath)
 
+  const dialogRootRef = useRef(null)
+  const nomenclatureAnchorRef = useRef(null)
+  const nomenclatureInputRef = useRef(null)
+  const [nomenclatureInputPos, setNomenclatureInputPos] = useState(null)
   const [error, setError] = useState('')
   const [locationId, setLocationId] = useState('')
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
   const [actionLoadingByItem, setActionLoadingByItem] = useState({})
   const [draftByItem, setDraftByItem] = useState({})
+  const [nomenclatureInput, setNomenclatureInput] = useState('')
+  const [nomenclatureError, setNomenclatureError] = useState('')
+  const [nomenclatureVerified, setNomenclatureVerified] = useState(false)
+  const [nomenclatureFocusActive, setNomenclatureFocusActive] = useState(true)
 
   const detailQuery = useGetWarehouseDispatchByIdQuery(
     { id: dispatchId, markSeen: true },
@@ -112,9 +126,119 @@ export const ReceiveWarehouseDispatchDialog = ({
     [dispatch?.items],
   )
 
+  const nomenclatureLocked = Boolean(
+    open &&
+      requireNomenclatureVerification &&
+      dispatch &&
+      !nomenclatureVerified &&
+      nomenclatureFocusActive,
+  )
+  const canInteractWithReceipt =
+    (!requireNomenclatureVerification || nomenclatureVerified) && canReceiveItems
+
   useEffect(() => {
     if (!open) {
       setDraftByItem({})
+      setNomenclatureInput('')
+      setNomenclatureError('')
+      setNomenclatureVerified(false)
+      setNomenclatureFocusActive(true)
+      return
+    }
+
+    setNomenclatureInput('')
+    setNomenclatureError('')
+    setNomenclatureFocusActive(true)
+    setError('')
+
+    if (!requireNomenclatureVerification) {
+      setNomenclatureVerified(false)
+    }
+  }, [open, dispatchId, requireNomenclatureVerification])
+
+  useEffect(() => {
+    if (!open || !requireNomenclatureVerification || !dispatch?.dispatchCode) {
+      return
+    }
+
+    const alreadyVerified =
+      Boolean(savedNomenclatureCode) &&
+      savedNomenclatureCode.toLowerCase() === dispatch.dispatchCode.toLowerCase()
+
+    if (alreadyVerified) {
+      setNomenclatureVerified(true)
+      setNomenclatureFocusActive(false)
+    }
+  }, [open, requireNomenclatureVerification, dispatch?.dispatchCode, savedNomenclatureCode])
+
+  const updateNomenclatureInputPosition = () => {
+    if (!dialogRootRef.current || !nomenclatureAnchorRef.current) {
+      return false
+    }
+
+    const rootRect = dialogRootRef.current.getBoundingClientRect()
+    const anchorRect = nomenclatureAnchorRef.current.getBoundingClientRect()
+
+    if (anchorRect.width === 0 && anchorRect.height === 0) {
+      return false
+    }
+
+    setNomenclatureInputPos({
+      top: anchorRect.top - rootRect.top,
+      left: anchorRect.left - rootRect.left,
+      width: Math.max(anchorRect.width, 220),
+    })
+    return true
+  }
+
+  useLayoutEffect(() => {
+    if (!nomenclatureLocked) {
+      setNomenclatureInputPos(null)
+      return undefined
+    }
+
+    let frameId = 0
+    let attempts = 0
+
+    const measure = () => {
+      const positioned = updateNomenclatureInputPosition()
+      if (!positioned && attempts < 8) {
+        attempts += 1
+        frameId = window.requestAnimationFrame(measure)
+      }
+    }
+
+    frameId = window.requestAnimationFrame(measure)
+
+    const handleResize = () => updateNomenclatureInputPosition()
+    window.addEventListener('resize', handleResize)
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [nomenclatureLocked, open, dispatch?.id, detailQuery.isFetching])
+
+  useEffect(() => {
+    if (
+      !requireNomenclatureVerification ||
+      !open ||
+      !dispatch ||
+      nomenclatureVerified ||
+      !nomenclatureFocusActive
+    ) {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      nomenclatureInputRef.current?.focus()
+    }, 50)
+
+    return () => window.clearTimeout(timer)
+  }, [requireNomenclatureVerification, open, dispatch, nomenclatureVerified, nomenclatureFocusActive, nomenclatureInputPos])
+
+  useEffect(() => {
+    if (!open) {
       return
     }
 
@@ -151,6 +275,11 @@ export const ReceiveWarehouseDispatchDialog = ({
   }
 
   const ensureLocationSelected = () => {
+    if (requireNomenclatureVerification && !nomenclatureVerified) {
+      setError('Avval nomeklatura raqamini tasdiqlang')
+      return false
+    }
+
     if (!hasLocations) {
       setError('Ombor joylari topilmadi. Avval ombor joyini yarating.')
       return false
@@ -172,6 +301,34 @@ export const ReceiveWarehouseDispatchDialog = ({
         [field]: value.replace(/[^\d]/g, ''),
       },
     }))
+  }
+
+  const handleNomenclatureVerify = () => {
+    const code = nomenclatureInput.trim()
+    if (!code) {
+      setNomenclatureError('Nomeklatura raqamini kiriting')
+      return
+    }
+
+    if (!dispatch) {
+      return
+    }
+
+    if (code.toLowerCase() !== dispatch.dispatchCode.toLowerCase()) {
+      setNomenclatureError('Nomeklatura raqami noto‘g‘ri')
+      return
+    }
+
+    setNomenclatureError('')
+    setNomenclatureVerified(true)
+    setNomenclatureFocusActive(false)
+    setError('')
+    onNomenclatureVerified?.(code)
+  }
+
+  const handleStopNomenclatureFocus = () => {
+    setNomenclatureFocusActive(false)
+    setNomenclatureError('')
   }
 
   const handleSaveItem = async (item) => {
@@ -246,9 +403,22 @@ export const ReceiveWarehouseDispatchDialog = ({
     ).catch(() => {})
   }
 
+  const nomenclatureInputProps = {
+    value: nomenclatureInput,
+    onChange: (value) => {
+      setNomenclatureInput(value)
+      if (nomenclatureError) {
+        setNomenclatureError('')
+      }
+    },
+    onSubmit: handleNomenclatureVerify,
+    inputRef: nomenclatureInputRef,
+    error: nomenclatureError,
+  }
+
   return (
     <Dialog open={open} onClose={isLoading ? undefined : onClose} maxWidth="lg" fullWidth scroll="paper">
-      <Box>
+      <Box ref={dialogRootRef} sx={{ position: 'relative' }}>
         <DialogTitle
           component="div"
           sx={{
@@ -265,7 +435,14 @@ export const ReceiveWarehouseDispatchDialog = ({
             </Typography>
             {dispatch ? (
               <>
-                <Chip label={dispatch.dispatchCode} size="small" variant="outlined" sx={{ flexShrink: 0, ...dispatchCodeSx }} />
+                {!requireNomenclatureVerification ? (
+                  <Chip
+                    label={dispatch.dispatchCode}
+                    size="small"
+                    variant="outlined"
+                    sx={{ flexShrink: 0, ...dispatchCodeSx }}
+                  />
+                ) : null}
                 <Chip
                   size="small"
                   {...getDispatchStatusChipProps(dispatch.status, dispatch.statusLabel)}
@@ -282,252 +459,269 @@ export const ReceiveWarehouseDispatchDialog = ({
             </Box>
           ) : dispatch ? (
             <Stack spacing={0}>
-              <Box
-                sx={{
-                  position: 'sticky',
-                  top: 0,
-                  zIndex: 2,
-                  bgcolor: 'background.paper',
-                  px: 3,
-                  pt: 2,
-                  pb: 2,
-                  borderBottom: 1,
-                  borderColor: 'divider',
-                }}
-              >
-                {error ? (
-                  <Alert severity="error" sx={{ mb: 2 }}>
-                    {error}
-                  </Alert>
-                ) : null}
-                <WarehouseDispatchSummaryPanel dispatch={dispatch} />
-                <Box sx={{ mt: 2 }}>
-                  <DispatchQrSection dispatch={dispatch} />
+                <Box
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 2,
+                    bgcolor: 'background.paper',
+                    px: 3,
+                    pt: 2,
+                    pb: 0,
+                  }}
+                >
+                  {error ? (
+                    <Alert severity="error" sx={{ mb: 2 }}>
+                      {error}
+                    </Alert>
+                  ) : null}
+                  <WarehouseDispatchSummaryPanel
+                    dispatch={dispatch}
+                    nomenclatureVerified={requireNomenclatureVerification ? nomenclatureVerified : true}
+                    confirmedNomenclature={savedNomenclatureCode}
+                    nomenclatureAnchorRef={nomenclatureAnchorRef}
+                    nomenclatureFocusActive={nomenclatureFocusActive}
+                    nomenclatureInput={
+                      requireNomenclatureVerification && !nomenclatureVerified
+                        ? nomenclatureInputProps
+                        : null
+                    }
+                  />
                 </Box>
 
-                {hasLocations ? (
-                  <Box sx={{ mt: 2, maxWidth: 420 }}>
-                    <FormControl
-                      size="small"
-                      fullWidth
-                      required
-                      disabled={locationsQuery.isLoading || !canReceiveItems}
-                    >
-                      <InputLabel id="warehouse-location-select">Ombor joyi</InputLabel>
-                      <Select
-                        labelId="warehouse-location-select"
-                        value={selectedLocationId}
-                        label="Ombor joyi"
-                        onChange={(e) => setLocationId(e.target.value)}
-                      >
-                        {locations.map((loc) => (
-                          <MenuItem key={loc.id} value={loc.id}>
-                            {loc.name}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                <Box sx={{ px: 3, pt: 2, pb: 2 }}>
+                  <Box sx={{ mt: 0 }}>
+                    <DispatchQrSection dispatch={dispatch} />
                   </Box>
-                ) : !locationsQuery.isLoading ? (
-                  <Alert severity="warning" sx={{ mt: 2 }}>
-                    Ombor joylari topilmadi. Tovarlarni qabul qilishdan oldin ombor joyini yarating.
-                  </Alert>
-                ) : null}
-              </Box>
 
-              <Box sx={{ px: 3, py: 2.5 }}>
-                {pendingItems.length ? (
-                  <Box>
-                    <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
-                      Qabul qilinmagan tovarlar
-                    </Typography>
-                    <TableContainer component={Paper} variant="outlined">
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>Tovar</TableCell>
-                            <TableCell width={90} align="right">
-                              Jo‘natilgan
-                            </TableCell>
-                            <TableCell width={80} align="right">
-                              Qolgan
-                            </TableCell>
-                            <TableCell width={100} align="center">
-                              Qabul
-                            </TableCell>
-                            <TableCell width={100} align="center">
-                              Kelmadi
-                            </TableCell>
-                            {canReceiveItems ? (
-                              <TableCell width={72} align="center" />
-                            ) : null}
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {pendingItems.map((item) => {
-                            const itemLoading = Boolean(actionLoadingByItem[item.itemIndex]) || isLoading
-                            const draft = draftByItem[item.itemIndex] ?? emptyDraft()
-                            const { receivedFilled, rejectedFilled, receivedQty, rejectedQty } =
-                              getItemDraftState(draft)
-                            const canSubmit = canSubmitItemDraft(item, draft)
-                            const receivedExceeds =
-                              receivedFilled && receivedQty > item.quantityPending
-                            const rejectedExceeds =
-                              rejectedFilled && rejectedQty > item.quantityPending
+                  {hasLocations ? (
+                    <Box sx={{ mt: 2, maxWidth: 420 }}>
+                      <FormControl
+                        size="small"
+                        fullWidth
+                        required
+                        disabled={locationsQuery.isLoading || !canInteractWithReceipt}
+                      >
+                        <InputLabel id="warehouse-location-select">Ombor joyi</InputLabel>
+                        <Select
+                          labelId="warehouse-location-select"
+                          value={selectedLocationId}
+                          label="Ombor joyi"
+                          onChange={(e) => setLocationId(e.target.value)}
+                        >
+                          {locations.map((loc) => (
+                            <MenuItem key={loc.id} value={loc.id}>
+                              {loc.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Box>
+                  ) : !locationsQuery.isLoading ? (
+                    <Alert severity="warning" sx={{ mt: 2 }}>
+                      Ombor joylari topilmadi. Tovarlarni qabul qilishdan oldin ombor joyini yarating.
+                    </Alert>
+                  ) : null}
+                </Box>
 
-                            return (
-                              <TableRow key={item.itemIndex} hover>
-                                <TableCell>
-                                  <Typography variant="body2" fontWeight={600}>
-                                    {item.name}
-                                  </Typography>
-                                </TableCell>
-                                <TableCell align="right">{item.quantityDispatched} ta</TableCell>
-                                <TableCell align="right">
-                                  <Typography
-                                    variant="body2"
-                                    fontWeight={600}
-                                    color={receivedExceeds || rejectedExceeds ? 'error.main' : 'text.primary'}
-                                  >
-                                    {item.quantityPending} ta
-                                  </Typography>
-                                </TableCell>
-                                <TableCell align="center">
-                                  <TextField
-                                    size="small"
-                                    type="number"
-                                    value={draft.received}
-                                    onChange={(e) => updateDraft(item.itemIndex, 'received', e.target.value)}
-                                    slotProps={{
-                                      htmlInput: {
-                                        min: 1,
-                                        max: item.quantityPending,
-                                        style: { textAlign: 'center' },
-                                      },
-                                    }}
-                                    disabled={itemLoading || !canReceiveItems}
-                                    error={receivedExceeds || (receivedFilled && rejectedFilled)}
-                                    sx={{ width: 88 }}
-                                  />
-                                </TableCell>
-                                <TableCell align="center">
-                                  <TextField
-                                    size="small"
-                                    type="number"
-                                    value={draft.rejected}
-                                    onChange={(e) => updateDraft(item.itemIndex, 'rejected', e.target.value)}
-                                    slotProps={{
-                                      htmlInput: {
-                                        min: 1,
-                                        max: item.quantityPending,
-                                        style: { textAlign: 'center' },
-                                      },
-                                    }}
-                                    disabled={itemLoading || !canReceiveItems}
-                                    error={rejectedExceeds || (receivedFilled && rejectedFilled)}
-                                    sx={{ width: 88 }}
-                                  />
-                                </TableCell>
-                                {canReceiveItems ? (
-                                  <TableCell align="center" sx={{ verticalAlign: 'middle' }}>
-                                    <Tooltip
-                                      title={
-                                        canSubmit
-                                          ? 'Qabul qilish'
-                                          : receivedFilled && rejectedFilled
-                                            ? 'Faqat bitta maydonni to‘ldiring'
-                                            : 'Qabul yoki kelmadi sonini kiriting'
-                                      }
+                <Box sx={{ px: 3, py: 2.5, pt: 0 }}>
+                  {pendingItems.length ? (
+                    <Box>
+                      <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
+                        Qabul qilinmagan tovarlar
+                      </Typography>
+                      <TableContainer component={Paper} variant="outlined">
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Tovar</TableCell>
+                              <TableCell width={90} align="right">
+                                Jo‘natilgan
+                              </TableCell>
+                              <TableCell width={80} align="right">
+                                Qolgan
+                              </TableCell>
+                              <TableCell width={100} align="center">
+                                Qabul
+                              </TableCell>
+                              <TableCell width={100} align="center">
+                                Kelmadi
+                              </TableCell>
+                              {canReceiveItems ? (
+                                <TableCell width={72} align="center" />
+                              ) : null}
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {pendingItems.map((item) => {
+                              const itemLoading = Boolean(actionLoadingByItem[item.itemIndex]) || isLoading
+                              const draft = draftByItem[item.itemIndex] ?? emptyDraft()
+                              const { receivedFilled, rejectedFilled, receivedQty, rejectedQty } =
+                                getItemDraftState(draft)
+                              const canSubmit =
+                                canSubmitItemDraft(item, draft) &&
+                                (!requireNomenclatureVerification || nomenclatureVerified)
+                              const receivedExceeds =
+                                receivedFilled && receivedQty > item.quantityPending
+                              const rejectedExceeds =
+                                rejectedFilled && rejectedQty > item.quantityPending
+
+                              return (
+                                <TableRow key={item.itemIndex} hover>
+                                  <TableCell>
+                                    <Typography variant="body2" fontWeight={600}>
+                                      {item.name}
+                                    </Typography>
+                                  </TableCell>
+                                  <TableCell align="right">{item.quantityDispatched} ta</TableCell>
+                                  <TableCell align="right">
+                                    <Typography
+                                      variant="body2"
+                                      fontWeight={600}
+                                      color={receivedExceeds || rejectedExceeds ? 'error.main' : 'text.primary'}
                                     >
-                                      <span>
-                                        <IconButton
-                                          type="button"
-                                          color="primary"
-                                          disabled={itemLoading || !canSubmit}
-                                          onClick={() => handleSaveItem(item)}
+                                      {item.quantityPending} ta
+                                    </Typography>
+                                  </TableCell>
+                                  <TableCell align="center">
+                                    <TextField
+                                      size="small"
+                                      type="number"
+                                      value={draft.received}
+                                      onChange={(e) => updateDraft(item.itemIndex, 'received', e.target.value)}
+                                      slotProps={{
+                                        htmlInput: {
+                                          min: 1,
+                                          max: item.quantityPending,
+                                          style: { textAlign: 'center' },
+                                        },
+                                      }}
+                                      disabled={itemLoading || !canInteractWithReceipt}
+                                      error={receivedExceeds || (receivedFilled && rejectedFilled)}
+                                      sx={{ width: 88 }}
+                                    />
+                                  </TableCell>
+                                  <TableCell align="center">
+                                    <TextField
+                                      size="small"
+                                      type="number"
+                                      value={draft.rejected}
+                                      onChange={(e) => updateDraft(item.itemIndex, 'rejected', e.target.value)}
+                                      slotProps={{
+                                        htmlInput: {
+                                          min: 1,
+                                          max: item.quantityPending,
+                                          style: { textAlign: 'center' },
+                                        },
+                                      }}
+                                      disabled={itemLoading || !canInteractWithReceipt}
+                                      error={rejectedExceeds || (receivedFilled && rejectedFilled)}
+                                      sx={{ width: 88 }}
+                                    />
+                                  </TableCell>
+                                  {canReceiveItems ? (
+                                    <TableCell align="center" sx={{ verticalAlign: 'middle' }}>
+                                      <Tooltip
+                                        title={
+                                          requireNomenclatureVerification && !nomenclatureVerified
+                                            ? 'Avval nomeklatura raqamini tasdiqlang'
+                                            : canSubmit
+                                              ? 'Qabul qilish'
+                                              : receivedFilled && rejectedFilled
+                                                ? 'Faqat bitta maydonni to‘ldiring'
+                                                : 'Qabul yoki kelmadi sonini kiriting'
+                                        }
+                                      >
+                                        <span>
+                                          <IconButton
+                                            type="button"
+                                            color="primary"
+                                            disabled={itemLoading || !canSubmit}
+                                            onClick={() => handleSaveItem(item)}
+                                            sx={{
+                                              bgcolor: canSubmit ? 'primary.main' : undefined,
+                                              color: canSubmit ? 'primary.contrastText' : undefined,
+                                              '&:hover': canSubmit
+                                                ? { bgcolor: 'primary.dark' }
+                                                : undefined,
+                                            }}
+                                          >
+                                            {itemLoading ? (
+                                              <CircularProgress size={20} color="inherit" />
+                                            ) : (
+                                              <AddIcon />
+                                            )}
+                                          </IconButton>
+                                        </span>
+                                      </Tooltip>
+                                    </TableCell>
+                                  ) : null}
+                                </TableRow>
+                              )
+                            })}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </Box>
+                  ) : (
+                    <Alert severity="success">Barcha tovarlar qayta ishlangan</Alert>
+                  )}
+
+                  {processedItems.length ? (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
+                        Qabul qilingan tovarlar
+                      </Typography>
+                      <TableContainer component={Paper} variant="outlined">
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Tovar</TableCell>
+                              <TableCell width={120} align="right">
+                                Qabul
+                              </TableCell>
+                              <TableCell width={120} align="right">
+                                Rad
+                              </TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {processedItems.map((item) => (
+                              <TableRow key={item.itemIndex}>
+                                <TableCell>
+                                  <Stack spacing={0.5}>
+                                    <Typography variant="body2" fontWeight={600}>
+                                      {item.name}
+                                    </Typography>
+                                    {item.rejectReason ? (
+                                      <Tooltip title={item.rejectReason} placement="top-start" arrow>
+                                        <Typography
+                                          variant="caption"
+                                          color="error"
                                           sx={{
-                                            bgcolor: canSubmit ? 'primary.main' : undefined,
-                                            color: canSubmit ? 'primary.contrastText' : undefined,
-                                            '&:hover': canSubmit
-                                              ? { bgcolor: 'primary.dark' }
-                                              : undefined,
+                                            maxWidth: { xs: 220, sm: 320, md: 420 },
+                                            whiteSpace: 'nowrap',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
                                           }}
                                         >
-                                          {itemLoading ? (
-                                            <CircularProgress size={20} color="inherit" />
-                                          ) : (
-                                            <AddIcon />
-                                          )}
-                                        </IconButton>
-                                      </span>
-                                    </Tooltip>
-                                  </TableCell>
-                                ) : null}
+                                          Rad etish sababi: {item.rejectReason}
+                                        </Typography>
+                                      </Tooltip>
+                                    ) : null}
+                                  </Stack>
+                                </TableCell>
+                                <TableCell align="right">{item.quantityReceived} ta</TableCell>
+                                <TableCell align="right">{item.quantityRejected} ta</TableCell>
                               </TableRow>
-                            )
-                          })}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </Box>
-                ) : (
-                  <Alert severity="success">Barcha tovarlar qayta ishlangan</Alert>
-                )}
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </Box>
+                  ) : null}
+                </Box>
 
-                {processedItems.length ? (
-                  <Box sx={{ mt: 2 }}>
-                    <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
-                      Qabul qilingan tovarlar
-                    </Typography>
-                    <TableContainer component={Paper} variant="outlined">
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>Tovar</TableCell>
-                            <TableCell width={120} align="right">
-                              Qabul
-                            </TableCell>
-                            <TableCell width={120} align="right">
-                              Rad
-                            </TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {processedItems.map((item) => (
-                            <TableRow key={item.itemIndex}>
-                              <TableCell>
-                                <Stack spacing={0.5}>
-                                  <Typography variant="body2" fontWeight={600}>
-                                    {item.name}
-                                  </Typography>
-                                  {item.rejectReason ? (
-                                    <Tooltip title={item.rejectReason} placement="top-start" arrow>
-                                      <Typography
-                                        variant="caption"
-                                        color="error"
-                                        sx={{
-                                          maxWidth: { xs: 220, sm: 320, md: 420 },
-                                          whiteSpace: 'nowrap',
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis',
-                                        }}
-                                      >
-                                        Rad etish sababi: {item.rejectReason}
-                                      </Typography>
-                                    </Tooltip>
-                                  ) : null}
-                                </Stack>
-                              </TableCell>
-                              <TableCell align="right">{item.quantityReceived} ta</TableCell>
-                              <TableCell align="right">{item.quantityRejected} ta</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </Box>
-                ) : null}
-              </Box>
             </Stack>
           ) : (
             <Box sx={{ p: 3 }}>
@@ -568,6 +762,42 @@ export const ReceiveWarehouseDispatchDialog = ({
             Yopish
           </Button>
         </DialogActions>
+
+        {nomenclatureLocked ? (
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              bgcolor: 'rgba(0, 0, 0, 0.78)',
+              zIndex: 1200,
+              pointerEvents: 'auto',
+            }}
+          />
+        ) : null}
+
+        {nomenclatureLocked && nomenclatureInputPos ? (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: nomenclatureInputPos.top,
+              left: nomenclatureInputPos.left,
+              width: nomenclatureInputPos.width,
+              zIndex: 1300,
+              pointerEvents: 'auto',
+            }}
+          >
+            <NomenclatureTextField {...nomenclatureInputProps} stacked />
+            <Button
+              type="button"
+              size="small"
+              variant="text"
+              onClick={handleStopNomenclatureFocus}
+              sx={{ mt: 0.5, px: 0, minWidth: 0, color: '#fff' }}
+            >
+              Fokusni to‘xtatish
+            </Button>
+          </Box>
+        ) : null}
       </Box>
 
       <Snackbar

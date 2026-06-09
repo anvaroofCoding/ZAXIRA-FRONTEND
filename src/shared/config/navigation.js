@@ -52,6 +52,11 @@ export const NAV_ITEMS = [
     ],
   },
   {
+    type: 'link',
+    label: 'Sozlamalar',
+    path: '/sozlamalar',
+  },
+  {
     type: 'group',
     label: "Ro'yxatga olish",
     children: [

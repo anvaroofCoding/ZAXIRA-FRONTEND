@@ -14,8 +14,8 @@ import { PurchaseRequestRowActionsMenu } from './PurchaseRequestRowActionsMenu'
 export const PurchaseRequestsTable = ({
   items,
   onView,
-  onDownloadPdf,
-  onDownloadDocx,
+  onDownloadBildirgi,
+  onDownloadKelishuv,
   onDelete,
   canDeleteItem,
   onEdit,
@@ -85,8 +85,8 @@ export const PurchaseRequestsTable = ({
                     item={item}
                     loading={isDownloading}
                     onView={onView}
-                    onDownloadPdf={onDownloadPdf}
-                    onDownloadDocx={onDownloadDocx}
+                    onDownloadBildirgi={onDownloadBildirgi}
+                    onDownloadKelishuv={onDownloadKelishuv}
                     onDelete={onDelete}
                     canDelete={canDeleteItem?.(item) ?? false}
                     onEdit={onEdit}

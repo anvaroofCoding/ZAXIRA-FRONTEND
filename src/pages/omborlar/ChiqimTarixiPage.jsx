@@ -35,6 +35,7 @@ import {
   useGetWarehouseExpensesQuery,
 } from '@/features/warehouse/api/warehouseApi'
 import { useGetStructuresQuery } from '@/features/structures/api/structuresApi'
+import { filterStructuresWithWarehouse } from '@/features/structures/utils/structureFilters'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { PageShell } from '@/shared/components/layout/PageShell'
 import { useAppDispatch } from '@/shared/hooks/useAppDispatch'
@@ -91,10 +92,8 @@ export const ChiqimTarixiPage = () => {
 
   const structuresQuery = useGetStructuresQuery()
   const structuresForFilter = useMemo(() => {
-    const list = structuresQuery.data ?? []
-    return [...list]
-      .filter((structure) => structure.isActive)
-      .sort((a, b) => a.shortName.localeCompare(b.shortName, 'uz'))
+    const list = filterStructuresWithWarehouse(structuresQuery.data)
+    return [...list].sort((a, b) => a.shortName.localeCompare(b.shortName, 'uz'))
   }, [structuresQuery.data])
 
   const resolvedStructureFilter =

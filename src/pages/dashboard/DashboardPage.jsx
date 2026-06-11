@@ -64,7 +64,11 @@ const SummaryCard = ({ label, value, rawValue, series, chartColor }) => {
   return (
     <Card variant="outlined" sx={{ height: '100%' }}>
       <CardContent sx={{ py: 2.25 }}>
-        <Stack direction="row" alignItems="flex-start" justifyContent="space-between" gap={1.5}>
+        <Stack
+          direction="row"
+          gap={1.5}
+          sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}
+        >
           <Box sx={{ minWidth: 0, flex: 1, pr: 1 }}>
             <Typography variant="body2" color="text.secondary">
               {label}
@@ -77,12 +81,13 @@ const SummaryCard = ({ label, value, rawValue, series, chartColor }) => {
           {Array.isArray(series) && series.length ? (
             <Box sx={{ width: 120, height: 44, mt: 0.25, ml: 2, flexShrink: 0 }}>
               <SparkLineChart
+                key={chartColor}
                 data={series}
                 height={44}
                 showTooltip={false}
                 showHighlight={false}
                 curve="linear"
-                colors={[chartColor]}
+                color={chartColor}
                 area
               />
             </Box>
@@ -104,7 +109,11 @@ const ChartCard = ({ title, subtitle, children, sx }) => (
   >
     <CardContent sx={{ py: 2 }}>
       {title || subtitle ? (
-        <Stack direction="row" alignItems="baseline" justifyContent="space-between" gap={2} sx={{ mb: 1 }}>
+        <Stack
+          direction="row"
+          gap={2}
+          sx={{ mb: 1, alignItems: 'baseline', justifyContent: 'space-between' }}
+        >
           <Box sx={{ minWidth: 0 }}>
             {title ? (
               <Typography variant="subtitle2" fontWeight={700} noWrap>
@@ -127,7 +136,11 @@ const ChartCard = ({ title, subtitle, children, sx }) => (
 const SummaryCardSkeleton = () => (
   <Card variant="outlined" sx={{ height: '100%' }}>
     <CardContent sx={{ py: 2.25 }}>
-      <Stack direction="row" alignItems="flex-start" justifyContent="space-between" gap={1.5}>
+      <Stack
+        direction="row"
+        gap={1.5}
+        sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}
+      >
         <Box sx={{ minWidth: 0, flex: 1 }}>
           <Skeleton variant="text" width="42%" height={24} />
           <Skeleton variant="text" width="55%" height={42} />
@@ -267,12 +280,12 @@ export const DashboardPage = () => {
 
   return (
     <Box sx={{ mx: { xs: -1.5, sm: -2 } }}>
-      <Stack direction="row" alignItems="center" gap={2} sx={{ mb: 2 }}>
+      <Stack direction="row" gap={2} sx={{ mb: 2, alignItems: 'center' }}>
         <Typography variant="h5" component="h1" fontWeight={700}>
           Dashboard
         </Typography>
 
-        <Stack direction="row" alignItems="center" spacing={1.25} sx={{ ml: 'auto' }}>
+        <Stack direction="row" spacing={1.25} sx={{ ml: 'auto', alignItems: 'center' }}>
           {hasDashboardAccess ? (
             <Button
               variant="outlined"

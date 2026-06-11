@@ -162,7 +162,10 @@ export const TransferniQabulQilishPage = () => {
           dispatchId={detailTarget.id}
           title="Transferni qabul qilish"
           permissionPath="/transfer/transferni-qabul-qilish"
+          summaryPrimaryField="nakladnoy"
+          showItemNomenclature
           onClose={() => setDetailTarget(null)}
+          onSuccess={() => setDetailTarget(null)}
         />
       ) : null}
     </Box>

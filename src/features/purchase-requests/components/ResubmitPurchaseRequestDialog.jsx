@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
 import Alert from '@mui/material/Alert'
+import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -10,14 +11,19 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
+import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import { COUNTRIES } from '@/features/purchase-requests/constants/countries'
+import { MEASUREMENT_UNITS } from '@/features/purchase-requests/constants/measurementUnits'
 
 const emptyItem = () => ({
   name: '',
   characteristics: '',
   quantity: '1',
+  unit: 'dona',
+  manufacturingCountry: '',
 })
 
 const mapItemsFromRequest = (items = []) =>
@@ -26,6 +32,8 @@ const mapItemsFromRequest = (items = []) =>
         name: item.name,
         characteristics: item.characteristics,
         quantity: String(item.quantity),
+        unit: item.unit || 'dona',
+        manufacturingCountry: item.manufacturingCountry || '',
       }))
     : [emptyItem()]
 
@@ -58,6 +66,8 @@ export const ResubmitPurchaseRequestDialog = ({
         name: item.name.trim(),
         characteristics: item.characteristics.trim(),
         quantity: Number(item.quantity),
+        unit: item.unit.trim(),
+        manufacturingCountry: item.manufacturingCountry.trim(),
       }))
       .filter((item) => item.name && item.characteristics)
 
@@ -68,6 +78,16 @@ export const ResubmitPurchaseRequestDialog = ({
 
     if (normalizedItems.some((item) => !Number.isFinite(item.quantity) || item.quantity < 1)) {
       setError('Tovar soni 1 dan katta bo‘lishi kerak')
+      return
+    }
+
+    if (normalizedItems.some((item) => !item.unit)) {
+      setError('Har bir tovar uchun birlikni tanlang')
+      return
+    }
+
+    if (normalizedItems.some((item) => !item.manufacturingCountry)) {
+      setError('Har bir tovar uchun ishlab chiqarilgan davlatni tanlang')
       return
     }
 
@@ -144,6 +164,7 @@ export const ResubmitPurchaseRequestDialog = ({
                   fullWidth
                   multiline
                   minRows={2}
+                  helperText={`${item.characteristics.length}/500`}
                   value={item.characteristics}
                   onChange={(event) =>
                     setItems((prev) =>
@@ -152,20 +173,68 @@ export const ResubmitPurchaseRequestDialog = ({
                       ),
                     )
                   }
+                  slotProps={{
+                    htmlInput: { maxLength: 500 },
+                  }}
                 />
-                <TextField
-                  label="Soni"
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                  <TextField
+                    label="Soni"
+                    size="small"
+                    type="number"
+                    fullWidth
+                    sx={{ flex: 1, minWidth: 0 }}
+                    value={item.quantity}
+                    onChange={(event) =>
+                      setItems((prev) =>
+                        prev.map((row, i) =>
+                          i === index ? { ...row, quantity: event.target.value } : row,
+                        ),
+                      )
+                    }
+                  />
+                  <TextField
+                    select
+                    label="Birlik"
+                    size="small"
+                    fullWidth
+                    sx={{ flex: 1, minWidth: 0 }}
+                    value={item.unit}
+                    onChange={(event) =>
+                      setItems((prev) =>
+                        prev.map((row, i) =>
+                          i === index ? { ...row, unit: event.target.value } : row,
+                        ),
+                      )
+                    }
+                  >
+                    {MEASUREMENT_UNITS.map((unit) => (
+                      <MenuItem key={unit} value={unit}>
+                        {unit}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Stack>
+                <Autocomplete
                   size="small"
-                  type="number"
-                  sx={{ maxWidth: 120 }}
-                  value={item.quantity}
-                  onChange={(event) =>
+                  options={COUNTRIES}
+                  value={item.manufacturingCountry || null}
+                  onChange={(_event, value) =>
                     setItems((prev) =>
                       prev.map((row, i) =>
-                        i === index ? { ...row, quantity: event.target.value } : row,
+                        i === index
+                          ? { ...row, manufacturingCountry: value ?? '' }
+                          : row,
                       ),
                     )
                   }
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Ishlab chiqarilgan davlati"
+                      placeholder="Davlatni tanlang"
+                    />
+                  )}
                 />
               </Stack>
             </Box>
@@ -180,7 +249,7 @@ export const ResubmitPurchaseRequestDialog = ({
           </Button>
 
           <TextField
-            label="Izoh"
+            label="Sotib olish sababi"
             multiline
             minRows={3}
             fullWidth

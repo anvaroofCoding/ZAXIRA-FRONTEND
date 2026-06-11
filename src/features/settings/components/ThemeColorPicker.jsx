@@ -50,7 +50,8 @@ export const ThemeColorPicker = () => {
 
   const isDefault = primaryColor === defaultPrimaryColor
 
-  const applyHex = (rawValue) => {    const normalized = normalizeThemeColor(rawValue)
+  const applyHex = (rawValue) => {
+    const normalized = normalizeThemeColor(rawValue)
     setDraftHex(normalized)
     setPrimaryColor(normalized)
   }
@@ -64,28 +65,23 @@ export const ThemeColorPicker = () => {
         </Typography>
       </Stack>
 
-      <Box>
-        <Typography variant="body2" fontWeight={600} gutterBottom>
-          Tayyor ranglar
-        </Typography>
-        <Grid container spacing={1}>
-          {THEME_COLOR_PRESETS.map((preset) => (
-            <Grid key={preset.value} size="auto">
-              <SwatchButton
-                color={preset.value}
-                label={preset.label}
-                selected={primaryColor === preset.value}
-                onSelect={applyHex}
-              />
-            </Grid>
-          ))}
-        </Grid>
-      </Box>
+      <Grid container spacing={1}>
+        {THEME_COLOR_PRESETS.map((preset) => (
+          <Grid key={preset.value} size="auto">
+            <SwatchButton
+              color={preset.value}
+              label={preset.label}
+              selected={primaryColor === preset.value}
+              onSelect={applyHex}
+            />
+          </Grid>
+        ))}
+      </Grid>
 
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         spacing={1.5}
-        alignItems={{ xs: 'stretch', sm: 'center' }}
+        sx={{ alignItems: { xs: 'stretch', sm: 'center' } }}
       >
         <TextField
           label="HEX rang kodi"

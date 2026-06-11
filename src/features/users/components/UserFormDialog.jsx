@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -18,12 +18,15 @@ import Typography from '@mui/material/Typography'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import { PermissionTreeTable } from '@/features/permissions/components/PermissionTreeTable'
+import { WAREHOUSE_PERMISSION_BLOCKED_MESSAGE } from '@/features/permissions/constants'
 import { TableSkeleton } from '@/shared/components/skeleton'
 import {
   createEmptyPermissions,
+  hasGrantedWarehousePermission,
   normalizePermissions,
   pickGrantedPermissions,
   setPageAccess,
+  stripWarehousePermissions,
 } from '@/features/permissions/utils/permissions'
 
 const DASHBOARD_PATH = '/dashboard'
@@ -32,6 +35,7 @@ const buildFormState = (mode, initialUser) => ({
   login: mode === 'edit' ? (initialUser?.login ?? '') : '',
   password: '',
   displayName: initialUser?.displayName ?? '',
+  position: initialUser?.position ?? '',
   structureId: initialUser?.structureId ?? '',
 })
 
@@ -66,6 +70,22 @@ const UserFormFields = ({
   const [error, setError] = useState('')
   const dashboardChecked = Boolean(permissions?.[DASHBOARD_PATH]?.access)
 
+  const selectedStructure = useMemo(
+    () => activeStructures.find((item) => item.id === form.structureId) ?? null,
+    [activeStructures, form.structureId],
+  )
+
+  const warehousePermissionMode = useMemo(() => {
+    if (!showStructureField) return 'allowed'
+    if (!selectedStructure) return 'pending'
+    return selectedStructure.hasWarehouse === true ? 'allowed' : 'blocked'
+  }, [showStructureField, selectedStructure])
+
+  useEffect(() => {
+    if (warehousePermissionMode === 'allowed') return
+    setPermissions((prev) => stripWarehousePermissions(prev))
+  }, [warehousePermissionMode])
+
   const handleSubmit = async (event) => {
     event.preventDefault()
     setError('')
@@ -92,8 +112,14 @@ const UserFormFields = ({
       return
     }
 
+    if (warehousePermissionMode === 'blocked' && hasGrantedWarehousePermission(permissions)) {
+      setError(WAREHOUSE_PERMISSION_BLOCKED_MESSAGE)
+      return
+    }
+
     const payload = {
       displayName: form.displayName.trim() || login,
+      position: form.position.trim(),
       permissions: pickGrantedPermissions(
         normalizePermissions(catalog, permissions),
       ),
@@ -148,6 +174,7 @@ const UserFormFields = ({
                 size="small"
                 label={mode === 'create' ? 'Parol' : 'Yangi parol (ixtiyoriy)'}
                 type="password"
+                autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
                 value={form.password}
                 onChange={(event) => {
                   setForm((prev) => ({ ...prev, password: event.target.value }))
@@ -168,6 +195,19 @@ const UserFormFields = ({
                 }
                 disabled={loading}
                 fullWidth
+              />
+
+              <TextField
+                variant="filled"
+                size="small"
+                label="Lavozim"
+                value={form.position}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, position: event.target.value }))
+                }
+                disabled={loading}
+                fullWidth
+                placeholder="Masalan: Buxgalter"
               />
 
               {showStructureField ? (
@@ -235,6 +275,7 @@ const UserFormFields = ({
                 permissions={permissions}
                 onChange={setPermissions}
                 disabled={loading}
+                warehousePermissionMode={warehousePermissionMode}
               />
             )}
           </Box>

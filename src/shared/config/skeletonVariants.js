@@ -11,6 +11,7 @@ export const SKELETON_VARIANTS = {
   dashboard: 'dashboard',
   users: 'users',
   structures: 'structures',
+  commissions: 'commissions',
   purchasingQueue: 'purchasingQueue',
   purchasingPurchased: 'purchasingPurchased',
   purchasingReceipt: 'purchasingReceipt',
@@ -29,6 +30,10 @@ export const resolveSkeletonVariant = (pathname) => {
 
   if (pathname.includes('/royxatga-olish/tuzilmalar')) {
     return SKELETON_VARIANTS.structures
+  }
+
+  if (pathname.includes('/royxatga-olish/komissiya-azolari')) {
+    return SKELETON_VARIANTS.commissions
   }
 
   if (pathname.includes('/xarid-qilish/sotib-olinadigan-tavarlar')) {

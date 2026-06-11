@@ -1,7 +1,24 @@
-import { DISABLED_PAGE_ACTIONS } from '@/features/permissions/constants'
+import {
+  DISABLED_PAGE_ACTIONS,
+  RECEIPT_PAGE_PATHS,
+  WAREHOUSE_PERMISSION_PATHS,
+} from '@/features/permissions/constants'
 import { NAV_ITEMS } from '@/shared/config/navigation'
 
 const disabledActionsForPath = (path) => DISABLED_PAGE_ACTIONS[path] ?? []
+
+const RECEIPT_PAGE_PATH_SET = new Set(RECEIPT_PAGE_PATHS)
+
+const PERMISSION_ACTION_KEYS = ['create', 'update', 'delete']
+
+const getEnabledActionKeys = (path) =>
+  PERMISSION_ACTION_KEYS.filter((key) => !isPageActionDisabled(path, key))
+
+const isLegacyStrippedActions = (path, actions) => {
+  const enabledActionKeys = getEnabledActionKeys(path)
+  if (!enabledActionKeys.length) return false
+  return enabledActionKeys.every((key) => actions?.[key] === false)
+}
 
 export const isPageActionDisabled = (path, actionKey) =>
   disabledActionsForPath(path).includes(actionKey)
@@ -27,6 +44,22 @@ const WAREHOUSE_EXPENSE_LABEL = 'Chiqim qilish (Dashboard tugmasi)'
 const ALWAYS_ALLOWED_PATHS = new Set(['/chat'])
 
 const isAlwaysAllowedPath = (path) => ALWAYS_ALLOWED_PATHS.has(path)
+
+export const isWarehousePermissionPath = (path) =>
+  WAREHOUSE_PERMISSION_PATHS.includes(path)
+
+export const stripWarehousePermissions = (permissions) => {
+  const next = { ...permissions }
+  WAREHOUSE_PERMISSION_PATHS.forEach((path) => {
+    if (next[path]) {
+      next[path] = createDefaultPagePermission(false, false)
+    }
+  })
+  return next
+}
+
+export const hasGrantedWarehousePermission = (permissions) =>
+  WAREHOUSE_PERMISSION_PATHS.some((path) => permissions?.[path]?.access)
 
 const appendCustomPermissionLinks = (links, groups) => {
   const hasExpensePath =
@@ -112,15 +145,25 @@ export const normalizePermissions = (catalog, input) => {
     const current = input?.[path]
     const access = Boolean(current?.access)
 
+    let actions = access
+      ? {
+          create: current?.actions?.create ?? true,
+          update: current?.actions?.update ?? true,
+          delete: current?.actions?.delete ?? true,
+        }
+      : createDefaultActions(false)
+
+    if (access && isLegacyStrippedActions(path, current?.actions)) {
+      actions = createDefaultActions(true)
+    }
+
+    if (access && RECEIPT_PAGE_PATH_SET.has(path)) {
+      actions = { ...actions, create: true }
+    }
+
     base[path] = sanitizePagePermission(path, {
       access,
-      actions: access
-        ? {
-            create: current?.actions?.create ?? true,
-            update: current?.actions?.update ?? true,
-            delete: current?.actions?.delete ?? true,
-          }
-        : createDefaultActions(false),
+      actions,
     })
   })
 
@@ -252,6 +295,13 @@ export const hasPageAccess = (user, path) => {
   if (isAlwaysAllowedPath(path)) return true
   if (!user) return false
   if (isSuperAdminUser(user)) return true
+  if (
+    isWarehousePermissionPath(path) &&
+    user.structure &&
+    user.structure.hasWarehouse !== true
+  ) {
+    return false
+  }
   return resolvePermissionLookupPaths(path).some((lookupPath) =>
     Boolean(user.permissions?.[lookupPath]?.access),
   )
@@ -265,4 +315,11 @@ export const hasPageAction = (user, path, actionKey) => {
     const page = user.permissions?.[lookupPath]
     return Boolean(page?.access && page?.actions?.[actionKey])
   })
+}
+
+/** Qabul qilish sahifalarida Kirish ruxsati yetarli */
+export const canReceiveOnPage = (user, path) => {
+  if (!hasPageAccess(user, path)) return false
+  if (RECEIPT_PAGE_PATH_SET.has(path)) return true
+  return hasPageAction(user, path, 'create')
 }

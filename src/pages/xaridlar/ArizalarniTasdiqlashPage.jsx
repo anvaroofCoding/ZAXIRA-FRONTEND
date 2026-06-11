@@ -13,7 +13,7 @@ import { PurchaseRequestApprovalDetailDialog } from '@/features/purchase-request
 import { PurchaseRequestsPageSkeleton } from '@/features/purchase-requests/components/PurchaseRequestsPageSkeleton'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
-import { downloadAuthenticatedFile } from '@/shared/utils/downloadFile'
+import { useSubmittedDocumentDownload } from '@/features/purchase-requests/hooks/useSubmittedDocumentDownload'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
@@ -23,7 +23,6 @@ export const ArizalarniTasdiqlashPage = () => {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
-  const [downloadingId, setDownloadingId] = useState(null)
   const [detailTarget, setDetailTarget] = useState(null)
 
   const debouncedSearch = useDebouncedValue(search, 350)
@@ -46,21 +45,9 @@ export const ArizalarniTasdiqlashPage = () => {
     setSnackbar({ open: true, message, severity })
   }
 
-  const handleDownload = async (item, type) => {
-    setDownloadingId(item.id)
-
-    try {
-      const extension = type === 'pdf' ? 'pdf' : 'docx'
-      await downloadAuthenticatedFile(
-        `/purchase-requests/${item.id}/export/${extension}`,
-        `buyurtma-${item.requestCode}.${extension}`,
-      )
-    } catch (error) {
-      showSnackbar(error.message || 'Yuklab olishda xatolik', 'error')
-    } finally {
-      setDownloadingId(null)
-    }
-  }
+  const { downloadingId, downloadHandlers } = useSubmittedDocumentDownload({
+    onError: (error) => showSnackbar(error.message || 'Yuklab olishda xatolik', 'error'),
+  })
 
   return (
     <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -132,8 +119,7 @@ export const ArizalarniTasdiqlashPage = () => {
         requestId={detailTarget?.id}
         downloading={downloadingId === detailTarget?.id}
         onClose={() => setDetailTarget(null)}
-        onDownloadPdf={(item) => handleDownload(item, 'pdf')}
-        onDownloadDocx={(item) => handleDownload(item, 'docx')}
+        {...downloadHandlers}
         onSuccess={(message) => showSnackbar(message)}
       />
 

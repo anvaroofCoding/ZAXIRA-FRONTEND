@@ -49,6 +49,9 @@ const REJECT_REASON = 'Kelmadi'
 
 const emptyDraft = () => ({ received: '', rejected: '' })
 
+const getItemNomenclature = (item) =>
+  item.nomenclatureCode?.trim() || item.barcode?.trim() || '—'
+
 const parseQty = (value) => {
   const parsed = Number.parseInt(String(value).trim(), 10)
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
@@ -90,9 +93,11 @@ export const ReceiveWarehouseDispatchDialog = ({
   requireNomenclatureVerification = false,
   savedNomenclatureCode = '',
   onNomenclatureVerified,
+  showItemNomenclature = false,
+  summaryPrimaryField = 'nomenclature',
 }) => {
-  const { canCreate } = usePermissions()
-  const canReceiveItems = canCreate(permissionPath)
+  const { canReceiveOnPage } = usePermissions()
+  const canReceiveItems = canReceiveOnPage(permissionPath)
 
   const dialogRootRef = useRef(null)
   const nomenclatureAnchorRef = useRef(null)
@@ -157,19 +162,15 @@ export const ReceiveWarehouseDispatchDialog = ({
   }, [open, dispatchId, requireNomenclatureVerification])
 
   useEffect(() => {
-    if (!open || !requireNomenclatureVerification || !dispatch?.dispatchCode) {
+    if (!open || !requireNomenclatureVerification) {
       return
     }
 
-    const alreadyVerified =
-      Boolean(savedNomenclatureCode) &&
-      savedNomenclatureCode.toLowerCase() === dispatch.dispatchCode.toLowerCase()
-
-    if (alreadyVerified) {
+    if (savedNomenclatureCode.trim()) {
       setNomenclatureVerified(true)
       setNomenclatureFocusActive(false)
     }
-  }, [open, requireNomenclatureVerification, dispatch?.dispatchCode, savedNomenclatureCode])
+  }, [open, requireNomenclatureVerification, savedNomenclatureCode])
 
   const updateNomenclatureInputPosition = () => {
     if (!dialogRootRef.current || !nomenclatureAnchorRef.current) {
@@ -310,15 +311,6 @@ export const ReceiveWarehouseDispatchDialog = ({
       return
     }
 
-    if (!dispatch) {
-      return
-    }
-
-    if (code.toLowerCase() !== dispatch.dispatchCode.toLowerCase()) {
-      setNomenclatureError('Nomeklatura raqami noto‘g‘ri')
-      return
-    }
-
     setNomenclatureError('')
     setNomenclatureVerified(true)
     setNomenclatureFocusActive(false)
@@ -353,12 +345,18 @@ export const ReceiveWarehouseDispatchDialog = ({
       return
     }
 
+    const activeNomenclatureCode =
+      savedNomenclatureCode.trim() || nomenclatureInput.trim()
+
     try {
       await withItemLoading(item.itemIndex, () =>
         receiveDispatch({
           id: dispatchId,
           body: {
             locationId: selectedLocationId,
+            ...(requireNomenclatureVerification && activeNomenclatureCode
+              ? { nomenclatureCode: activeNomenclatureCode }
+              : {}),
             receivedItems:
               receivedQty > 0
                 ? [{ itemIndex: item.itemIndex, quantityReceived: receivedQty }]
@@ -435,7 +433,7 @@ export const ReceiveWarehouseDispatchDialog = ({
             </Typography>
             {dispatch ? (
               <>
-                {!requireNomenclatureVerification ? (
+                {!requireNomenclatureVerification || summaryPrimaryField === 'nakladnoy' ? (
                   <Chip
                     label={dispatch.dispatchCode}
                     size="small"
@@ -477,6 +475,7 @@ export const ReceiveWarehouseDispatchDialog = ({
                   ) : null}
                   <WarehouseDispatchSummaryPanel
                     dispatch={dispatch}
+                    summaryPrimaryField={summaryPrimaryField}
                     nomenclatureVerified={requireNomenclatureVerification ? nomenclatureVerified : true}
                     confirmedNomenclature={savedNomenclatureCode}
                     nomenclatureAnchorRef={nomenclatureAnchorRef}
@@ -535,6 +534,9 @@ export const ReceiveWarehouseDispatchDialog = ({
                           <TableHead>
                             <TableRow>
                               <TableCell>Tovar</TableCell>
+                              {showItemNomenclature ? (
+                                <TableCell width={160}>Nomeklatura raqami</TableCell>
+                              ) : null}
                               <TableCell width={90} align="right">
                                 Jo‘natilgan
                               </TableCell>
@@ -573,6 +575,17 @@ export const ReceiveWarehouseDispatchDialog = ({
                                       {item.name}
                                     </Typography>
                                   </TableCell>
+                                  {showItemNomenclature ? (
+                                    <TableCell>
+                                      <Typography
+                                        variant="body2"
+                                        fontFamily="monospace"
+                                        sx={{ fontSize: '0.85rem' }}
+                                      >
+                                        {getItemNomenclature(item)}
+                                      </Typography>
+                                    </TableCell>
+                                  ) : null}
                                   <TableCell align="right">{item.quantityDispatched} ta</TableCell>
                                   <TableCell align="right">
                                     <Typography
@@ -626,10 +639,10 @@ export const ReceiveWarehouseDispatchDialog = ({
                                           requireNomenclatureVerification && !nomenclatureVerified
                                             ? 'Avval nomeklatura raqamini tasdiqlang'
                                             : canSubmit
-                                              ? 'Qabul qilish'
-                                              : receivedFilled && rejectedFilled
-                                                ? 'Faqat bitta maydonni to‘ldiring'
-                                                : 'Qabul yoki kelmadi sonini kiriting'
+                                                ? 'Qabul qilish'
+                                                : receivedFilled && rejectedFilled
+                                                  ? 'Faqat bitta maydonni to‘ldiring'
+                                                  : 'Qabul yoki kelmadi sonini kiriting'
                                         }
                                       >
                                         <span>
@@ -677,6 +690,9 @@ export const ReceiveWarehouseDispatchDialog = ({
                           <TableHead>
                             <TableRow>
                               <TableCell>Tovar</TableCell>
+                              {showItemNomenclature ? (
+                                <TableCell width={160}>Nomeklatura raqami</TableCell>
+                              ) : null}
                               <TableCell width={120} align="right">
                                 Qabul
                               </TableCell>
@@ -711,6 +727,17 @@ export const ReceiveWarehouseDispatchDialog = ({
                                     ) : null}
                                   </Stack>
                                 </TableCell>
+                                {showItemNomenclature ? (
+                                  <TableCell>
+                                    <Typography
+                                      variant="body2"
+                                      fontFamily="monospace"
+                                      sx={{ fontSize: '0.85rem' }}
+                                    >
+                                      {getItemNomenclature(item)}
+                                    </Typography>
+                                  </TableCell>
+                                ) : null}
                                 <TableCell align="right">{item.quantityReceived} ta</TableCell>
                                 <TableCell align="right">{item.quantityRejected} ta</TableCell>
                               </TableRow>

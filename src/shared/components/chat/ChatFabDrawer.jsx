@@ -173,24 +173,42 @@ const UnreadBadge = ({ count }) => {
 }
 
 const ConversationRow = ({ avatar, title, subtitle, time, unreadCount, onClick }) => (
-  <ListItemButton onClick={onClick} alignItems="flex-start" sx={{ py: 1.25 }}>
+  <ListItemButton onClick={onClick} sx={{ py: 1.25, alignItems: 'flex-start' }}>
     <ListItemAvatar sx={{ minWidth: 52 }}>{avatar}</ListItemAvatar>
     <ListItemText
+      slotProps={{
+        primary: { component: 'div' },
+        secondary: { component: 'div' },
+      }}
       primary={
-        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-          <Typography variant="subtitle2" fontWeight={700} noWrap sx={{ flex: 1 }}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ alignItems: 'center', justifyContent: 'space-between' }}
+        >
+          <Typography component="span" variant="subtitle2" fontWeight={700} noWrap sx={{ flex: 1 }}>
             {title}
           </Typography>
           {time ? (
-            <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>
+            <Typography
+              component="span"
+              variant="caption"
+              color="text.secondary"
+              sx={{ flexShrink: 0 }}
+            >
               {time}
             </Typography>
           ) : null}
         </Stack>
       }
       secondary={
-        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ alignItems: 'center', justifyContent: 'space-between' }}
+        >
           <Typography
+            component="span"
             variant="body2"
             color="text.secondary"
             noWrap
@@ -798,7 +816,11 @@ export const ChatFabDrawer = () => {
                 '&:hover .message-download-icon': { opacity: 1 },
               }}
             >
-              <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.5}>
+              <Stack
+                direction="row"
+                spacing={0.5}
+                sx={{ alignItems: 'center', justifyContent: 'space-between' }}
+              >
                 <Typography variant="caption" sx={{ opacity: 0.85, display: 'block', flex: 1 }}>
                   {msg.senderName}
                 </Typography>
@@ -945,7 +967,7 @@ export const ChatFabDrawer = () => {
           }}
         >
           <Box sx={{ px: 1.5, pt: 1.5, pb: 0.5 }}>
-            <Stack direction="row" alignItems="center" spacing={0.5}>
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
               {view === 'thread' ? (
                 <IconButton size="small" onClick={backToList} aria-label="Orqaga">
                   <ArrowBackIcon />
@@ -1031,7 +1053,7 @@ export const ChatFabDrawer = () => {
                     sx={{ mb: 1 }}
                   />
                 ) : null}
-                <Stack direction="row" spacing={1} alignItems="flex-end">
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-end' }}>
                   <TextField
                     fullWidth
                     size="small"

@@ -117,6 +117,10 @@ export const NotificationsDrawer = () => {
                     }}
                   >
                     <ListItemText
+                      slotProps={{
+                        primary: { component: 'div' },
+                        secondary: { component: 'div' },
+                      }}
                       primary={
                         <Typography
                           variant="subtitle2"

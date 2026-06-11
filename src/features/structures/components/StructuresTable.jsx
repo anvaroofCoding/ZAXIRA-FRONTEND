@@ -43,7 +43,7 @@ export const StructuresTable = ({
             <TableCell>To‘liq nomi</TableCell>
             <TableCell width={140}>Qisqa nomi</TableCell>
             <TableCell width={100}>Ombor</TableCell>
-            <TableCell width={100}>Raxbar</TableCell>
+            <TableCell width={180}>Raxbar</TableCell>
             <TableCell width={120}>Holat</TableCell>
             <TableCell width={120} align="right">
               Amallar
@@ -68,7 +68,13 @@ export const StructuresTable = ({
                 <BooleanChip value={structure.hasWarehouse} />
               </TableCell>
               <TableCell>
-                <BooleanChip value={structure.hasLeader} />
+                {structure.hasLeader ? (
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    {structure.leaderName?.trim() || '—'}
+                  </Typography>
+                ) : (
+                  <BooleanChip value={false} />
+                )}
               </TableCell>
               <TableCell>
                 <Chip

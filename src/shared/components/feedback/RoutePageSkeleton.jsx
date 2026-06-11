@@ -1,4 +1,5 @@
 import { useLocation } from 'react-router-dom'
+import { CommissionsPageSkeleton } from '@/features/commissions/components/CommissionsPageSkeleton'
 import { StructuresPageSkeleton } from '@/features/structures/components/StructuresPageSkeleton'
 import { UsersPageSkeleton } from '@/features/users/components/UsersPageSkeleton'
 import { PurchasingInboxSkeleton } from '@/features/purchase-requests/components/PurchasingInboxSkeletons'
@@ -13,6 +14,7 @@ const skeletonByVariant = {
   [SKELETON_VARIANTS.dashboard]: DashboardSkeleton,
   [SKELETON_VARIANTS.users]: UsersPageSkeleton,
   [SKELETON_VARIANTS.structures]: StructuresPageSkeleton,
+  [SKELETON_VARIANTS.commissions]: CommissionsPageSkeleton,
   [SKELETON_VARIANTS.purchasingQueue]: () => (
     <PurchasingInboxSkeleton
       variant="queue"

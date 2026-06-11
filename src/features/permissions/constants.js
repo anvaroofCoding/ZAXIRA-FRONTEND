@@ -21,6 +21,27 @@ export const PRODUCTS_PAGE_PATH = '/dashboard/maxsulotlar'
 export const TRANSFER_PAGE_PATH = '/transfer/transfer-qilish'
 export const TRANSFER_RECEIPT_PAGE_PATH = '/transfer/transferni-qabul-qilish'
 export const TRANSFER_HISTORY_PAGE_PATH = '/transfer/transferlar-tarixi'
+
+/** Qabul qilish sahifalari — Kirish ruxsati qabul qilish uchun yetarli */
+export const RECEIPT_PAGE_PATHS = [
+  WAREHOUSE_RECEIPT_PAGE_PATH,
+  TRANSFER_RECEIPT_PAGE_PATH,
+]
+
+/** Ombor bo‘lmagan tuzilmaga berilmasligi kerak bo‘lgan sahifalar */
+export const WAREHOUSE_PERMISSION_PATHS = [
+  '/omborlar/mening-omborim',
+  '/omborlar/boshqa-omborlar',
+  '/omborlar/chiqim-qilish',
+]
+
+export const WAREHOUSE_PERMISSION_BLOCKED_MESSAGE =
+  'Ushbu tuzilmaning ombori mavjud emas'
+
+export const WAREHOUSE_PERMISSION_SELECT_STRUCTURE_MESSAGE =
+  'Avval tarkibiy tuzilmani tanlang'
+
+export const WAREHOUSE_PERMISSION_GROUP_KEY = 'omborlar'
 export const DISABLED_PAGE_ACTIONS = {
   [PURCHASE_APPROVAL_PAGE_PATH]: ['update', 'delete'],
   [PURCHASE_HISTORY_PAGE_PATH]: ['create', 'update', 'delete'],
@@ -31,7 +52,7 @@ export const DISABLED_PAGE_ACTIONS = {
   [WAREHOUSE_EXPENSE_PAGE_PATH]: ['update'],
   [PRODUCTS_PAGE_PATH]: ['create', 'update'],
   [TRANSFER_PAGE_PATH]: ['create', 'update', 'delete'],
-  [TRANSFER_RECEIPT_PAGE_PATH]: ['create', 'update', 'delete'],
+  [TRANSFER_RECEIPT_PAGE_PATH]: ['update', 'delete'],
   [TRANSFER_HISTORY_PAGE_PATH]: ['create', 'update', 'delete'],
 }
 
@@ -55,7 +76,7 @@ export const DISABLED_PAGE_ACTION_TICKETS = {
   [TRANSFER_PAGE_PATH]:
     "Ticket: Transfer qilish sahifasida Jo'natish, Tahrirlash va O'chirish vaqtincha o'chirilgan",
   [TRANSFER_RECEIPT_PAGE_PATH]:
-    "Ticket: Transferni qabul qilish sahifasida Jo'natish, Tahrirlash va O'chirish vaqtincha o'chirilgan",
+    "Ticket: Transferni qabul qilish sahifasida Tahrirlash va O'chirish vaqtincha o'chirilgan",
   [TRANSFER_HISTORY_PAGE_PATH]:
     "Ticket: Transferlar tarixi sahifasida Jo'natish, Tahrirlash va O'chirish vaqtincha o'chirilgan",
 }

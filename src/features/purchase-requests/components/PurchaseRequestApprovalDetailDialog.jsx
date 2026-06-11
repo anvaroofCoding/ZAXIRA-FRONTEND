@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import CheckIcon from '@mui/icons-material/Check'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
-import DescriptionIcon from '@mui/icons-material/Description'
 import GavelIcon from '@mui/icons-material/Gavel'
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
+import { PurchaseRequestDocumentDownloadButtons } from '@/features/purchase-requests/components/PurchaseRequestDocumentDownloadButtons'
+import { SubmittedDocumentsSection } from '@/features/purchase-requests/components/SubmittedDocumentsSection'
 import VerifiedIcon from '@mui/icons-material/Verified'
 import { BossDecisionAlert } from '@/features/purchase-requests/components/BossDecisionAlert'
 import Alert from '@mui/material/Alert'
@@ -30,6 +30,7 @@ import Typography from '@mui/material/Typography'
 import { ApprovalDecisionDialog } from '@/features/purchase-requests/components/ApprovalDecisionDialog'
 import { ApprovalTimelineSteps } from '@/features/purchase-requests/components/ApprovalTimelineSteps'
 import { PurchaseDeadlineDetailRow } from '@/features/purchase-requests/components/PurchaseDeadlineDetailRow'
+import { PurchasePeriodDetailRow } from '@/features/purchase-requests/components/PurchasePeriodDetailRow'
 import { PurchaseRequestItemsTable } from '@/features/purchase-requests/components/PurchaseRequestItemsTable'
 import { ProductPriceCompareDialog } from '@/features/product-prices/components/ProductPriceCompareDialog'
 import {
@@ -63,8 +64,8 @@ export const PurchaseRequestApprovalDetailDialog = ({
   open,
   requestId,
   onClose,
-  onDownloadPdf,
-  onDownloadDocx,
+  onDownloadBildirgi,
+  onDownloadKelishuv,
   downloading,
   onSuccess,
 }) => {
@@ -269,11 +270,20 @@ export const PurchaseRequestApprovalDetailDialog = ({
                 onItemClick={setPriceItem}
               />
 
-              <DetailRow label="Ariza izohi" value={request.comment} />
+              <DetailRow label="Sotib olish sababi" value={request.comment} />
+
+              <PurchasePeriodDetailRow request={request} />
 
               <PurchaseDeadlineDetailRow
                 deadline={request.purchaseDeadline}
                 mandatory={request.purchaseDeadlineMandatory}
+              />
+
+              <SubmittedDocumentsSection
+                request={request}
+                downloading={downloading}
+                onDownloadBildirgi={onDownloadBildirgi}
+                onDownloadKelishuv={onDownloadKelishuv}
               />
 
               <BossDecisionAlert request={request} />
@@ -334,24 +344,13 @@ export const PurchaseRequestApprovalDetailDialog = ({
 
           {request ? (
             <>
-              <Button
+              <PurchaseRequestDocumentDownloadButtons
+                request={request}
+                downloading={downloading}
                 size="small"
-                variant="outlined"
-                startIcon={<PictureAsPdfIcon fontSize="small" />}
-                disabled={downloading}
-                onClick={() => onDownloadPdf(request)}
-              >
-                PDF
-              </Button>
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<DescriptionIcon fontSize="small" />}
-                disabled={downloading}
-                onClick={() => onDownloadDocx(request)}
-              >
-                Word
-              </Button>
+                onDownloadBildirgi={onDownloadBildirgi}
+                onDownloadKelishuv={onDownloadKelishuv}
+              />
 
               {request.canSubmitDecision && canSubmitApproval ? (
                 <Button

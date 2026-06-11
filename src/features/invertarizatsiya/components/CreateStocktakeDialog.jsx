@@ -19,6 +19,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useCreateStocktakeMutation } from '@/features/invertarizatsiya/api/stocktakesApi'
 import { useGetStructuresQuery } from '@/features/structures/api/structuresApi'
+import { filterStructuresWithWarehouse } from '@/features/structures/utils/structureFilters'
 import { useGetAllWarehousesOverviewQuery, useGetWarehouseLocationsQuery } from '@/features/warehouse/api/warehouseApi'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
@@ -40,7 +41,7 @@ export const CreateStocktakeDialog = ({ open, defaultStructureId, onClose, onCre
   const [createStocktake, { isLoading }] = useCreateStocktakeMutation()
 
   const activeStructures = useMemo(
-    () => (structuresQuery.data ?? []).filter((item) => item.isActive !== false),
+    () => filterStructuresWithWarehouse(structuresQuery.data),
     [structuresQuery.data],
   )
 

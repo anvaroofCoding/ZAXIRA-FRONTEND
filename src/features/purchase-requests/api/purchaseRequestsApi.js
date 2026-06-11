@@ -1,5 +1,136 @@
+import { selectAccessToken, selectAuthUser } from '@/features/auth/model/authSlice'
 import { baseApi } from '@/shared/api/baseApi'
+import { env } from '@/shared/config/env'
 import { API_TAGS } from '@/shared/constants/apiTags'
+import {
+  createLocalActiveSession,
+  deleteLocalActiveSession,
+  isLocalActiveSessionId,
+  isMongoObjectId,
+  listLocalActiveSessions,
+  mergeServerSessionsWithLocalCache,
+  persistActiveSessionLocally,
+} from '@/features/purchase-requests/utils/activeSessionsStorage'
+
+const isSessionsApiUnavailable = (error) => error?.status === 404
+
+const unwrapApiPayload = (payload) =>
+  payload && typeof payload === 'object' && 'success' in payload ? payload.data : payload
+
+const submitSessionWithFiles = async (sessionId, bildirgiFile, kelishuvFile, token) => {
+  const formData = new FormData()
+  formData.append('bildirgi', bildirgiFile, bildirgiFile.name || 'bildirgi.docx')
+  formData.append('kelishuv', kelishuvFile, kelishuvFile.name || 'kelishuv.docx')
+
+  const response = await fetch(
+    `${env.apiBaseUrl}/purchase-requests/active-sessions/${sessionId}/submit`,
+    {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    },
+  )
+
+  let payload = null
+  try {
+    payload = await response.json()
+  } catch {
+    payload = null
+  }
+
+  if (!response.ok) {
+    const message = payload?.message ?? payload?.error ?? 'Arizani yuborib bo‘lmadi'
+    return {
+      error: {
+        status: response.status,
+        data: {
+          message: Array.isArray(message) ? message[0] ?? 'Arizani yuborib bo‘lmadi' : message,
+        },
+      },
+    }
+  }
+
+  return { data: unwrapApiPayload(payload) }
+}
+
+const resolveActiveSessionsUserId = (api) => selectAuthUser(api.getState())?.id ?? null
+
+const sanitizeSessionPayload = (body, { minimal = false } = {}) => {
+  const commissionMemberIds = (body.commissionMemberIds ?? []).filter(isMongoObjectId)
+  const next = {
+    title: body.title,
+    commissionMemberIds,
+    items: Array.isArray(body.items)
+      ? body.items.map((item) => ({
+          name: item.name ?? '',
+          characteristics: item.characteristics ?? '',
+          quantity: Number.parseInt(String(item.quantity), 10) || 1,
+          unit: item.unit ?? '',
+          manufacturingCountry: item.manufacturingCountry ?? '',
+        }))
+      : [],
+    comment: body.comment ?? '',
+  }
+
+  if (body.bossId && isMongoObjectId(body.bossId)) {
+    next.bossId = body.bossId
+  }
+
+  if (!minimal) {
+    next.commissionAgreementText = body.commissionAgreementText ?? ''
+
+    if (body.purchasePeriodType) {
+      next.purchasePeriodType = body.purchasePeriodType
+    }
+    if (body.purchasePeriodYear) {
+      next.purchasePeriodYear = Number(body.purchasePeriodYear)
+    }
+    if (body.purchasePeriodType === 'quarter' && body.purchasePeriodQuarter) {
+      next.purchasePeriodQuarter = Number(body.purchasePeriodQuarter)
+    }
+    if (body.purchasePeriodType === 'month' && body.purchasePeriodMonth) {
+      next.purchasePeriodMonth = Number(body.purchasePeriodMonth)
+    }
+  }
+
+  return next
+}
+
+const postSessionPayload = async (baseQuery, sessionId, payload) => {
+  let result = await baseQuery({
+    url: `/purchase-requests/active-sessions/${sessionId}`,
+    method: 'POST',
+    body: payload,
+  })
+
+  if (result.error?.status !== 400) {
+    return result
+  }
+
+  const attempts = [
+    sanitizeSessionPayload(payload, { minimal: true }),
+    {
+      title: payload.title,
+      commissionMemberIds: payload.commissionMemberIds ?? [],
+      items: payload.items ?? [],
+      comment: payload.comment ?? '',
+    },
+  ]
+
+  for (const fallbackPayload of attempts) {
+    result = await baseQuery({
+      url: `/purchase-requests/active-sessions/${sessionId}`,
+      method: 'POST',
+      body: fallbackPayload,
+    })
+
+    if (!result.error) {
+      return result
+    }
+  }
+
+  return result
+}
 
 const buildInboxQueryParams = ({ page, limit, search, dateFrom, dateTo }) => ({
   page,
@@ -124,6 +255,288 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
         API_TAGS.PURCHASE_REQUEST,
       ],
     }),
+    getPurchaseRequestSessions: builder.query({
+      queryFn: async (_arg, api, _extraOptions, baseQuery) => {
+        const userId = resolveActiveSessionsUserId(api)
+
+        if (!userId) {
+          return { data: { items: [], total: 0, limit: 10 } }
+        }
+
+        const result = await baseQuery('/purchase-requests/active-sessions')
+
+        if (result.error) {
+          if (isSessionsApiUnavailable(result.error)) {
+            return { data: listLocalActiveSessions(userId) }
+          }
+
+          return { error: result.error }
+        }
+
+        return {
+          data: mergeServerSessionsWithLocalCache(
+            result.data ?? { items: [], total: 0, limit: 10 },
+            userId,
+          ),
+        }
+      },
+      providesTags: [API_TAGS.PURCHASE_REQUEST_SESSION],
+    }),
+    createPurchaseRequestSession: builder.mutation({
+      queryFn: async (_arg, api, _extraOptions, baseQuery) => {
+        const userId = resolveActiveSessionsUserId(api)
+
+        if (!userId) {
+          return {
+            error: {
+              status: 401,
+              data: { message: 'Foydalanuvchi aniqlanmadi' },
+            },
+          }
+        }
+
+        const result = await baseQuery({
+          url: '/purchase-requests/active-sessions',
+          method: 'POST',
+        })
+
+        if (!result.error) {
+          return { data: result.data }
+        }
+
+        if (isSessionsApiUnavailable(result.error)) {
+          try {
+            return { data: createLocalActiveSession(userId) }
+          } catch (error) {
+            return {
+              error: {
+                status: 400,
+                data: { message: error.message },
+              },
+            }
+          }
+        }
+
+        return { error: result.error }
+      },
+      invalidatesTags: [API_TAGS.PURCHASE_REQUEST_SESSION],
+    }),
+    savePurchaseRequestSession: builder.mutation({
+      queryFn: async ({ id, syncServer = false, ...body }, api, _extraOptions, baseQuery) => {
+        const userId = resolveActiveSessionsUserId(api)
+
+        if (!userId) {
+          return {
+            error: {
+              status: 401,
+              data: { message: 'Foydalanuvchi aniqlanmadi' },
+            },
+          }
+        }
+
+        const payload = sanitizeSessionPayload(body)
+
+        let localSnapshot
+        try {
+          localSnapshot = persistActiveSessionLocally(userId, id, payload)
+        } catch (error) {
+          return {
+            error: {
+              status: 404,
+              data: { message: error.message },
+            },
+          }
+        }
+
+        if (isLocalActiveSessionId(id)) {
+          return { data: localSnapshot }
+        }
+
+        const result = await postSessionPayload(baseQuery, id, payload)
+
+        if (!result.error) {
+          return { data: result.data }
+        }
+
+        if (syncServer) {
+          return { error: result.error }
+        }
+
+        if (isSessionsApiUnavailable(result.error)) {
+          return { data: localSnapshot }
+        }
+
+        return { data: localSnapshot }
+      },
+      async onQueryStarted({ id }, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled
+          if (!data?.id) return
+
+          dispatch(
+            purchaseRequestsApi.util.updateQueryData(
+              'getPurchaseRequestSessions',
+              undefined,
+              (draft) => {
+                if (!draft?.items) return
+
+                const index = draft.items.findIndex((item) => item.id === id)
+                if (index >= 0) {
+                  draft.items[index] = { ...draft.items[index], ...data }
+                  return
+                }
+
+                draft.items.unshift(data)
+                draft.total = draft.items.length
+              },
+            ),
+          )
+        } catch {
+          // queryFn allaqachon local cache ga yozadi
+        }
+      },
+    }),
+    preparePurchaseRequestDocuments: builder.mutation({
+      query: ({ sessionId, sessionPayload }) => ({
+        url: `/purchase-requests/active-sessions/${sessionId}/documents/prepare`,
+        method: 'POST',
+        body: sessionPayload ? sanitizeSessionPayload(sessionPayload) : {},
+      }),
+    }),
+    uploadSessionDocument: builder.mutation({
+      query: ({ sessionId, docType, file }) => {
+        const formData = new FormData()
+        formData.append('file', file)
+
+        return {
+          url: `/purchase-requests/active-sessions/${sessionId}/documents/${docType}/upload`,
+          method: 'POST',
+          body: formData,
+        }
+      },
+    }),
+    getOnlyOfficeConfig: builder.query({
+      query: ({ sessionId, docType }) => ({
+        url: `/purchase-requests/active-sessions/${sessionId}/onlyoffice/config`,
+        params: { docType },
+      }),
+    }),
+    submitPurchaseRequestSession: builder.mutation({
+      queryFn: async (arg, api, _extraOptions, baseQuery) => {
+        const sessionId = typeof arg === 'string' ? arg : arg?.sessionId
+        const bildirgiFile = typeof arg === 'object' ? arg?.bildirgiFile : undefined
+        const kelishuvFile = typeof arg === 'object' ? arg?.kelishuvFile : undefined
+
+        if (!sessionId) {
+          return {
+            error: {
+              status: 400,
+              data: { message: 'Faol seans aniqlanmadi' },
+            },
+          }
+        }
+
+        if (isLocalActiveSessionId(sessionId)) {
+          return {
+            error: {
+              status: 404,
+              data: { message: 'Local session submit requires direct create' },
+            },
+          }
+        }
+
+        let result
+
+        if (bildirgiFile && kelishuvFile) {
+          const token = selectAccessToken(api.getState())
+          result = await submitSessionWithFiles(
+            sessionId,
+            bildirgiFile,
+            kelishuvFile,
+            token,
+          )
+        } else {
+          result = await baseQuery({
+            url: `/purchase-requests/active-sessions/${sessionId}/submit`,
+            method: 'POST',
+          })
+        }
+
+        if (!result.error) {
+          const userId = resolveActiveSessionsUserId(api)
+          if (userId) {
+            deleteLocalActiveSession(userId, sessionId)
+          }
+          return { data: result.data }
+        }
+
+        return { error: result.error }
+      },
+      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
+        const sessionId = typeof arg === 'string' ? arg : arg?.sessionId
+        const patchResult = dispatch(
+          purchaseRequestsApi.util.updateQueryData(
+            'getPurchaseRequestSessions',
+            undefined,
+            (draft) => {
+              if (!draft?.items) return
+
+              draft.items = draft.items.filter((item) => item.id !== sessionId)
+              draft.total = draft.items.length
+            },
+          ),
+        )
+
+        try {
+          const { data } = await queryFulfilled
+
+          if (data?.id) {
+            dispatch(
+              purchaseRequestsApi.util.upsertQueryData(
+                'getPurchaseRequestById',
+                data.id,
+                data,
+              ),
+            )
+          }
+        } catch {
+          patchResult.undo()
+        }
+      },
+      invalidatesTags: (result) => [
+        API_TAGS.PURCHASE_REQUEST,
+        API_TAGS.PURCHASE_REQUEST_SESSION,
+        ...(result?.id ? [{ type: API_TAGS.PURCHASE_REQUEST, id: result.id }] : []),
+      ],
+    }),
+    deletePurchaseRequestSession: builder.mutation({
+      queryFn: async (id, api, _extraOptions, baseQuery) => {
+        const userId = resolveActiveSessionsUserId(api)
+
+        if (isLocalActiveSessionId(id)) {
+          return { data: deleteLocalActiveSession(userId, id) }
+        }
+
+        const result = await baseQuery({
+          url: `/purchase-requests/active-sessions/${id}`,
+          method: 'DELETE',
+        })
+
+        if (!result.error) {
+          if (userId) {
+            deleteLocalActiveSession(userId, id)
+          }
+          return { data: result.data }
+        }
+
+        if (isSessionsApiUnavailable(result.error)) {
+          return { data: deleteLocalActiveSession(userId, id) }
+        }
+
+        return { error: result.error }
+      },
+      invalidatesTags: [API_TAGS.PURCHASE_REQUEST_SESSION],
+    }),
     createPurchaseRequest: builder.mutation({
       query: (body) => ({
         url: '/purchase-requests',
@@ -223,6 +636,14 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
 export const {
   useGetPurchaseRequestsQuery,
   useGetPurchaseRequestByIdQuery,
+  useGetPurchaseRequestSessionsQuery,
+  useCreatePurchaseRequestSessionMutation,
+  useSavePurchaseRequestSessionMutation,
+  usePreparePurchaseRequestDocumentsMutation,
+  useUploadSessionDocumentMutation,
+  useGetOnlyOfficeConfigQuery,
+  useSubmitPurchaseRequestSessionMutation,
+  useDeletePurchaseRequestSessionMutation,
   useCreatePurchaseRequestMutation,
   useUpdatePurchaseRequestMutation,
   useGetPurchaseRequestHistoryQuery,

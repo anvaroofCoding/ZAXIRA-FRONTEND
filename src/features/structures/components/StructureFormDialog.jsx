@@ -19,6 +19,7 @@ const buildFormState = (initialStructure) => ({
   shortName: initialStructure?.shortName ?? '',
   hasWarehouse: initialStructure?.hasWarehouse ?? false,
   hasLeader: initialStructure?.hasLeader ?? false,
+  leaderName: initialStructure?.leaderName ?? '',
 })
 
 const BooleanChoiceField = ({ label, value, onChange, disabled }) => (
@@ -57,8 +58,15 @@ const StructureFormFields = ({
       return
     }
 
-    if (shortName.length < 2) {
-      setError('Qisqa nom kamida 2 belgidan iborat bo‘lishi kerak')
+    if (!shortName) {
+      setError('Qisqa nomini kiriting')
+      return
+    }
+
+    const leaderName = form.leaderName.trim()
+
+    if (form.hasLeader && !leaderName) {
+      setError('Raxbar ismini kiriting')
       return
     }
 
@@ -68,6 +76,7 @@ const StructureFormFields = ({
         shortName,
         hasWarehouse: form.hasWarehouse,
         hasLeader: form.hasLeader,
+        leaderName,
       })
     } catch (submitError) {
       setError(submitError.message || 'Saqlashda xatolik')
@@ -118,9 +127,30 @@ const StructureFormFields = ({
           <BooleanChoiceField
             label="Raxbarmi?"
             value={form.hasLeader}
-            onChange={(value) => setForm((prev) => ({ ...prev, hasLeader: value }))}
+            onChange={(value) =>
+              setForm((prev) => ({
+                ...prev,
+                hasLeader: value,
+                leaderName: value ? prev.leaderName : '',
+              }))
+            }
             disabled={loading}
           />
+
+          {form.hasLeader ? (
+            <TextField
+              label="Raxbar ismi"
+              value={form.leaderName}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, leaderName: event.target.value }))
+              }
+              required
+              fullWidth
+              disabled={loading}
+              placeholder="Masalan: Karimov Alisher Akmalovich"
+              slotProps={{ htmlInput: { maxLength: 120 } }}
+            />
+          ) : null}
         </Stack>
       </DialogContent>
 

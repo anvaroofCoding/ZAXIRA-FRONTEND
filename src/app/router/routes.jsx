@@ -21,15 +21,15 @@ const { ForbiddenPage } = lazyImport(
 )
 
 const { ArizalarYuborishPage } = lazyImport(
-  () => import('@/pages/xaridlar'),
+  () => import('@/pages/xaridlar/ArizalarYuborishPage'),
   'ArizalarYuborishPage',
 )
 const { ArizalarniTasdiqlashPage } = lazyImport(
-  () => import('@/pages/xaridlar'),
+  () => import('@/pages/xaridlar/ArizalarniTasdiqlashPage'),
   'ArizalarniTasdiqlashPage',
 )
 const { ArizalarTarixiPage } = lazyImport(
-  () => import('@/pages/xaridlar'),
+  () => import('@/pages/xaridlar/ArizalarTarixiPage'),
   'ArizalarTarixiPage',
 )
 
@@ -92,6 +92,10 @@ const { FoydalanuvchilarPage } = lazyImport(
 const { TuzilmalarPage } = lazyImport(
   () => import('@/pages/tuzilmalar'),
   'TuzilmalarPage',
+)
+const { KomissiyaAzolariPage } = lazyImport(
+  () => import('@/pages/komissiya-azolari'),
+  'KomissiyaAzolariPage',
 )
 const { SozlamalarPage } = lazyImport(
   () => import('@/pages/sozlamalar'),
@@ -217,6 +221,10 @@ export const routes = [
           {
             path: 'royxatga-olish/tuzilmalar',
             Component: TuzilmalarPage,
+          },
+          {
+            path: 'royxatga-olish/komissiya-azolari',
+            Component: KomissiyaAzolariPage,
           },
           {
             path: 'foydalanuvchilar',

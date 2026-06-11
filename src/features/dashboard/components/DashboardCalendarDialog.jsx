@@ -53,8 +53,12 @@ const CalendarDayEventsDialog = ({ open, date, events = [], onClose, onNavigate 
                     }}
                   >
                     <ListItemText
+                      slotProps={{
+                        primary: { component: 'div' },
+                        secondary: { component: 'div' },
+                      }}
                       primary={
-                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
                           <Typography variant="subtitle2" fontWeight={700}>
                             {event.title}
                           </Typography>
@@ -166,7 +170,7 @@ export const DashboardCalendarDialog = ({ open, onClose, structureId, onNavigate
           }}
         >
           <Stack spacing={2}>
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
               {Object.entries(CALENDAR_EVENT_META).map(([type, meta]) => (
                 <Chip
                   key={type}

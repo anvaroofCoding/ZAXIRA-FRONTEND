@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AddIcon from '@mui/icons-material/Add'
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -6,34 +6,42 @@ import Alert from '@mui/material/Alert'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Checkbox from '@mui/material/Checkbox'
 import CircularProgress from '@mui/material/CircularProgress'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
-import Skeleton from '@mui/material/Skeleton'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import { DatePicker } from '@mui/x-date-pickers/DatePicker'
-import dayjs from 'dayjs'
 import { formatMemberLabel as formatUserLabel } from '@/features/purchase-requests/utils/formatMemberLabel'
-import { usePolishPurchaseRequestItemTextMutation } from '@/features/purchase-requests/api/purchaseRequestsApi'
+import {
+  usePolishPurchaseRequestItemTextMutation,
+  useSavePurchaseRequestSessionMutation,
+} from '@/features/purchase-requests/api/purchaseRequestsApi'
+import { useGetCommissionsPagedQuery } from '@/features/commissions/api/commissionsApi'
+import { expandCommissionToSelection } from '@/features/commissions/utils/expandCommissionSelection'
 import { useGetUsersLookupQuery } from '@/features/users/api/usersApi'
 import { usePermissions } from '@/shared/hooks/usePermissions'
 import { ProductNameAutocomplete } from '@/features/products/components/ProductNameAutocomplete'
+import { COUNTRIES } from '@/features/purchase-requests/constants/countries'
+import { MEASUREMENT_UNITS } from '@/features/purchase-requests/constants/measurementUnits'
+import { PurchasePeriodFields } from '@/features/purchase-requests/components/PurchasePeriodFields'
+import { getLocalActiveSessionById } from '@/features/purchase-requests/utils/activeSessionsStorage'
+import { splitAutocompleteOptionProps } from '@/shared/utils/autocompleteOptionProps'
+import { buildYearOptions } from '@/features/purchase-requests/utils/formatPurchasePeriod'
 
 const emptyItem = () => ({
   name: '',
   characteristics: '',
   quantity: '1',
+  unit: 'dona',
+  manufacturingCountry: '',
 })
 
 const mapMemberToUserOption = (member) => ({
@@ -43,86 +51,255 @@ const mapMemberToUserOption = (member) => ({
   structureShortName: member.structureShortName ?? null,
 })
 
+const mapItemFromSource = (item) => ({
+  name: item.name ?? '',
+  characteristics: item.characteristics ?? '',
+  quantity: String(item.quantity ?? 1),
+  unit: item.unit ?? 'dona',
+  manufacturingCountry: item.manufacturingCountry ?? '',
+})
+
 export const PurchaseRequestFormDialog = ({
   open,
   loading,
   request,
+  session,
+  sessionId,
   onClose,
   onSubmit,
+  submitLabel,
 }) => {
   const isEdit = Boolean(request?.id)
+  const usesSession = !isEdit && Boolean(sessionId)
   const { user: authUser } = usePermissions()
   const currentUserId = authUser?.id
 
   const usersQuery = useGetUsersLookupQuery(undefined, { skip: !open })
+  const commissionsQuery = useGetCommissionsPagedQuery(
+    { page: 1, limit: 100 },
+    { skip: !open || isEdit },
+  )
   const users = useMemo(
     () => (usersQuery.data ?? []).filter((user) => user.id !== currentUserId),
     [usersQuery.data, currentUserId],
   )
+  const commissionOptions = useMemo(
+    () =>
+      (commissionsQuery.data?.items ?? []).filter(
+        (commission) => commission.isActive !== false,
+      ),
+    [commissionsQuery.data?.items],
+  )
 
+  const [selectedCommission, setSelectedCommission] = useState(null)
   const [commissionMembers, setCommissionMembers] = useState([])
   const [bossId, setBossId] = useState('')
   const [items, setItems] = useState([emptyItem()])
   const [comment, setComment] = useState('')
-  const [purchaseDeadline, setPurchaseDeadline] = useState(null)
-  const [purchaseDeadlineMandatory, setPurchaseDeadlineMandatory] = useState(false)
+  const [commissionAgreementText, setCommissionAgreementText] = useState('')
+  const [periodType, setPeriodType] = useState('quarter')
+  const [periodYear, setPeriodYear] = useState(buildYearOptions(1)[0])
+  const [periodQuarter, setPeriodQuarter] = useState(1)
+  const [periodMonth, setPeriodMonth] = useState(1)
   const [error, setError] = useState('')
+  const [sessionNotice, setSessionNotice] = useState('')
   const [aiLoadingByIndex, setAiLoadingByIndex] = useState({})
   const [polishItemText] = usePolishPurchaseRequestItemTextMutation()
+  const [saveSession, saveSessionState] = useSavePurchaseRequestSessionMutation()
+  const skipNextAutosaveRef = useRef(true)
+  const autosaveTimerRef = useRef(null)
+  const autosaveDisabledRef = useRef(false)
+  const initializedForRef = useRef(null)
+  const commissionHydratedRef = useRef(false)
 
   const bossOptions = useMemo(
     () => users.filter((user) => !commissionMembers.some((member) => member.id === user.id)),
     [users, commissionMembers],
   )
 
+  const buildSessionPayload = useCallback(
+    () => ({
+      commissionMemberIds: commissionMembers
+        .map((member) => member.id)
+        .filter((memberId) => /^[a-f\d]{24}$/i.test(String(memberId))),
+      bossId: /^[a-f\d]{24}$/i.test(String(bossId)) ? bossId : undefined,
+      items: items.map((item) => ({
+        name: item.name,
+        characteristics: item.characteristics,
+        quantity: Number.parseInt(item.quantity, 10) || 1,
+        unit: item.unit,
+        manufacturingCountry: item.manufacturingCountry,
+      })),
+      comment: comment.trim(),
+      commissionAgreementText: commissionAgreementText.trim(),
+      purchasePeriodType: periodType,
+      purchasePeriodYear: periodYear,
+      purchasePeriodQuarter: periodType === 'quarter' ? periodQuarter : undefined,
+      purchasePeriodMonth: periodType === 'month' ? periodMonth : undefined,
+    }),
+    [
+      bossId,
+      comment,
+      commissionAgreementText,
+      commissionMembers,
+      items,
+      periodMonth,
+      periodQuarter,
+      periodType,
+      periodYear,
+    ],
+  )
+
+  const persistSession = useCallback(async () => {
+    if (!usesSession || !open || !sessionId || autosaveDisabledRef.current) return
+
+    try {
+      await saveSession({ id: sessionId, ...buildSessionPayload() }).unwrap()
+      setSessionNotice('Faol seans saqlandi')
+    } catch {
+      const cached = getLocalActiveSessionById(currentUserId, sessionId)
+      if (cached) {
+        setSessionNotice('Faol seans qurilmada saqlandi')
+        return
+      }
+
+      setSessionNotice('Faol seansni saqlashda xatolik')
+    }
+  }, [buildSessionPayload, currentUserId, open, saveSession, sessionId, usesSession])
+
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      initializedForRef.current = null
+      commissionHydratedRef.current = false
+      return
+    }
+
+    const sourceKey = request?.id ?? session?.id ?? 'new'
+    if (initializedForRef.current === sourceKey) {
+      return
+    }
+
+    initializedForRef.current = sourceKey
+    commissionHydratedRef.current = false
+    skipNextAutosaveRef.current = true
+    autosaveDisabledRef.current = false
+    setSelectedCommission(null)
 
     if (request) {
       setCommissionMembers((request.commissionMembers ?? []).map(mapMemberToUserOption))
+      commissionHydratedRef.current = true
       setBossId(request.boss?.userId ?? '')
       setItems(
         request.items?.length
-          ? request.items.map((item) => ({
-              name: item.name,
-              characteristics: item.characteristics,
-              quantity: String(item.quantity),
-            }))
+          ? request.items.map(mapItemFromSource)
           : [emptyItem()],
       )
       setComment(request.comment ?? '')
-      setPurchaseDeadline(
-        request.purchaseDeadline ? dayjs(request.purchaseDeadline) : null,
+      setCommissionAgreementText(request.commissionAgreementText ?? '')
+      setPeriodType(request.purchasePeriodType ?? 'quarter')
+      setPeriodYear(request.purchasePeriodYear ?? buildYearOptions(1)[0])
+      setPeriodQuarter(request.purchasePeriodQuarter ?? 1)
+      setPeriodMonth(request.purchasePeriodMonth ?? 1)
+    } else if (session) {
+      const sessionSource =
+        getLocalActiveSessionById(currentUserId, session.id) ?? session
+
+      setCommissionMembers([])
+      setBossId(sessionSource.bossId ?? '')
+      setItems(
+        sessionSource.items?.length
+          ? sessionSource.items.map(mapItemFromSource)
+          : [emptyItem()],
       )
-      setPurchaseDeadlineMandatory(Boolean(request.purchaseDeadlineMandatory))
+      setComment(sessionSource.comment ?? '')
+      setCommissionAgreementText(sessionSource.commissionAgreementText ?? '')
+      setPeriodType(sessionSource.purchasePeriodType ?? 'quarter')
+      setPeriodYear(sessionSource.purchasePeriodYear ?? buildYearOptions(1)[0])
+      setPeriodQuarter(sessionSource.purchasePeriodQuarter ?? 1)
+      setPeriodMonth(sessionSource.purchasePeriodMonth ?? 1)
     } else {
       setCommissionMembers([])
       setBossId('')
       setItems([emptyItem()])
       setComment('')
-      setPurchaseDeadline(null)
-      setPurchaseDeadlineMandatory(false)
+      setCommissionAgreementText('')
+      setPeriodType('quarter')
+      setPeriodYear(buildYearOptions(1)[0])
+      setPeriodQuarter(1)
+      setPeriodMonth(1)
     }
 
     setError('')
+    setSessionNotice('')
     setAiLoadingByIndex({})
-  }, [open, request])
+  }, [open, request?.id, session?.id, request, session]) // request/session: init ma'lumotlari
 
-  const resetForm = () => {
-    setCommissionMembers([])
-    setBossId('')
-    setItems([emptyItem()])
-    setComment('')
-    setPurchaseDeadline(null)
-    setPurchaseDeadlineMandatory(false)
-    setError('')
-    setAiLoadingByIndex({})
-  }
+  useEffect(() => {
+    if (!open || commissionHydratedRef.current || !users.length) {
+      return
+    }
+
+    if (request?.commissionMembers?.length) {
+      setCommissionMembers(request.commissionMembers.map(mapMemberToUserOption))
+      commissionHydratedRef.current = true
+      return
+    }
+
+    const sessionSource = session?.id
+      ? getLocalActiveSessionById(currentUserId, session.id) ?? session
+      : session
+
+    if (sessionSource?.commissionMemberIds?.length) {
+      const memberIds = new Set(sessionSource.commissionMemberIds)
+      setCommissionMembers(users.filter((user) => memberIds.has(user.id)))
+      commissionHydratedRef.current = true
+    }
+  }, [open, request?.id, session?.id, request?.commissionMembers, session?.commissionMemberIds, users])
+
+  useEffect(() => {
+    if (!usesSession || !open) return undefined
+
+    if (skipNextAutosaveRef.current) {
+      skipNextAutosaveRef.current = false
+      return undefined
+    }
+
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current)
+    }
+
+    autosaveTimerRef.current = window.setTimeout(() => {
+      persistSession()
+    }, 1200)
+
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current)
+      }
+    }
+  }, [
+    usesSession,
+    open,
+    commissionMembers,
+    bossId,
+    items,
+    comment,
+    commissionAgreementText,
+    periodType,
+    periodYear,
+    periodQuarter,
+    periodMonth,
+    persistSession,
+  ])
 
   const handleClose = () => {
     if (loading) return
-    resetForm()
+
     onClose()
+
+    if (usesSession && sessionId) {
+      void persistSession()
+    }
   }
 
   const handleItemChange = (index, field, value) => {
@@ -169,10 +346,27 @@ export const PurchaseRequestFormDialog = ({
       return
     }
 
+    if (!periodType || !periodYear) {
+      setError('Sotib olish davrini tanlang')
+      return
+    }
+
+    if (periodType === 'quarter' && !periodQuarter) {
+      setError('Chorakni tanlang')
+      return
+    }
+
+    if (periodType === 'month' && !periodMonth) {
+      setError('Oyni tanlang')
+      return
+    }
+
     const normalizedItems = items.map((item) => ({
       name: item.name.trim(),
       characteristics: item.characteristics.trim(),
       quantity: Number.parseInt(item.quantity, 10),
+      unit: item.unit.trim(),
+      manufacturingCountry: item.manufacturingCountry.trim(),
     }))
 
     if (normalizedItems.some((item) => !item.name)) {
@@ -190,25 +384,34 @@ export const PurchaseRequestFormDialog = ({
       return
     }
 
-    if (purchaseDeadlineMandatory && !purchaseDeadline) {
-      setError('Muddat majburiy deb belgilangan — sanani tanlang')
+    if (normalizedItems.some((item) => !item.unit)) {
+      setError('Har bir tovar uchun birlikni tanlang')
       return
     }
 
+    if (normalizedItems.some((item) => !item.manufacturingCountry)) {
+      setError('Har bir tovar uchun ishlab chiqarilgan davlatni tanlang')
+      return
+    }
+
+    const payload = {
+      commissionMemberIds: commissionMembers.map((member) => member.id),
+      bossId,
+      items: normalizedItems,
+      comment: comment.trim(),
+      commissionAgreementText: commissionAgreementText.trim(),
+      purchasePeriodType: periodType,
+      purchasePeriodYear: periodYear,
+      purchasePeriodQuarter: periodType === 'quarter' ? periodQuarter : undefined,
+      purchasePeriodMonth: periodType === 'month' ? periodMonth : undefined,
+    }
+
     try {
-      await onSubmit({
-        commissionMemberIds: commissionMembers.map((member) => member.id),
-        bossId,
-        items: normalizedItems,
-        comment: comment.trim(),
-        ...(purchaseDeadline
-          ? {
-              purchaseDeadline: dayjs(purchaseDeadline).format('YYYY-MM-DD'),
-              purchaseDeadlineMandatory,
-            }
-          : {}),
-      })
-      resetForm()
+      if (usesSession && sessionId) {
+        await saveSession({ id: sessionId, syncServer: true, ...payload }).unwrap()
+      }
+
+      await onSubmit(payload, { sessionId })
     } catch (submitError) {
       setError(submitError.message || 'Saqlashda xatolik')
     }
@@ -258,6 +461,131 @@ export const PurchaseRequestFormDialog = ({
           <Stack spacing={2.5} sx={{ mt: 0.5 }}>
             {error ? <Alert severity="error">{error}</Alert> : null}
 
+            {usesSession && sessionNotice ? (
+              <Alert severity={saveSessionState.isError ? 'warning' : 'info'}>
+                {sessionNotice}
+              </Alert>
+            ) : null}
+
+            {usesSession ? (
+              <Alert severity="info" variant="outlined">
+                Faol seans: yozganlaringiz avtomatik saqlanadi. Istagan paytda qaytib davom etishingiz mumkin.
+              </Alert>
+            ) : null}
+
+            <TextField
+              label="Sotib olish sababi"
+              value={comment}
+              onChange={(event) => setComment(event.target.value)}
+              multiline
+              minRows={3}
+              maxRows={10}
+              fullWidth
+              disabled={loading}
+              placeholder="Nima uchun sotib olinishi kerak?"
+              slotProps={{
+                htmlInput: {
+                  style: { resize: 'vertical' },
+                },
+              }}
+            />
+
+            <TextField
+              label="Komissiya a'zolari uchun kelishuv matni"
+              value={commissionAgreementText}
+              onChange={(event) => setCommissionAgreementText(event.target.value)}
+              multiline
+              minRows={4}
+              maxRows={12}
+              fullWidth
+              disabled={loading}
+              placeholder="1. ...&#10;2. ..."
+              helperText="Kelishuv varaqasidagi 1 va 2-bandlar matni"
+              slotProps={{
+                htmlInput: {
+                  style: { resize: 'vertical' },
+                },
+              }}
+            />
+
+            <PurchasePeriodFields
+              periodType={periodType}
+              year={periodYear}
+              quarter={periodQuarter}
+              month={periodMonth}
+              onPeriodTypeChange={(value) => setPeriodType(value)}
+              onYearChange={(value) => setPeriodYear(Number(value))}
+              onQuarterChange={(value) => setPeriodQuarter(Number(value))}
+              onMonthChange={(value) => setPeriodMonth(Number(value))}
+              disabled={loading}
+            />
+
+            {!isEdit ? (
+              <Autocomplete
+                options={commissionOptions}
+                value={selectedCommission}
+                loading={commissionsQuery.isLoading}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                onChange={(_event, commission) => {
+                  setSelectedCommission(commission)
+
+                  if (!commission) {
+                    return
+                  }
+
+                  const { members, bossId: nextBossId } = expandCommissionToSelection(
+                    commission,
+                    usersQuery.data ?? [],
+                    { excludeUserId: currentUserId },
+                  )
+
+                  setCommissionMembers(members)
+
+                  if (nextBossId) {
+                    setBossId(nextBossId)
+                  }
+
+                  if (
+                    members.length > 0 &&
+                    error === 'Kamida bitta komissiya a’zosini tanlang'
+                  ) {
+                    setError('')
+                  }
+                }}
+                renderOption={(props, option) => {
+                  const { key, optionProps } = splitAutocompleteOptionProps(props)
+                  const memberPreview = (option.members ?? [])
+                    .map((member) => member.displayName || member.login)
+                    .filter(Boolean)
+                    .join(', ')
+
+                  return (
+                    <li key={key} {...optionProps}>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography variant="body2" fontWeight={600} noWrap>
+                          {option.name}
+                        </Typography>
+                        {memberPreview ? (
+                          <Typography variant="caption" color="text.secondary" noWrap>
+                            {memberPreview}
+                          </Typography>
+                        ) : null}
+                      </Box>
+                    </li>
+                  )
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Saqlangan komissiyadan tanlash"
+                    placeholder="Komissiya guruhini tanlang (ixtiyoriy)"
+                    helperText="Guruh tanlansa, a’zolar avtomatik qo‘shiladi. Keyin alohida o‘zgartirishingiz mumkin."
+                  />
+                )}
+              />
+            ) : null}
+
             <Autocomplete
               multiple
               disableCloseOnSelect
@@ -268,6 +596,7 @@ export const PurchaseRequestFormDialog = ({
               getOptionLabel={formatUserLabel}
               isOptionEqualToValue={(option, value) => option.id === value.id}
               onChange={(_event, value) => {
+                setSelectedCommission(null)
                 setCommissionMembers(value)
                 if (
                   value.length > 0 &&
@@ -278,6 +607,15 @@ export const PurchaseRequestFormDialog = ({
                 if (bossId && value.some((member) => member.id === bossId)) {
                   setBossId('')
                 }
+              }}
+              renderOption={(props, option) => {
+                const { key, optionProps } = splitAutocompleteOptionProps(props)
+
+                return (
+                  <li key={key} {...optionProps}>
+                    {formatUserLabel(option)}
+                  </li>
+                )
               }}
               renderInput={(params) => (
                 <TextField
@@ -371,23 +709,13 @@ export const PurchaseRequestFormDialog = ({
                         minRows={2}
                         maxRows={6}
                         disabled={loading || Boolean(aiLoadingByIndex[index])}
-                        placeholder="Model, o‘lcham, rang va boshqalar — qisqa va aniq yozing"
-                        helperText={`Ustav tekshiruvi va jadval uchun qisqa, aniq tavsif (${item.characteristics.length}/500)`}
+                        placeholder="Model, o‘lcham, rang va boshqalar"
+                        helperText={`${item.characteristics.length}/500`}
                         slotProps={{
                           htmlInput: {
                             style: { resize: 'vertical' },
                             maxLength: 500,
                           },
-                        }}
-                        InputProps={{
-                          endAdornment: aiLoadingByIndex[index] ? (
-                            <Skeleton
-                              variant="rounded"
-                              width={72}
-                              height={18}
-                              sx={{ borderRadius: 1, alignSelf: 'flex-start', mt: 1 }}
-                            />
-                          ) : null,
                         }}
                       />
 
@@ -405,30 +733,69 @@ export const PurchaseRequestFormDialog = ({
                         </Button>
                       </Box>
 
-                      <TextField
-                        label="Soni"
-                        value={item.quantity}
-                        onChange={(event) =>
-                          handleQuantityChange(index, event.target.value)
+                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                        <TextField
+                          label="Soni"
+                          value={item.quantity}
+                          onChange={(event) =>
+                            handleQuantityChange(index, event.target.value)
+                          }
+                          disabled={loading || Boolean(aiLoadingByIndex[index])}
+                          placeholder="1"
+                          fullWidth
+                          slotProps={{
+                            htmlInput: {
+                              inputMode: 'numeric',
+                              pattern: '[0-9]*',
+                              min: 1,
+                              style: { textAlign: 'left' },
+                            },
+                          }}
+                          sx={{ flex: 1, minWidth: 0 }}
+                        />
+
+                        <TextField
+                          select
+                          label="Birlik"
+                          value={item.unit}
+                          onChange={(event) =>
+                            handleItemChange(index, 'unit', event.target.value)
+                          }
+                          disabled={loading || Boolean(aiLoadingByIndex[index])}
+                          fullWidth
+                          sx={{ flex: 1, minWidth: 0 }}
+                        >
+                          {MEASUREMENT_UNITS.map((unit) => (
+                            <MenuItem key={unit} value={unit}>
+                              {unit}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                      </Stack>
+
+                      <Autocomplete
+                        options={COUNTRIES}
+                        value={item.manufacturingCountry || null}
+                        onChange={(_event, value) =>
+                          handleItemChange(index, 'manufacturingCountry', value ?? '')
                         }
                         disabled={loading || Boolean(aiLoadingByIndex[index])}
-                        placeholder="1"
-                        slotProps={{
-                          htmlInput: {
-                            inputMode: 'numeric',
-                            pattern: '[0-9]*',
-                            min: 1,
-                            style: { textAlign: 'left' },
-                          },
+                        renderOption={(props, option) => {
+                          const { key, optionProps } = splitAutocompleteOptionProps(props)
+
+                          return (
+                            <li key={key} {...optionProps}>
+                              {option}
+                            </li>
+                          )
                         }}
-                        sx={{
-                          maxWidth: 200,
-                          '& .MuiInputBase-input': {
-                            fontSize: '1.1rem',
-                            py: 1.25,
-                          },
-                        }}
-                        helperText="Faqat butun son kiriting"
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Ishlab chiqarilgan davlati"
+                            placeholder="Davlatni tanlang"
+                          />
+                        )}
                       />
                     </Stack>
                   </Box>
@@ -447,59 +814,6 @@ export const PurchaseRequestFormDialog = ({
                 Tovar qo‘shish
               </Button>
             </Box>
-
-            <Box>
-              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
-                Sotib olish muddati
-              </Typography>
-              <Stack spacing={1.5}>
-                <DatePicker
-                  label="Muddat (ixtiyoriy)"
-                  value={purchaseDeadline}
-                  onChange={(value) => {
-                    setPurchaseDeadline(value)
-                    if (!value) {
-                      setPurchaseDeadlineMandatory(false)
-                    }
-                  }}
-                  format="DD.MM.YYYY"
-                  disablePast
-                  disabled={loading}
-                  slotProps={{
-                    textField: { fullWidth: true },
-                    field: { clearable: true },
-                  }}
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={purchaseDeadlineMandatory}
-                      onChange={(event) =>
-                        setPurchaseDeadlineMandatory(event.target.checked)
-                      }
-                      disabled={loading || !purchaseDeadline}
-                    />
-                  }
-                  label="Muddat majburiy (sotib olish shu sanagacha amalga oshirilishi kerak)"
-                />
-              </Stack>
-            </Box>
-
-            <TextField
-              label="Izoh"
-              value={comment}
-              onChange={(event) => setComment(event.target.value)}
-              multiline
-              minRows={4}
-              maxRows={12}
-              fullWidth
-              disabled={loading}
-              slotProps={{
-                htmlInput: {
-                  style: { resize: 'vertical' },
-                },
-              }}
-            />
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -512,7 +826,7 @@ export const PurchaseRequestFormDialog = ({
             ) : isEdit ? (
               'Saqlash'
             ) : (
-              'Yuborish'
+              submitLabel || 'Yuborish'
             )}
           </Button>
         </DialogActions>

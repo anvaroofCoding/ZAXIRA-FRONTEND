@@ -5,6 +5,7 @@ import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
 import Skeleton from '@mui/material/Skeleton'
 import { useLazySearchProductsQuery } from '@/features/products/api/productsApi'
+import { splitAutocompleteOptionProps } from '@/shared/utils/autocompleteOptionProps'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { truncateText } from '@/features/products/utils/truncateText'
 
@@ -113,11 +114,11 @@ export const ProductNameAutocomplete = ({
         }
       }}
       renderOption={(props, option) => {
-        const { key, ...rest } = props
+        const { key, optionProps } = splitAutocompleteOptionProps(props)
         const preview = truncateText(option.characteristics, 80)
 
         return (
-          <Box component="li" key={key} {...rest}>
+          <li key={key} {...optionProps}>
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="body2" fontWeight={600} noWrap>
                 {option.name}
@@ -128,32 +129,35 @@ export const ProductNameAutocomplete = ({
                 </Typography>
               ) : null}
             </Box>
-          </Box>
+          </li>
         )
       }}
       renderInput={(params) => {
-        const inputProps = params.InputProps ?? {}
+        const inputSlotProps = params.slotProps?.input ?? {}
 
         return (
           <TextField
             {...params}
             label="Tovar nomi"
             placeholder="Nomini yozing yoki skladdan tanlang"
-            InputProps={{
-              ...inputProps,
-              endAdornment: (
-                <>
-                  {aiLoading ? (
-                    <Skeleton
-                      variant="rounded"
-                      width={56}
-                      height={16}
-                      sx={{ borderRadius: 1, mr: 0.5 }}
-                    />
-                  ) : null}
-                  {inputProps.endAdornment ?? null}
-                </>
-              ),
+            slotProps={{
+              ...params.slotProps,
+              input: {
+                ...inputSlotProps,
+                endAdornment: (
+                  <>
+                    {aiLoading ? (
+                      <Skeleton
+                        variant="rounded"
+                        width={56}
+                        height={16}
+                        sx={{ borderRadius: 1, mr: 0.5 }}
+                      />
+                    ) : null}
+                    {inputSlotProps.endAdornment}
+                  </>
+                ),
+              },
             }}
           />
         )

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import AddIcon from '@mui/icons-material/Add'
 import SearchIcon from '@mui/icons-material/Search'
 import Alert from '@mui/material/Alert'
@@ -15,16 +15,23 @@ import Snackbar from '@mui/material/Snackbar'
 import TablePagination from '@mui/material/TablePagination'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import { ActiveSessionsPanel } from '@/features/purchase-requests/components/ActiveSessionsPanel'
 import { PurchaseRequestDetailDialog } from '@/features/purchase-requests/components/PurchaseRequestDetailDialog'
+import { PurchaseRequestDocumentWizardDialog } from '@/features/purchase-requests/components/PurchaseRequestDocumentWizardDialog'
 import { PurchaseRequestFormDialog } from '@/features/purchase-requests/components/PurchaseRequestFormDialog'
 import { ResubmitPurchaseRequestDialog } from '@/features/purchase-requests/components/ResubmitPurchaseRequestDialog'
 import { PurchaseRequestsPageSkeleton } from '@/features/purchase-requests/components/PurchaseRequestsPageSkeleton'
 import { PurchaseRequestsTable } from '@/features/purchase-requests/components/PurchaseRequestsTable'
 import {
   useCreatePurchaseRequestMutation,
+  useCreatePurchaseRequestSessionMutation,
   useDeletePurchaseRequestMutation,
+  useDeletePurchaseRequestSessionMutation,
+  useGetPurchaseRequestSessionsQuery,
   useGetPurchaseRequestsQuery,
   useResubmitPurchaseRequestMutation,
+  useSavePurchaseRequestSessionMutation,
+  useSubmitPurchaseRequestSessionMutation,
   useUpdatePurchaseRequestMutation,
 } from '@/features/purchase-requests/api/purchaseRequestsApi'
 import { canDeletePurchaseRequest } from '@/features/purchase-requests/utils/purchaseRequestDelete'
@@ -36,49 +43,67 @@ import { hasPageAction } from '@/features/permissions/utils/permissions'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { usePermissions } from '@/shared/hooks/usePermissions'
-import { downloadAuthenticatedFile } from '@/shared/utils/downloadFile'
+import { useSubmittedDocumentDownload } from '@/features/purchase-requests/hooks/useSubmittedDocumentDownload'
+import { isLocalActiveSessionId } from '@/features/purchase-requests/utils/activeSessionsStorage'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
 const PAGE_PATH = '/xaridlar/arizalar-yuborish'
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
+const MAX_ACTIVE_SESSIONS = 10
 
 export const ArizalarYuborishPage = () => {
   const { user: authUser, canDelete: canDeletePage, canUpdate: canUpdatePage } =
     usePermissions()
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [activeSessionId, setActiveSessionId] = useState(null)
+  const [deleteSessionTarget, setDeleteSessionTarget] = useState(null)
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
-  const [downloadingId, setDownloadingId] = useState(null)
   const [detailTarget, setDetailTarget] = useState(null)
   const [resubmitTarget, setResubmitTarget] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [editTarget, setEditTarget] = useState(null)
+  const [documentWizardSessionId, setDocumentWizardSessionId] = useState(null)
+  const [documentWizardPayload, setDocumentWizardPayload] = useState(null)
 
   const debouncedSearch = useDebouncedValue(search, 350)
 
-  useEffect(() => {
-    setPage(0)
-  }, [debouncedSearch])
+  const isSuperAdmin =
+    authUser?.isSuperAdmin || authUser?.role === 'SUPER_ADMIN'
+  const canCreate =
+    isSuperAdmin || hasPageAction(authUser, PAGE_PATH, 'create')
 
   const requestsQuery = useGetPurchaseRequestsQuery({
     page: page + 1,
     limit: rowsPerPage,
     search: debouncedSearch,
   })
+  const sessionsQuery = useGetPurchaseRequestSessionsQuery(undefined, {
+    skip: !canCreate,
+  })
+  const [createSession, createSessionState] = useCreatePurchaseRequestSessionMutation()
+  const [submitPurchaseRequestSession, submitSessionState] =
+    useSubmitPurchaseRequestSessionMutation()
   const [createPurchaseRequest, createState] = useCreatePurchaseRequestMutation()
+  const [savePurchaseRequestSession] = useSavePurchaseRequestSessionMutation()
+  const [deletePurchaseRequestSession, deleteSessionState] =
+    useDeletePurchaseRequestSessionMutation()
   const [resubmitPurchaseRequest, resubmitState] = useResubmitPurchaseRequestMutation()
   const [deletePurchaseRequest, deleteState] = useDeletePurchaseRequestMutation()
   const [updatePurchaseRequest, updateState] = useUpdatePurchaseRequestMutation()
 
   const items = useMemo(() => requestsQuery.data?.items ?? [], [requestsQuery.data?.items])
   const total = requestsQuery.data?.total ?? 0
-
-  const isSuperAdmin =
-    authUser?.isSuperAdmin || authUser?.role === 'SUPER_ADMIN'
-  const canCreate =
-    isSuperAdmin || hasPageAction(authUser, PAGE_PATH, 'create')
+  const activeSessions = useMemo(
+    () => sessionsQuery.data?.items ?? [],
+    [sessionsQuery.data?.items],
+  )
+  const activeSession = useMemo(
+    () => activeSessions.find((session) => session.id === activeSessionId) ?? null,
+    [activeSessions, activeSessionId],
+  )
 
   const canDeleteItem = useCallback(
     (item) =>
@@ -103,10 +128,115 @@ export const ArizalarYuborishPage = () => {
     setSnackbar({ open: true, message, severity })
   }
 
-  const handleSubmit = async (payload) => {
+  const { downloadingId, downloadHandlers } = useSubmittedDocumentDownload({
+    onError: (error) => showSnackbar(error.message || 'Yuklab olishda xatolik', 'error'),
+  })
+
+  const closeFormDialog = () => {
+    setDialogOpen(false)
+    setActiveSessionId(null)
+  }
+
+  const handleOpenNewSession = async () => {
+    if (activeSessions.length >= MAX_ACTIVE_SESSIONS) {
+      showSnackbar(
+        `Ko‘pi bilan ${MAX_ACTIVE_SESSIONS} ta faol seans bo‘lishi mumkin`,
+        'warning',
+      )
+      return
+    }
+
     try {
-      const created = await createPurchaseRequest(payload).unwrap()
-      setDialogOpen(false)
+      const created = await createSession().unwrap()
+      setActiveSessionId(created.id)
+      setDialogOpen(true)
+    } catch (error) {
+      showSnackbar(getApiErrorMessage(error, 'Yangi seans ochib bo‘lmadi'), 'error')
+    }
+  }
+
+  const handleContinueSession = (session) => {
+    setActiveSessionId(session.id)
+    setDialogOpen(true)
+  }
+
+  const handleDeleteSession = (session) => {
+    setDeleteSessionTarget(session)
+  }
+
+  const handleConfirmDeleteSession = async () => {
+    if (!deleteSessionTarget?.id) return
+
+    try {
+      await deletePurchaseRequestSession(deleteSessionTarget.id).unwrap()
+
+      if (activeSessionId === deleteSessionTarget.id) {
+        closeFormDialog()
+      }
+
+      setDeleteSessionTarget(null)
+      showSnackbar('Faol seans o‘chirildi')
+    } catch (error) {
+      showSnackbar(getApiErrorMessage(error, 'Faol seansni o‘chirib bo‘lmadi'), 'error')
+    }
+  }
+
+  const handleContinueToDocuments = async (payload, { sessionId } = {}) => {
+    if (!sessionId || isLocalActiveSessionId(sessionId)) {
+      throw new Error(
+        'Hujjat tahriri uchun server seansi kerak. Yangi ariza ochib qayta urinib ko‘ring.',
+      )
+    }
+
+    closeFormDialog()
+    setDocumentWizardPayload(payload)
+    setDocumentWizardSessionId(sessionId)
+  }
+
+  const handleWizardSubmitted = (created) => {
+    setDocumentWizardSessionId(null)
+    setDocumentWizardPayload(null)
+    setActiveSessionId(null)
+
+    if (created?.id) {
+      setDetailTarget(created)
+    }
+
+    showSnackbar(`Ariza ${created.requestCode} yuborildi`)
+  }
+
+  const handleSubmit = async (payload, { sessionId } = {}) => {
+    try {
+      let created
+
+      if (sessionId) {
+        if (isLocalActiveSessionId(sessionId)) {
+          created = await createPurchaseRequest(payload).unwrap()
+          await deletePurchaseRequestSession(sessionId).unwrap()
+        } else {
+          try {
+            created = await submitPurchaseRequestSession(sessionId).unwrap()
+          } catch (sessionError) {
+            const status = sessionError?.status ?? sessionError?.originalStatus
+
+            if (status === 404) {
+              try {
+                await savePurchaseRequestSession({ id: sessionId, ...payload }).unwrap()
+              } catch {
+                // Eski backend — to‘g‘ridan-to‘g‘ri yuborish
+              }
+
+              created = await createPurchaseRequest(payload).unwrap()
+            } else {
+              throw sessionError
+            }
+          }
+        }
+      } else {
+        created = await createPurchaseRequest(payload).unwrap()
+      }
+
+      closeFormDialog()
       showSnackbar(`Ariza ${created.requestCode} yuborildi`)
     } catch (error) {
       const message = getApiErrorMessage(error, 'Saqlashda xatolik')
@@ -163,22 +293,6 @@ export const ArizalarYuborishPage = () => {
     }
   }
 
-  const handleDownload = async (item, type) => {
-    setDownloadingId(item.id)
-
-    try {
-      const extension = type === 'pdf' ? 'pdf' : 'docx'
-      await downloadAuthenticatedFile(
-        `/purchase-requests/${item.id}/export/${extension}`,
-        `buyurtma-${item.requestCode}.${extension}`,
-      )
-    } catch (error) {
-      showSnackbar(error.message || 'Yuklab olishda xatolik', 'error')
-    } finally {
-      setDownloadingId(null)
-    }
-  }
-
   return (
     <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
       <QuerySkeleton
@@ -210,13 +324,31 @@ export const ArizalarYuborishPage = () => {
             {canCreate ? (
               <Button
                 variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setDialogOpen(true)}
+                startIcon={
+                  createSessionState.isLoading ? (
+                    <CircularProgress size={18} color="inherit" />
+                  ) : (
+                    <AddIcon />
+                  )
+                }
+                disabled={createSessionState.isLoading}
+                onClick={handleOpenNewSession}
               >
-                Qo‘shish
+                Yangi ariza
               </Button>
             ) : null}
           </Box>
+
+          {canCreate && activeSessions.length > 0 ? (
+            <ActiveSessionsPanel
+              sessions={activeSessions}
+              loading={sessionsQuery.isLoading}
+              deletingId={deleteSessionState.isLoading ? deleteSessionTarget?.id : null}
+              maxSessions={sessionsQuery.data?.limit ?? MAX_ACTIVE_SESSIONS}
+              onContinue={handleContinueSession}
+              onDelete={handleDeleteSession}
+            />
+          ) : null}
 
           <TextField
             size="small"
@@ -245,8 +377,7 @@ export const ArizalarYuborishPage = () => {
                 items={items}
                 downloadingId={downloadingId}
                 onView={(item) => setDetailTarget(item)}
-                onDownloadPdf={(item) => handleDownload(item, 'pdf')}
-                onDownloadDocx={(item) => handleDownload(item, 'docx')}
+                {...downloadHandlers}
                 onDelete={canDeletePage(PAGE_PATH) ? handleDeleteRequest : undefined}
                 canDeleteItem={canDeleteItem}
                 onEdit={handleEditRequest}
@@ -278,9 +409,23 @@ export const ArizalarYuborishPage = () => {
 
       <PurchaseRequestFormDialog
         open={dialogOpen}
-        loading={createState.isLoading}
-        onClose={() => setDialogOpen(false)}
-        onSubmit={handleSubmit}
+        loading={submitSessionState.isLoading || createState.isLoading}
+        session={activeSession}
+        sessionId={activeSessionId}
+        onClose={closeFormDialog}
+        onSubmit={handleContinueToDocuments}
+        submitLabel="Davom etish"
+      />
+
+      <PurchaseRequestDocumentWizardDialog
+        open={Boolean(documentWizardSessionId)}
+        sessionId={documentWizardSessionId}
+        sessionPayload={documentWizardPayload}
+        onClose={() => {
+          setDocumentWizardSessionId(null)
+          setDocumentWizardPayload(null)
+        }}
+        onSubmitted={handleWizardSubmitted}
       />
 
       <PurchaseRequestFormDialog
@@ -297,14 +442,49 @@ export const ArizalarYuborishPage = () => {
         downloading={downloadingId === detailTarget?.id}
         deleting={deleteState.isLoading}
         onClose={() => setDetailTarget(null)}
-        onDownloadPdf={(item) => handleDownload(item, 'pdf')}
-        onDownloadDocx={(item) => handleDownload(item, 'docx')}
+        {...downloadHandlers}
         onDelete={canDeletePage(PAGE_PATH) ? handleDeleteRequest : undefined}
         onEdit={handleEditRequest}
         onResubmit={(item) => {
           setResubmitTarget(item)
         }}
       />
+
+      <Dialog
+        open={Boolean(deleteSessionTarget)}
+        onClose={() => !deleteSessionState.isLoading && setDeleteSessionTarget(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Faol seansni o‘chirish</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            <strong>{deleteSessionTarget?.title || 'Faol seans'}</strong> o‘chirilsinmi? Saqlangan
+            ma’lumotlar yo‘qoladi.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setDeleteSessionTarget(null)}
+            disabled={deleteSessionState.isLoading}
+          >
+            Bekor qilish
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={deleteSessionState.isLoading}
+            onClick={handleConfirmDeleteSession}
+            startIcon={
+              deleteSessionState.isLoading ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : null
+            }
+          >
+            O‘chirish
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={Boolean(deleteTarget)}

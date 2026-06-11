@@ -1,0 +1,1 @@
+export { KomissiyaAzolariPage } from './KomissiyaAzolariPage'

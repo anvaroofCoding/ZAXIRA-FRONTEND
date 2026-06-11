@@ -28,6 +28,10 @@ const SettingRow = ({ icon, title, description, checked, onChange }) => (
       {icon}
     </ListItemIcon>
     <ListItemText
+      slotProps={{
+        primary: { component: 'div' },
+        secondary: { component: 'div' },
+      }}
       primary={
         <Typography variant="subtitle1" fontWeight={600}>
           {title}

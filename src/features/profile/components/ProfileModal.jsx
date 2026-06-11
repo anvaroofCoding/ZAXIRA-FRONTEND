@@ -32,6 +32,7 @@ import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
 const buildProfileForm = (user) => ({
   displayName: user?.displayName ?? '',
+  position: user?.position ?? '',
   structureId: user?.structureId ?? '',
 })
 
@@ -122,6 +123,7 @@ export const ProfileModal = ({ open, onClose }) => {
     try {
       const body = {
         displayName: profileForm.displayName.trim() || profileUser.login,
+        position: profileForm.position.trim(),
         ...(showStructureField ? { structureId: profileForm.structureId } : {}),
       }
 
@@ -187,7 +189,7 @@ export const ProfileModal = ({ open, onClose }) => {
                 disabled
               />
 
-              <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
                 <Typography variant="body2" color="text.secondary">
                   {presenceLabel}
                 </Typography>
@@ -208,6 +210,21 @@ export const ProfileModal = ({ open, onClose }) => {
                 size="small"
                 fullWidth
                 disabled={isSaving}
+              />
+
+              <TextField
+                label="Lavozim"
+                value={profileForm.position}
+                onChange={(event) =>
+                  setProfileForm((prev) => ({
+                    ...prev,
+                    position: event.target.value,
+                  }))
+                }
+                size="small"
+                fullWidth
+                disabled={isSaving}
+                placeholder="Masalan: Buxgalter"
               />
 
               {showStructureField ? (
@@ -254,64 +271,75 @@ export const ProfileModal = ({ open, onClose }) => {
             </Button>
 
             <Collapse in={showPasswordSection} sx={{ mt: 1.5 }}>
-              <Stack spacing={1.5}>
-                <TextField
-                  label="Joriy parol"
-                  type="password"
-                  size="small"
-                  fullWidth
-                  value={passwordForm.currentPassword}
-                  onChange={(event) =>
-                    setPasswordForm((prev) => ({
-                      ...prev,
-                      currentPassword: event.target.value,
-                    }))
-                  }
-                  disabled={isPasswordSaving}
-                />
-                <TextField
-                  label="Yangi parol"
-                  type="password"
-                  size="small"
-                  fullWidth
-                  value={passwordForm.newPassword}
-                  onChange={(event) =>
-                    setPasswordForm((prev) => ({
-                      ...prev,
-                      newPassword: event.target.value,
-                    }))
-                  }
-                  disabled={isPasswordSaving}
-                />
-                <TextField
-                  label="Yangi parolni takrorlang"
-                  type="password"
-                  size="small"
-                  fullWidth
-                  value={passwordForm.confirmNewPassword}
-                  onChange={(event) =>
-                    setPasswordForm((prev) => ({
-                      ...prev,
-                      confirmNewPassword: event.target.value,
-                    }))
-                  }
-                  disabled={isPasswordSaving}
-                />
-                <Button
-                  variant="contained"
-                  size="small"
-                  onClick={handleChangePassword}
-                  disabled={isPasswordSaving}
-                  startIcon={
-                    isPasswordSaving ? (
-                      <CircularProgress size={16} color="inherit" />
-                    ) : null
-                  }
-                  sx={{ alignSelf: 'flex-start' }}
-                >
-                  Parolni saqlash
-                </Button>
-              </Stack>
+              <Box
+                component="form"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  handleChangePassword()
+                }}
+              >
+                <Stack spacing={1.5}>
+                  <TextField
+                    label="Joriy parol"
+                    type="password"
+                    size="small"
+                    fullWidth
+                    autoComplete="current-password"
+                    value={passwordForm.currentPassword}
+                    onChange={(event) =>
+                      setPasswordForm((prev) => ({
+                        ...prev,
+                        currentPassword: event.target.value,
+                      }))
+                    }
+                    disabled={isPasswordSaving}
+                  />
+                  <TextField
+                    label="Yangi parol"
+                    type="password"
+                    size="small"
+                    fullWidth
+                    autoComplete="new-password"
+                    value={passwordForm.newPassword}
+                    onChange={(event) =>
+                      setPasswordForm((prev) => ({
+                        ...prev,
+                        newPassword: event.target.value,
+                      }))
+                    }
+                    disabled={isPasswordSaving}
+                  />
+                  <TextField
+                    label="Yangi parolni takrorlang"
+                    type="password"
+                    size="small"
+                    fullWidth
+                    autoComplete="new-password"
+                    value={passwordForm.confirmNewPassword}
+                    onChange={(event) =>
+                      setPasswordForm((prev) => ({
+                        ...prev,
+                        confirmNewPassword: event.target.value,
+                      }))
+                    }
+                    disabled={isPasswordSaving}
+                  />
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    size="small"
+                    disabled={isPasswordSaving}
+                    startIcon={
+                      isPasswordSaving ? (
+                        <CircularProgress size={16} color="inherit" />
+                      ) : null
+                    }
+                    sx={{ alignSelf: 'flex-start' }}
+                  >
+                    Parolni saqlash
+                  </Button>
+                </Stack>
+              </Box>
             </Collapse>
           </Box>
         </Stack>

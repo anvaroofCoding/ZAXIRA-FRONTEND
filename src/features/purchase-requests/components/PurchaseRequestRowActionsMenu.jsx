@@ -3,20 +3,23 @@ import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import DescriptionIcon from '@mui/icons-material/Description'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import IconButton from '@mui/material/IconButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
+import {
+  hasSubmittedBildirgi,
+  hasSubmittedKelishuv,
+} from '@/features/purchase-requests/utils/purchaseRequestExport'
 
 export const PurchaseRequestRowActionsMenu = ({
   item,
   loading,
   onView,
-  onDownloadPdf,
-  onDownloadDocx,
+  onDownloadBildirgi,
+  onDownloadKelishuv,
   onDelete,
   canDelete = false,
   onEdit,
@@ -33,6 +36,9 @@ export const PurchaseRequestRowActionsMenu = ({
     handleClose()
     action()
   }
+
+  const showBildirgi = hasSubmittedBildirgi(item) && typeof onDownloadBildirgi === 'function'
+  const showKelishuv = hasSubmittedKelishuv(item) && typeof onDownloadKelishuv === 'function'
 
   return (
     <>
@@ -52,18 +58,22 @@ export const PurchaseRequestRowActionsMenu = ({
           </ListItemIcon>
           <ListItemText>Ko‘rish</ListItemText>
         </MenuItem>
-        <MenuItem onClick={() => runAction(() => onDownloadPdf(item))}>
-          <ListItemIcon>
-            <PictureAsPdfIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>PDF yuklab olish</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={() => runAction(() => onDownloadDocx(item))}>
-          <ListItemIcon>
-            <DescriptionIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Word yuklab olish</ListItemText>
-        </MenuItem>
+        {showBildirgi ? (
+          <MenuItem onClick={() => runAction(() => onDownloadBildirgi(item))}>
+            <ListItemIcon>
+              <DescriptionIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Bildirgi</ListItemText>
+          </MenuItem>
+        ) : null}
+        {showKelishuv ? (
+          <MenuItem onClick={() => runAction(() => onDownloadKelishuv(item))}>
+            <ListItemIcon>
+              <DescriptionIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Kelishuv varaqasi</ListItemText>
+          </MenuItem>
+        ) : null}
         {canEdit && onEdit ? (
           <MenuItem onClick={() => runAction(() => onEdit(item))}>
             <ListItemIcon>

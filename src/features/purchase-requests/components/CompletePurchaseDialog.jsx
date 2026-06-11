@@ -163,7 +163,7 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
               {links.length ? (
                 <Stack spacing={1}>
                   {links.map((link, index) => (
-                    <Stack key={link.id} direction="row" spacing={1} alignItems="flex-start">
+                    <Stack key={link.id} direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
                       <TextField
                         label="Nom (ixtiyoriy)"
                         value={link.label}
@@ -214,7 +214,7 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
               {fileRows.length ? (
                 <Stack spacing={1}>
                   {fileRows.map((row, index) => (
-                    <Stack key={row.id} direction="row" spacing={1} alignItems="center">
+                    <Stack key={row.id} direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                       <TextField
                         label="Fayl nomi"
                         value={row.label}

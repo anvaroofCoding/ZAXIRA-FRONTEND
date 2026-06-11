@@ -20,6 +20,7 @@ import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useGetStructuresQuery } from '@/features/structures/api/structuresApi'
+import { filterStructuresWithWarehouse } from '@/features/structures/utils/structureFilters'
 import { useCreateTransferMutation } from '@/features/transfer/api/transferApi'
 import { DispatchQrSection } from '@/features/warehouse-dispatches/components/DispatchQrSection'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
@@ -38,7 +39,7 @@ export const CreateTransferDialog = ({ open, request, onClose, onSuccess }) => {
   const [createTransfer, { isLoading }] = useCreateTransferMutation()
 
   const activeStructures = useMemo(
-    () => (structuresQuery.data ?? []).filter((item) => item.isActive !== false),
+    () => filterStructuresWithWarehouse(structuresQuery.data),
     [structuresQuery.data],
   )
 

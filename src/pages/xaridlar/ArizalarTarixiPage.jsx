@@ -21,7 +21,7 @@ import {
 } from '@/features/purchase-requests/utils/historyLabels'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
-import { downloadAuthenticatedFile } from '@/shared/utils/downloadFile'
+import { useSubmittedDocumentDownload } from '@/features/purchase-requests/hooks/useSubmittedDocumentDownload'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 import { useQueryParamOpen } from '@/shared/hooks/useQueryParamOpen'
 
@@ -33,7 +33,6 @@ export const ArizalarTarixiPage = () => {
   const [eventType, setEventType] = useState('')
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(25)
-  const [downloadingId, setDownloadingId] = useState(null)
   const [detailRequestId, setDetailRequestId] = useState(null)
 
   const openDetailFromQuery = useCallback((id) => setDetailRequestId(id), [])
@@ -57,22 +56,12 @@ export const ArizalarTarixiPage = () => {
   const total = historyQuery.data?.total ?? 0
   const isReady = !historyQuery.isLoading && !historyQuery.isUninitialized
 
-  const handleDownload = async (request, type) => {
-    setDownloadingId(request.id)
-
-    try {
-      const extension = type === 'pdf' ? 'pdf' : 'docx'
-      await downloadAuthenticatedFile(
-        `/purchase-requests/${request.id}/export/${extension}?historyView=1`,
-        `buyurtma-${request.requestCode}.${extension}`,
-      )
-    } catch (error) {
+  const { downloadingId, downloadHandlers } = useSubmittedDocumentDownload({
+    onError: (error) => {
       // eslint-disable-next-line no-alert
       window.alert(error.message || 'Yuklab olishda xatolik')
-    } finally {
-      setDownloadingId(null)
-    }
-  }
+    },
+  })
 
   return (
     <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -186,8 +175,7 @@ export const ArizalarTarixiPage = () => {
         historyView
         downloading={downloadingId === detailRequestId}
         onClose={() => setDetailRequestId(null)}
-        onDownloadPdf={(request) => handleDownload(request, 'pdf')}
-        onDownloadDocx={(request) => handleDownload(request, 'docx')}
+        {...downloadHandlers}
       />
     </Box>
   )

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { selectAccessToken, selectAuthUser } from '@/features/auth/model/authSlice'
+import { authApi } from '@/features/auth/api/authApi'
+import { selectAccessToken, selectAuthUser, setUser } from '@/features/auth/model/authSlice'
 import { chatApi } from '@/features/chat/api/chatApi'
 import { notificationsApi } from '@/features/notifications/api/notificationsApi'
 import { API_TAGS } from '@/shared/constants/apiTags'
@@ -27,6 +28,21 @@ export const useRealtimeToasts = () => {
 
     const onNotificationCreated = (payload) => {
       dispatch(notificationsApi.util.invalidateTags([API_TAGS.NOTIFICATION]))
+
+      if (payload?.type === 'PERMISSIONS_GRANTED') {
+        dispatch(
+          authApi.endpoints.getCurrentUser.initiate(undefined, {
+            subscribe: false,
+            forceRefetch: true,
+          }),
+        )
+          .then((result) => {
+            if (result?.data) {
+              dispatch(setUser(result.data))
+            }
+          })
+          .catch(() => {})
+      }
 
       if (!getNotificationToastEnabled()) return
 

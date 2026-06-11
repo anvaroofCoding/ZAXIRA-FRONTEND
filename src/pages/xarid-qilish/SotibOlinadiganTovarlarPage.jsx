@@ -13,7 +13,7 @@ import { PurchasingInboxSkeleton } from '@/features/purchase-requests/components
 import { PurchasingQueueTable } from '@/features/purchase-requests/components/PurchasingQueueTable'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { usePurchasingListFilters } from '@/shared/hooks/usePurchasingListFilters'
-import { downloadAuthenticatedFile } from '@/shared/utils/downloadFile'
+import { useSubmittedDocumentDownload } from '@/features/purchase-requests/hooks/useSubmittedDocumentDownload'
 import { useQueryParamOpen } from '@/shared/hooks/useQueryParamOpen'
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
@@ -41,7 +41,6 @@ export const SotibOlinadiganTovarlarPage = () => {
   const [purchaseTarget, setPurchaseTarget] = useState(null)
   const [rejectTarget, setRejectTarget] = useState(null)
   const [dispatchTarget, setDispatchTarget] = useState(null)
-  const [downloadingId, setDownloadingId] = useState(null)
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
 
   const inboxQuery = useGetPurchasingInboxQuery(queryParams)
@@ -54,21 +53,9 @@ export const SotibOlinadiganTovarlarPage = () => {
     setSnackbar({ open: true, message, severity })
   }
 
-  const handleDownload = async (request, type) => {
-    setDownloadingId(request.id)
-
-    try {
-      const extension = type === 'pdf' ? 'pdf' : 'docx'
-      await downloadAuthenticatedFile(
-        `/purchase-requests/${request.id}/export/${extension}`,
-        `buyurtma-${request.requestCode}.${extension}`,
-      )
-    } catch (error) {
-      showSnackbar(error.message || 'Yuklab olishda xatolik', 'error')
-    } finally {
-      setDownloadingId(null)
-    }
-  }
+  const { downloadingId, downloadHandlers } = useSubmittedDocumentDownload({
+    onError: (error) => showSnackbar(error.message || 'Yuklab olishda xatolik', 'error'),
+  })
 
   return (
     <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -142,8 +129,7 @@ export const SotibOlinadiganTovarlarPage = () => {
           setDetailTarget(null)
           setDispatchTarget(request)
         }}
-        onDownloadPdf={(request) => handleDownload(request, 'pdf')}
-        onDownloadDocx={(request) => handleDownload(request, 'docx')}
+        {...downloadHandlers}
         downloading={Boolean(downloadingId)}
       />
 

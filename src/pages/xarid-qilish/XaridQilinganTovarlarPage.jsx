@@ -8,7 +8,7 @@ import { PurchasingPageFilters } from '@/features/purchase-requests/components/P
 import { PurchasingInboxSkeleton } from '@/features/purchase-requests/components/PurchasingInboxSkeletons'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { usePurchasingListFilters } from '@/shared/hooks/usePurchasingListFilters'
-import { downloadAuthenticatedFile } from '@/shared/utils/downloadFile'
+import { useSubmittedDocumentDownload } from '@/features/purchase-requests/hooks/useSubmittedDocumentDownload'
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
 
@@ -30,7 +30,6 @@ export const XaridQilinganTovarlarPage = () => {
   } = usePurchasingListFilters()
 
   const [detailTarget, setDetailTarget] = useState(null)
-  const [downloadingId, setDownloadingId] = useState(null)
 
   const inboxQuery = useGetPurchasedInboxQuery(queryParams)
 
@@ -38,21 +37,7 @@ export const XaridQilinganTovarlarPage = () => {
   const total = inboxQuery.data?.total ?? 0
   const isReady = !inboxQuery.isLoading && !inboxQuery.isUninitialized
 
-  const handleDownload = async (request, type) => {
-    setDownloadingId(request.id)
-
-    try {
-      const extension = type === 'pdf' ? 'pdf' : 'docx'
-      await downloadAuthenticatedFile(
-        `/purchase-requests/${request.id}/export/${extension}`,
-        `buyurtma-${request.requestCode}.${extension}`,
-      )
-    } catch {
-      // ignore
-    } finally {
-      setDownloadingId(null)
-    }
-  }
+  const { downloadingId, downloadHandlers } = useSubmittedDocumentDownload()
 
   return (
     <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -112,8 +97,7 @@ export const XaridQilinganTovarlarPage = () => {
         requestId={detailTarget?.id}
         purchasingView
         onClose={() => setDetailTarget(null)}
-        onDownloadPdf={(request) => handleDownload(request, 'pdf')}
-        onDownloadDocx={(request) => handleDownload(request, 'docx')}
+        {...downloadHandlers}
         downloading={Boolean(downloadingId)}
       />
     </Box>

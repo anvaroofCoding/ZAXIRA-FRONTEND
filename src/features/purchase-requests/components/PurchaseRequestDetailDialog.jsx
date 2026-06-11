@@ -3,8 +3,8 @@ import CheckIcon from '@mui/icons-material/Check'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import DescriptionIcon from '@mui/icons-material/Description'
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
+import { PurchaseRequestDocumentDownloadButtons } from '@/features/purchase-requests/components/PurchaseRequestDocumentDownloadButtons'
+import { SubmittedDocumentsSection } from '@/features/purchase-requests/components/SubmittedDocumentsSection'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -22,6 +22,7 @@ import { PurchaseRequestItemsTable } from '@/features/purchase-requests/componen
 import Typography from '@mui/material/Typography'
 import { ApprovalTimelineSteps } from '@/features/purchase-requests/components/ApprovalTimelineSteps'
 import { PurchaseDeadlineDetailRow } from '@/features/purchase-requests/components/PurchaseDeadlineDetailRow'
+import { PurchasePeriodDetailRow } from '@/features/purchase-requests/components/PurchasePeriodDetailRow'
 import { formatMemberLabel } from '@/features/purchase-requests/utils/formatMemberLabel'
 import { BossDecisionAlert } from '@/features/purchase-requests/components/BossDecisionAlert'
 import { useGetPurchaseRequestByIdQuery } from '@/features/purchase-requests/api/purchaseRequestsApi'
@@ -52,8 +53,8 @@ export const PurchaseRequestDetailDialog = ({
   open,
   requestId,
   onClose,
-  onDownloadPdf,
-  onDownloadDocx,
+  onDownloadBildirgi,
+  onDownloadKelishuv,
   downloading,
   onResubmit,
   onEdit,
@@ -210,21 +211,30 @@ export const PurchaseRequestDetailDialog = ({
               </Stack>
             </Box>
 
+            <Box>
+              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 0.5 }}>
+                Sotib olish sababi
+              </Typography>
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                {request.comment?.trim() ? request.comment : '—'}
+              </Typography>
+            </Box>
+
+            <PurchasePeriodDetailRow request={request} />
+
+            <SubmittedDocumentsSection
+              request={request}
+              downloading={downloading}
+              onDownloadBildirgi={onDownloadBildirgi}
+              onDownloadKelishuv={onDownloadKelishuv}
+            />
+
             <PurchaseRequestItemsTable
               items={request.items}
               title="Tovarlar"
               subtitle="Bozor narxini ko‘rish uchun qatorni bosing"
               onItemClick={setPriceItem}
             />
-
-            <Box>
-              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 0.5 }}>
-                Izoh
-              </Typography>
-              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                {request.comment?.trim() ? request.comment : '—'}
-              </Typography>
-            </Box>
 
             <PurchaseDeadlineDetailRow
               deadline={request.purchaseDeadline}
@@ -276,24 +286,12 @@ export const PurchaseRequestDetailDialog = ({
           </Button>
         ) : null}
         {request ? (
-          <>
-            <Button
-              variant="outlined"
-              startIcon={<PictureAsPdfIcon />}
-              disabled={downloading}
-              onClick={() => onDownloadPdf(request)}
-            >
-              PDF
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<DescriptionIcon />}
-              disabled={downloading}
-              onClick={() => onDownloadDocx(request)}
-            >
-              Word
-            </Button>
-          </>
+          <PurchaseRequestDocumentDownloadButtons
+            request={request}
+            downloading={downloading}
+            onDownloadBildirgi={onDownloadBildirgi}
+            onDownloadKelishuv={onDownloadKelishuv}
+          />
         ) : null}
       </DialogActions>
 

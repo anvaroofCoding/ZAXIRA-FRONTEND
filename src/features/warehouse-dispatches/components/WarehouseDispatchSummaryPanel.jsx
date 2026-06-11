@@ -68,9 +68,11 @@ export const NomenclatureTextField = ({
     <TextField
       inputRef={inputRef}
       label="Nomeklatura raqami"
+      placeholder="Istalgan raqamni kiriting"
       size="small"
       value={value}
       onChange={(event) => onChange(event.target.value)}
+      slotProps={{ htmlInput: { maxLength: 64 } }}
       onKeyDown={(event) => {
         if (event.key === 'Enter') {
           event.preventDefault()
@@ -133,6 +135,7 @@ export const NomenclatureTextField = ({
 
 export const WarehouseDispatchSummaryPanel = ({
   dispatch,
+  summaryPrimaryField = 'nomenclature',
   nomenclatureVerified = false,
   confirmedNomenclature = '',
   nomenclatureAnchorRef,
@@ -143,8 +146,10 @@ export const WarehouseDispatchSummaryPanel = ({
     return null
   }
 
+  const isNakladnoySummary = summaryPrimaryField === 'nakladnoy'
   const displayNomenclature = confirmedNomenclature || dispatch.dispatchCode
-  const showInlineInput = nomenclatureInput && !nomenclatureVerified && !nomenclatureFocusActive
+  const showInlineInput =
+    !isNakladnoySummary && nomenclatureInput && !nomenclatureVerified && !nomenclatureFocusActive
 
   return (
     <Paper variant="outlined" sx={{ width: '100%' }}>
@@ -183,7 +188,14 @@ export const WarehouseDispatchSummaryPanel = ({
                     : 'visible',
               }}
             >
-              {nomenclatureVerified ? (
+              {isNakladnoySummary ? (
+                <SummaryItem
+                  icon={AssignmentOutlinedIcon}
+                  label="Nakladnoy raqami"
+                  primary={dispatch.dispatchCode}
+                  secondary={dispatch.requestCode || undefined}
+                />
+              ) : nomenclatureVerified ? (
                 <SummaryItem
                   icon={AssignmentOutlinedIcon}
                   label="Nomeklatura raqami"

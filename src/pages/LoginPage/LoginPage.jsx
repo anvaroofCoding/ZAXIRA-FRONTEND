@@ -11,6 +11,8 @@ import { AppContainer } from '@/shared/components/layout/AppContainer'
 import { ThemeToggle } from '@/shared/components/ThemeToggle'
 import { useLoginMutation } from '@/features/auth/api/authApi'
 import { setCredentials } from '@/features/auth/model/authSlice'
+import { clearLegacyActiveSessionsStorage } from '@/features/purchase-requests/utils/activeSessionsStorage'
+import { baseApi } from '@/shared/api/baseApi'
 import { useAppDispatch } from '@/shared/hooks/useAppDispatch'
 
 const getErrorMessage = (error) => {
@@ -109,6 +111,8 @@ export const LoginPage = () => {
     try {
       const data = await login(form).unwrap()
       setLockUntil(null)
+      clearLegacyActiveSessionsStorage()
+      dispatch(baseApi.util.resetApiState())
       dispatch(
         setCredentials({
           accessToken: data.accessToken,

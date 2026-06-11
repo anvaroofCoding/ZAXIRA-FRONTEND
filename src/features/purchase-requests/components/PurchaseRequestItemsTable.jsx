@@ -42,6 +42,8 @@ export const PurchaseRequestItemsTable = ({
               <TableCell sx={{ minWidth: 140 }}>Tovar nomi</TableCell>
               <TableCell sx={{ maxWidth: 360 }}>Tovar xususiyati</TableCell>
               <TableCell width={72}>Soni</TableCell>
+              <TableCell width={100}>Birlik</TableCell>
+              <TableCell sx={{ minWidth: 140 }}>Ishlab chiqarilgan davlati</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -65,6 +67,8 @@ export const PurchaseRequestItemsTable = ({
                   <PurchaseRequestItemCharacteristicsCell value={item.characteristics} />
                 </TableCell>
                 <TableCell sx={{ verticalAlign: 'top' }}>{item.quantity}</TableCell>
+                <TableCell sx={{ verticalAlign: 'top' }}>{item.unit || '—'}</TableCell>
+                <TableCell sx={{ verticalAlign: 'top' }}>{item.manufacturingCountry || '—'}</TableCell>
               </TableRow>
             ))}
           </TableBody>

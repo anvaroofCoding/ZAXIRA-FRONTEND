@@ -13,17 +13,27 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
-import { DISABLED_PAGE_ACTION_TICKETS, PERMISSION_COLUMNS } from '@/features/permissions/constants'
+import {
+  DISABLED_PAGE_ACTION_TICKETS,
+  PERMISSION_COLUMNS,
+  WAREHOUSE_PERMISSION_BLOCKED_MESSAGE,
+  WAREHOUSE_PERMISSION_GROUP_KEY,
+  WAREHOUSE_PERMISSION_SELECT_STRUCTURE_MESSAGE,
+} from '@/features/permissions/constants'
 import {
   getGroupActionState,
   getGroupCheckState,
   getGroupPaths,
   isPageActionDisabled,
+  isWarehousePermissionPath,
   setGroupAccess,
   setGroupAction,
   setPageAccess,
   setPageAction,
 } from '@/features/permissions/utils/permissions'
+
+/** allowed — ombor ruxsatlari ochiq; pending — tuzilma tanlanmagan; blocked — ombor yo‘q */
+const isWarehousePermissionAllowed = (mode) => mode === 'allowed'
 
 const DisabledActionsHintRow = ({ ticketText }) => (
   <TableRow hover>
@@ -35,9 +45,20 @@ const DisabledActionsHintRow = ({ ticketText }) => (
   </TableRow>
 )
 
-const PageRow = ({ label, indent = 0, permissions, path, onChange, disabled }) => {
+const PageRow = ({
+  label,
+  indent = 0,
+  permissions,
+  path,
+  onChange,
+  disabled,
+  warehousePermissionMode = 'allowed',
+}) => {
   const page = permissions[path] ?? { access: false, actions: {} }
-  const accessDisabled = disabled
+  const warehouseBlocked =
+    !isWarehousePermissionAllowed(warehousePermissionMode) &&
+    isWarehousePermissionPath(path)
+  const accessDisabled = disabled || warehouseBlocked
 
   return (
     <>
@@ -84,10 +105,23 @@ const PageRow = ({ label, indent = 0, permissions, path, onChange, disabled }) =
   )
 }
 
-const GroupSection = ({ group, permissions, onChange, disabled }) => {
+const GroupSection = ({
+  group,
+  permissions,
+  onChange,
+  disabled,
+  warehousePermissionMode = 'allowed',
+}) => {
   const [open, setOpen] = useState(true)
   const paths = useMemo(() => getGroupPaths(group), [group])
   const accessState = getGroupCheckState(permissions, paths)
+  const isWarehouseGroup = group.key === WAREHOUSE_PERMISSION_GROUP_KEY
+  const warehouseBlocked =
+    isWarehouseGroup && !isWarehousePermissionAllowed(warehousePermissionMode)
+  const warehouseHint =
+    warehousePermissionMode === 'pending'
+      ? WAREHOUSE_PERMISSION_SELECT_STRUCTURE_MESSAGE
+      : WAREHOUSE_PERMISSION_BLOCKED_MESSAGE
 
   return (
     <>
@@ -107,7 +141,7 @@ const GroupSection = ({ group, permissions, onChange, disabled }) => {
           <Checkbox
             checked={accessState.checked}
             indeterminate={accessState.indeterminate}
-            disabled={disabled}
+            disabled={disabled || warehouseBlocked}
             onChange={(event) =>
               onChange(setGroupAccess(permissions, paths, event.target.checked))
             }
@@ -118,6 +152,7 @@ const GroupSection = ({ group, permissions, onChange, disabled }) => {
           const actionState = getGroupActionState(permissions, paths, column.key)
           const groupActionDisabled =
             disabled ||
+            warehouseBlocked ||
             actionState.disabled ||
             !paths.some((path) => permissions[path]?.access)
 
@@ -138,6 +173,8 @@ const GroupSection = ({ group, permissions, onChange, disabled }) => {
         })}
       </TableRow>
 
+      {warehouseBlocked ? <DisabledActionsHintRow ticketText={warehouseHint} /> : null}
+
       <TableRow>
         <TableCell colSpan={PERMISSION_COLUMNS.length + 1} sx={{ p: 0, border: 0 }}>
           <Collapse in={open} timeout="auto" unmountOnExit>
@@ -152,6 +189,7 @@ const GroupSection = ({ group, permissions, onChange, disabled }) => {
                     permissions={permissions}
                     onChange={onChange}
                     disabled={disabled}
+                    warehousePermissionMode={warehousePermissionMode}
                   />
                 ))}
               </TableBody>
@@ -169,6 +207,7 @@ export const PermissionTreeTable = ({
   onChange,
   disabled = false,
   maxHeight = 360,
+  warehousePermissionMode = 'allowed',
 }) => {
   if (!catalog) return null
 
@@ -199,6 +238,7 @@ export const PermissionTreeTable = ({
               permissions={permissions}
               onChange={onChange}
               disabled={disabled}
+              warehousePermissionMode={warehousePermissionMode}
             />
           ))}
 
@@ -209,6 +249,7 @@ export const PermissionTreeTable = ({
               permissions={permissions}
               onChange={onChange}
               disabled={disabled}
+              warehousePermissionMode={warehousePermissionMode}
             />
           ))}
         </TableBody>

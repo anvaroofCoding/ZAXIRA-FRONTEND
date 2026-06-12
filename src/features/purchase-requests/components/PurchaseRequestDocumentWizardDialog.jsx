@@ -11,6 +11,7 @@ import Step from '@mui/material/Step'
 import StepLabel from '@mui/material/StepLabel'
 import Stepper from '@mui/material/Stepper'
 import Typography from '@mui/material/Typography'
+import { ForceLightModeScope } from '@/shared/theme/ForceLightModeScope'
 import {
   usePreparePurchaseRequestDocumentsMutation,
   useSubmitPurchaseRequestSessionMutation,
@@ -173,6 +174,7 @@ export const PurchaseRequestDocumentWizardDialog = ({
         sessionId,
         bildirgiFile,
         kelishuvFile,
+        sessionPayload: sessionPayload ?? undefined,
       }).unwrap()
       onSubmitted?.(created)
       onClose?.()
@@ -184,6 +186,7 @@ export const PurchaseRequestDocumentWizardDialog = ({
   }
 
   return (
+    <ForceLightModeScope active={open}>
     <Dialog
       open={open}
       onClose={onClose}
@@ -195,6 +198,8 @@ export const PurchaseRequestDocumentWizardDialog = ({
           sx: {
             display: 'flex',
             flexDirection: 'column',
+            colorScheme: 'light',
+            bgcolor: 'background.paper',
           },
         },
       }}
@@ -223,6 +228,8 @@ export const PurchaseRequestDocumentWizardDialog = ({
           flex: 1,
           minHeight: 0,
           overflow: 'hidden',
+          colorScheme: 'light',
+          bgcolor: 'background.paper',
         }}
       >
         {error ? <Alert severity="error">{error}</Alert> : null}
@@ -251,7 +258,16 @@ export const PurchaseRequestDocumentWizardDialog = ({
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, py: 2, gap: 1, flexShrink: 0 }}>
+      <DialogActions
+        sx={{
+          px: 3,
+          py: 2,
+          gap: 1,
+          flexShrink: 0,
+          colorScheme: 'light',
+          bgcolor: 'background.paper',
+        }}
+      >
         <Button onClick={onClose} disabled={isBusy}>
           Bekor qilish
         </Button>
@@ -279,5 +295,6 @@ export const PurchaseRequestDocumentWizardDialog = ({
         )}
       </DialogActions>
     </Dialog>
+    </ForceLightModeScope>
   )
 }

@@ -7,6 +7,7 @@ export const HISTORY_EVENT_TYPE_OPTIONS = [
   { value: 'BOSS_DECISION', label: 'Boshliq qarori' },
   { value: 'BOSS_CONFIRMED', label: 'Boshliq tasdiqladi' },
   { value: 'PURCHASED', label: 'Xarid qilindi' },
+  { value: 'ITEMS_UNAVAILABLE', label: 'Xarid qilib bo‘lmaydi deb belgilandi' },
   { value: 'PURCHASE_REJECTED', label: 'Xarid rad etildi (atkaz)' },
 ]
 

@@ -8,7 +8,6 @@ import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Grid from '@mui/material/Grid'
 import IconButton from '@mui/material/IconButton'
-import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
@@ -135,24 +134,16 @@ export const NomenclatureTextField = ({
 
 export const WarehouseDispatchSummaryPanel = ({
   dispatch,
-  summaryPrimaryField = 'nomenclature',
-  nomenclatureVerified = false,
-  confirmedNomenclature = '',
-  nomenclatureAnchorRef,
-  nomenclatureInput,
-  nomenclatureFocusActive = true,
+  summaryPrimaryField = 'nakladnoy',
 }) => {
   if (!dispatch) {
     return null
   }
 
   const isNakladnoySummary = summaryPrimaryField === 'nakladnoy'
-  const displayNomenclature = confirmedNomenclature || dispatch.dispatchCode
-  const showInlineInput =
-    !isNakladnoySummary && nomenclatureInput && !nomenclatureVerified && !nomenclatureFocusActive
 
   return (
-    <Paper variant="outlined" sx={{ width: '100%' }}>
+    <Box sx={{ width: '100%' }}>
       <Box
         sx={{
           display: 'flex',
@@ -179,39 +170,19 @@ export const WarehouseDispatchSummaryPanel = ({
       <Box sx={{ p: 2 }}>
         <Grid container spacing={2.5}>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Box
-              ref={nomenclatureAnchorRef}
-              sx={{
-                visibility:
-                  nomenclatureInput && !nomenclatureVerified && nomenclatureFocusActive
-                    ? 'hidden'
-                    : 'visible',
-              }}
-            >
-              {isNakladnoySummary ? (
-                <SummaryItem
-                  icon={AssignmentOutlinedIcon}
-                  label="Nakladnoy raqami"
-                  primary={dispatch.dispatchCode}
-                  secondary={dispatch.requestCode || undefined}
-                />
-              ) : nomenclatureVerified ? (
-                <SummaryItem
-                  icon={AssignmentOutlinedIcon}
-                  label="Nomeklatura raqami"
-                  primary={displayNomenclature}
-                  secondary={dispatch.requestCode || undefined}
-                />
-              ) : showInlineInput ? (
-                <NomenclatureTextField {...nomenclatureInput} />
-              ) : (
-                <SummaryItem
-                  icon={AssignmentOutlinedIcon}
-                  label="Nomeklatura raqami"
-                  primary="—"
-                />
-              )}
-            </Box>
+            {isNakladnoySummary ? (
+              <SummaryItem
+                icon={AssignmentOutlinedIcon}
+                label="Nakladnoy raqami"
+                primary={dispatch.dispatchCode}
+              />
+            ) : (
+              <SummaryItem
+                icon={AssignmentOutlinedIcon}
+                label="Nomeklatura raqami"
+                primary={dispatch.dispatchCode}
+              />
+            )}
           </Grid>
           {dispatch.sourceStructure ? (
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -239,6 +210,6 @@ export const WarehouseDispatchSummaryPanel = ({
           </Grid>
         </Grid>
       </Box>
-    </Paper>
+    </Box>
   )
 }

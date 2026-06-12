@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import CheckIcon from '@mui/icons-material/Check'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import { PurchaseRequestDocumentDownloadButtons } from '@/features/purchase-requests/components/PurchaseRequestDocumentDownloadButtons'
-import { SubmittedDocumentsSection } from '@/features/purchase-requests/components/SubmittedDocumentsSection'
 import { BossDecisionAlert } from '@/features/purchase-requests/components/BossDecisionAlert'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -63,6 +62,7 @@ export const PurchaseRequestReadOnlyDetailDialog = ({
   onPurchase,
   onReject,
   onDispatch,
+  onDispatchBatch,
 }) => {
   const [copied, setCopied] = useState(false)
   const detailQuery = useGetPurchaseRequestByIdQuery(
@@ -224,19 +224,19 @@ export const PurchaseRequestReadOnlyDetailDialog = ({
               mandatory={request.purchaseDeadlineMandatory}
             />
 
-            <SubmittedDocumentsSection
-              request={request}
-              downloading={downloading}
-              onDownloadBildirgi={onDownloadBildirgi}
-              onDownloadKelishuv={onDownloadKelishuv}
-            />
-
             <BossDecisionAlert request={request} />
 
-            {request.purchase ? (
+            {request.purchaseBatches?.length || request.purchaseUnavailableBatches?.length ? (
               <>
                 <Divider />
-                <PurchaseInfoSection request={request} />
+                <PurchaseInfoSection
+                  request={request}
+                  onDispatchBatch={
+                    onDispatchBatch
+                      ? (batch) => onDispatchBatch(request, batch)
+                      : undefined
+                  }
+                />
               </>
             ) : null}
 
@@ -269,11 +269,6 @@ export const PurchaseRequestReadOnlyDetailDialog = ({
         {request?.canCompletePurchase && onPurchase ? (
           <Button size="small" variant="contained" color="success" onClick={() => onPurchase(request)}>
             Xarid qilish
-          </Button>
-        ) : null}
-        {request?.canDispatchToWarehouse && onDispatch ? (
-          <Button size="small" variant="contained" color="warning" onClick={() => onDispatch(request)}>
-            Omborga jo‘natish
           </Button>
         ) : null}
         {request?.warehouseDispatch ? (

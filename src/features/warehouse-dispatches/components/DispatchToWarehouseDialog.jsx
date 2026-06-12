@@ -29,7 +29,28 @@ import { downloadAuthenticatedFile } from '@/shared/utils/downloadFile'
 const formatStructureOption = (structure) =>
   `${structure.shortName} — ${structure.fullName}`
 
-export const DispatchToWarehouseDialog = ({ open, request, onClose, onSuccess }) => {
+const resolveBatchItems = (batch, items) => {
+  const indexedItems = (items ?? []).map((item, itemIndex) => ({ ...item, itemIndex }))
+
+  if (!batch) {
+    return indexedItems.filter((item) => item.isPurchased)
+  }
+
+  if (batch.batchId === 'legacy') {
+    const indexes = new Set(batch.itemAmounts.map((row) => row.itemIndex))
+    return indexedItems.filter((item) => indexes.has(item.itemIndex))
+  }
+
+  return indexedItems.filter((item) => item.purchaseBatchId === batch.batchId)
+}
+
+export const DispatchToWarehouseDialog = ({
+  open,
+  request,
+  purchaseBatch = null,
+  onClose,
+  onSuccess,
+}) => {
   const [structure, setStructure] = useState(null)
   const [plannedArrivalAt, setPlannedArrivalAt] = useState(null)
   const [error, setError] = useState('')
@@ -41,6 +62,11 @@ export const DispatchToWarehouseDialog = ({ open, request, onClose, onSuccess })
   const activeStructures = useMemo(
     () => filterStructuresWithWarehouse(structuresQuery.data),
     [structuresQuery.data],
+  )
+
+  const batchItems = useMemo(
+    () => resolveBatchItems(purchaseBatch, request?.items),
+    [purchaseBatch, request?.items],
   )
 
   const handleSubmit = async (event) => {
@@ -55,6 +81,7 @@ export const DispatchToWarehouseDialog = ({ open, request, onClose, onSuccess })
     try {
       const result = await createDispatch({
         purchaseRequestId: request.id,
+        purchaseBatchId: purchaseBatch?.batchId,
         structureId: structure.id,
         plannedArrivalAt:
           plannedArrivalAt && dayjs(plannedArrivalAt).isValid()
@@ -90,6 +117,7 @@ export const DispatchToWarehouseDialog = ({ open, request, onClose, onSuccess })
       <Box component="form" onSubmit={handleSubmit}>
         <DialogTitle sx={{ fontWeight: 600 }}>
           Omborga jo‘natish — {request.requestCode}
+          {purchaseBatch?.batchNumber ? ` / partiya #${purchaseBatch.batchNumber}` : ''}
         </DialogTitle>
 
         <DialogContent dividers>
@@ -118,11 +146,13 @@ export const DispatchToWarehouseDialog = ({ open, request, onClose, onSuccess })
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {(request.items ?? []).map((item, index) => (
-                    <TableRow key={`${request.id}-${index}`}>
+                  {batchItems.map((item, index) => (
+                    <TableRow key={`${request.id}-${item.itemIndex}-${index}`}>
                       <TableCell>{index + 1}</TableCell>
                       <TableCell>{item.name}</TableCell>
-                      <TableCell align="right">{item.quantity} ta</TableCell>
+                      <TableCell align="right">
+                        {item.quantity} {item.unit || 'dona'}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

@@ -3,7 +3,6 @@ import CheckIcon from '@mui/icons-material/Check'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import GavelIcon from '@mui/icons-material/Gavel'
 import { PurchaseRequestDocumentDownloadButtons } from '@/features/purchase-requests/components/PurchaseRequestDocumentDownloadButtons'
-import { SubmittedDocumentsSection } from '@/features/purchase-requests/components/SubmittedDocumentsSection'
 import VerifiedIcon from '@mui/icons-material/Verified'
 import { BossDecisionAlert } from '@/features/purchase-requests/components/BossDecisionAlert'
 import Alert from '@mui/material/Alert'
@@ -277,13 +276,6 @@ export const PurchaseRequestApprovalDetailDialog = ({
               <PurchaseDeadlineDetailRow
                 deadline={request.purchaseDeadline}
                 mandatory={request.purchaseDeadlineMandatory}
-              />
-
-              <SubmittedDocumentsSection
-                request={request}
-                downloading={downloading}
-                onDownloadBildirgi={onDownloadBildirgi}
-                onDownloadKelishuv={onDownloadKelishuv}
               />
 
               <BossDecisionAlert request={request} />

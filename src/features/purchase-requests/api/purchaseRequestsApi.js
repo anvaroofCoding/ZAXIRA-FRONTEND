@@ -17,10 +17,20 @@ const isSessionsApiUnavailable = (error) => error?.status === 404
 const unwrapApiPayload = (payload) =>
   payload && typeof payload === 'object' && 'success' in payload ? payload.data : payload
 
-const submitSessionWithFiles = async (sessionId, bildirgiFile, kelishuvFile, token) => {
+const submitSessionWithFiles = async (
+  sessionId,
+  bildirgiFile,
+  kelishuvFile,
+  token,
+  sessionPayload,
+) => {
   const formData = new FormData()
   formData.append('bildirgi', bildirgiFile, bildirgiFile.name || 'bildirgi.docx')
   formData.append('kelishuv', kelishuvFile, kelishuvFile.name || 'kelishuv.docx')
+
+  if (sessionPayload) {
+    formData.append('payload', JSON.stringify(sanitizeSessionPayload(sessionPayload)))
+  }
 
   const response = await fetch(
     `${env.apiBaseUrl}/purchase-requests/active-sessions/${sessionId}/submit`,
@@ -96,48 +106,20 @@ const sanitizeSessionPayload = (body, { minimal = false } = {}) => {
   return next
 }
 
-const postSessionPayload = async (baseQuery, sessionId, payload) => {
-  let result = await baseQuery({
+const postSessionPayload = async (baseQuery, sessionId, payload) =>
+  baseQuery({
     url: `/purchase-requests/active-sessions/${sessionId}`,
     method: 'POST',
     body: payload,
   })
 
-  if (result.error?.status !== 400) {
-    return result
-  }
-
-  const attempts = [
-    sanitizeSessionPayload(payload, { minimal: true }),
-    {
-      title: payload.title,
-      commissionMemberIds: payload.commissionMemberIds ?? [],
-      items: payload.items ?? [],
-      comment: payload.comment ?? '',
-    },
-  ]
-
-  for (const fallbackPayload of attempts) {
-    result = await baseQuery({
-      url: `/purchase-requests/active-sessions/${sessionId}`,
-      method: 'POST',
-      body: fallbackPayload,
-    })
-
-    if (!result.error) {
-      return result
-    }
-  }
-
-  return result
-}
-
-const buildInboxQueryParams = ({ page, limit, search, dateFrom, dateTo }) => ({
+const buildInboxQueryParams = ({ page, limit, search, dateFrom, dateTo, inboxType }) => ({
   page,
   limit,
   ...(search?.trim() ? { search: search.trim() } : {}),
   ...(dateFrom ? { dateFrom } : {}),
   ...(dateTo ? { dateTo } : {}),
+  ...(inboxType ? { inboxType } : {}),
 })
 
 export const purchaseRequestsApi = baseApi.injectEndpoints({
@@ -205,9 +187,9 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
       },
     }),
     getPurchasedInbox: builder.query({
-      query: ({ page = 1, limit = 10, search = '', dateFrom, dateTo } = {}) => ({
+      query: ({ page = 1, limit = 10, search = '', dateFrom, dateTo, inboxType = 'purchased' } = {}) => ({
         url: '/purchase-requests/purchased/inbox',
-        params: buildInboxQueryParams({ page, limit, search, dateFrom, dateTo }),
+        params: buildInboxQueryParams({ page, limit, search, dateFrom, dateTo, inboxType }),
       }),
       providesTags: (result) => {
         if (!result?.items?.length) {
@@ -238,6 +220,17 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
         url: `/purchase-requests/${id}/purchase`,
         method: 'POST',
         body: formData,
+      }),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: API_TAGS.PURCHASE_REQUEST, id },
+        API_TAGS.PURCHASE_REQUEST,
+      ],
+    }),
+    markItemsUnavailable: builder.mutation({
+      query: ({ id, itemIndexes, comment }) => ({
+        url: `/purchase-requests/${id}/purchase/unavailable`,
+        method: 'POST',
+        body: { itemIndexes, comment },
       }),
       invalidatesTags: (_result, _error, { id }) => [
         { type: API_TAGS.PURCHASE_REQUEST, id },
@@ -355,7 +348,7 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
         const result = await postSessionPayload(baseQuery, id, payload)
 
         if (!result.error) {
-          return { data: result.data }
+          return { data: { ...result.data, serverSaved: true } }
         }
 
         if (syncServer) {
@@ -363,10 +356,16 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
         }
 
         if (isSessionsApiUnavailable(result.error)) {
-          return { data: localSnapshot }
+          return { data: { ...localSnapshot, serverSaved: false } }
         }
 
-        return { data: localSnapshot }
+        return {
+          data: {
+            ...localSnapshot,
+            serverSaved: false,
+            serverErrorStatus: result.error?.status ?? null,
+          },
+        }
       },
       async onQueryStarted({ id }, { dispatch, queryFulfilled }) {
         try {
@@ -426,6 +425,7 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
         const sessionId = typeof arg === 'string' ? arg : arg?.sessionId
         const bildirgiFile = typeof arg === 'object' ? arg?.bildirgiFile : undefined
         const kelishuvFile = typeof arg === 'object' ? arg?.kelishuvFile : undefined
+        const sessionPayload = typeof arg === 'object' ? arg?.sessionPayload : undefined
 
         if (!sessionId) {
           return {
@@ -445,22 +445,25 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
           }
         }
 
-        let result
-
-        if (bildirgiFile && kelishuvFile) {
-          const token = selectAccessToken(api.getState())
-          result = await submitSessionWithFiles(
-            sessionId,
-            bildirgiFile,
-            kelishuvFile,
-            token,
-          )
-        } else {
-          result = await baseQuery({
-            url: `/purchase-requests/active-sessions/${sessionId}/submit`,
-            method: 'POST',
-          })
+        if (!bildirgiFile || !kelishuvFile) {
+          return {
+            error: {
+              status: 400,
+              data: {
+                message: 'Bildirgi va kelishuv Word fayllari yuborilishi shart',
+              },
+            },
+          }
         }
+
+        const token = selectAccessToken(api.getState())
+        const result = await submitSessionWithFiles(
+          sessionId,
+          bildirgiFile,
+          kelishuvFile,
+          token,
+          sessionPayload,
+        )
 
         if (!result.error) {
           const userId = resolveActiveSessionsUserId(api)
@@ -654,6 +657,7 @@ export const {
   useGetPurchasingInboxQuery,
   useGetPurchasedInboxQuery,
   useCompletePurchaseMutation,
+  useMarkItemsUnavailableMutation,
   useRejectPurchaseMutation,
   useDeletePurchaseRequestMutation,
   usePolishPurchaseRequestItemTextMutation,

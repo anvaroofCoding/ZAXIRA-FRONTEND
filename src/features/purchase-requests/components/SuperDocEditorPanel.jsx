@@ -34,22 +34,30 @@ export const SuperDocEditorPanel = ({ documentFile, loading, error, onReady }) =
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
+        colorScheme: 'light',
+        bgcolor: '#ffffff',
+        color: '#212121',
         '& .superdoc-wrapper': {
           flex: 1,
           minHeight: 0,
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
+          bgcolor: '#ffffff',
         },
         '& .superdoc-toolbar-container': {
           flexShrink: 0,
+          bgcolor: '#f5f5f5',
+          color: '#212121',
         },
         '& .superdoc-editor-container': {
           flex: 1,
           minHeight: 0,
+          bgcolor: '#ffffff',
         },
         '& .superdoc': {
           height: '100%',
+          bgcolor: '#ffffff',
         },
       }}
     >

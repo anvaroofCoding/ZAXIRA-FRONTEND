@@ -45,15 +45,11 @@ export const XaridniQabulQilishPage = () => {
   } = usePurchasingListFilters()
 
   const [searchParams] = useSearchParams()
-  const [savedNomenclatureCode, setSavedNomenclatureCode] = useState('')
   const [detailTarget, setDetailTarget] = useState(() => {
     const dispatchId = searchParams.get('dispatch')?.trim()
     return dispatchId ? { id: dispatchId } : null
   })
 
-  const handleNomenclatureVerified = useCallback((code) => {
-    setSavedNomenclatureCode((prev) => prev || code)
-  }, [])
   const openDispatchFromQuery = useCallback((id) => setDetailTarget({ id }), [])
   useQueryParamOpen('dispatch', openDispatchFromQuery)
 
@@ -111,7 +107,7 @@ export const XaridniQabulQilishPage = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell sx={{ minWidth: 200, width: '1%', whiteSpace: 'nowrap' }}>
-                      Nomeklatura raqami
+                      Nakladnoy raqami
                     </TableCell>
                     <TableCell width={120}>Ariza</TableCell>
                     <TableCell width={150}>Sana</TableCell>
@@ -190,9 +186,7 @@ export const XaridniQabulQilishPage = () => {
         <ReceiveWarehouseDispatchDialog
           open
           dispatchId={detailTarget.id}
-          requireNomenclatureVerification
-          savedNomenclatureCode={savedNomenclatureCode}
-          onNomenclatureVerified={handleNomenclatureVerified}
+          requireItemNomenclature
           onClose={() => setDetailTarget(null)}
           onSuccess={() => setDetailTarget(null)}
         />

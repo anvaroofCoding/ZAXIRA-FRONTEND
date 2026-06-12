@@ -58,7 +58,8 @@ export const PurchasingQueueTable = ({
 
         <TableBody>
           {items.map((item) => {
-            const hasPurchase = Boolean(item.purchase)
+            const purchasedCount = item.items.filter((row) => row.isPurchased).length
+            const hasPurchase = purchasedCount > 0
             const displayDate = hasPurchase ? item.purchase?.purchasedAt : item.createdAt
 
             return (
@@ -87,7 +88,11 @@ export const PurchasingQueueTable = ({
                   </Typography>
                 </TableCell>
                 <TableCell align="right">
-                  <Typography variant="body2">{item.items.length} ta</Typography>
+                  <Typography variant="body2">
+                    {hasPurchase
+                      ? `${purchasedCount}/${item.items.length}`
+                      : `${item.items.length} ta`}
+                  </Typography>
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2" noWrap>
@@ -96,7 +101,7 @@ export const PurchasingQueueTable = ({
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2" noWrap>
-                    {item.purchase?.vendorName ?? '—'}
+                    {item.purchase?.vendorName?.trim() || '—'}
                   </Typography>
                 </TableCell>
                 <TableCell align="right">

@@ -4,10 +4,9 @@ import Chip from '@mui/material/Chip'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import { PurchaseBatchCard } from '@/features/purchase-requests/components/PurchaseBatchCard'
-import { formatUzs } from '@/shared/utils/formatUzs'
+import { PurchaseUnavailableBatchCard } from '@/features/purchase-requests/components/PurchaseUnavailableBatchCard'
 
-export const PurchasedInboxList = ({ items, emptyMessage, onView }) => {
+export const UnavailableInboxList = ({ items, emptyMessage, onView }) => {
   if (!items.length) {
     return (
       <Paper variant="outlined" sx={{ py: 6, textAlign: 'center' }}>
@@ -19,11 +18,9 @@ export const PurchasedInboxList = ({ items, emptyMessage, onView }) => {
   return (
     <Stack spacing={2}>
       {items.map((request) => {
-        const batches = [...(request.purchaseBatches ?? [])].sort(
-          (left, right) =>
-            new Date(right.purchasedAt).getTime() - new Date(left.purchasedAt).getTime(),
+        const batches = [...(request.purchaseUnavailableBatches ?? [])].sort(
+          (left, right) => new Date(right.markedAt).getTime() - new Date(left.markedAt).getTime(),
         )
-        const purchasedCount = request.items.filter((item) => item.isPurchased).length
 
         return (
           <Paper key={request.id} variant="outlined">
@@ -44,10 +41,12 @@ export const PurchasedInboxList = ({ items, emptyMessage, onView }) => {
                 <Typography variant="subtitle1" fontWeight={700}>
                   {request.requestCode}
                 </Typography>
+                <Chip size="small" color="warning" label="Xarid qilib bo‘lmaydi" />
                 <Chip
                   size="small"
-                  color="primary"
-                  label={`${purchasedCount} ta xarid qilingan`}
+                  color="warning"
+                  variant="outlined"
+                  label={`${request.items.filter((item) => item.isPurchaseUnavailable).length} ta qilinmagan`}
                 />
               </Stack>
               <Button size="small" variant="outlined" onClick={() => onView(request)}>
@@ -58,32 +57,15 @@ export const PurchasedInboxList = ({ items, emptyMessage, onView }) => {
             <Box sx={{ p: 2 }}>
               <Stack spacing={2}>
                 {batches.map((batch, index) => (
-                  <PurchaseBatchCard
+                  <PurchaseUnavailableBatchCard
                     key={batch.batchId}
                     batch={batch}
                     batchNumber={batches.length - index}
                     items={request.items}
-                    requestId={request.id}
                     compact
                   />
                 ))}
               </Stack>
-
-              {request.purchaseTotalAmount != null ? (
-                <Paper
-                  variant="outlined"
-                  sx={{ p: 1.5, mt: 2, borderRadius: 1.5, bgcolor: 'background.default' }}
-                >
-                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="subtitle2" fontWeight={700}>
-                      Umumiy xarid summasi
-                    </Typography>
-                    <Typography variant="subtitle1" fontWeight={700}>
-                      {formatUzs(request.purchaseTotalAmount)}
-                    </Typography>
-                  </Stack>
-                </Paper>
-              ) : null}
             </Box>
           </Paper>
         )

@@ -3,6 +3,7 @@ const readEnv = (key, fallback = '') => {
   return value === undefined || value === '' ? fallback : value
 }
 
+// Local backend default. For remote API set VITE_API_BASE_URL in .env (e.g. http://88.88.5.15:8000/api).
 const defaultApiBaseUrl = 'http://localhost:8000/api'
 
 export const env = {

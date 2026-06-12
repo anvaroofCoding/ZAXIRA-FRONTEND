@@ -5,7 +5,6 @@ import TablePagination from '@mui/material/TablePagination'
 import Alert from '@mui/material/Alert'
 import { useGetPurchasingInboxQuery } from '@/features/purchase-requests/api/purchaseRequestsApi'
 import { CompletePurchaseDialog } from '@/features/purchase-requests/components/CompletePurchaseDialog'
-import { RejectPurchaseDialog } from '@/features/purchase-requests/components/RejectPurchaseDialog'
 import { DispatchToWarehouseDialog } from '@/features/warehouse-dispatches/components/DispatchToWarehouseDialog'
 import { PurchaseRequestReadOnlyDetailDialog } from '@/features/purchase-requests/components/PurchaseRequestReadOnlyDetailDialog'
 import { PurchasingPageFilters } from '@/features/purchase-requests/components/PurchasingPageFilters'
@@ -39,8 +38,8 @@ export const SotibOlinadiganTovarlarPage = () => {
   const openDetailFromQuery = useCallback((id) => setDetailTarget({ id }), [])
   useQueryParamOpen('detail', openDetailFromQuery)
   const [purchaseTarget, setPurchaseTarget] = useState(null)
-  const [rejectTarget, setRejectTarget] = useState(null)
   const [dispatchTarget, setDispatchTarget] = useState(null)
+  const [dispatchBatch, setDispatchBatch] = useState(null)
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
 
   const inboxQuery = useGetPurchasingInboxQuery(queryParams)
@@ -92,8 +91,6 @@ export const SotibOlinadiganTovarlarPage = () => {
             emptyMessage="Sotib olinadigan maxsulotlar topilmadi"
             onView={setDetailTarget}
             onPurchase={setPurchaseTarget}
-            onReject={setRejectTarget}
-            onDispatch={setDispatchTarget}
           />
 
           <TablePagination
@@ -121,13 +118,9 @@ export const SotibOlinadiganTovarlarPage = () => {
           setDetailTarget(null)
           setPurchaseTarget(request)
         }}
-        onReject={(request) => {
-          setDetailTarget(null)
-          setRejectTarget(request)
-        }}
-        onDispatch={(request) => {
-          setDetailTarget(null)
+        onDispatchBatch={(request, batch) => {
           setDispatchTarget(request)
+          setDispatchBatch(batch)
         }}
         {...downloadHandlers}
         downloading={Boolean(downloadingId)}
@@ -137,21 +130,20 @@ export const SotibOlinadiganTovarlarPage = () => {
         open={Boolean(purchaseTarget)}
         request={purchaseTarget}
         onClose={() => setPurchaseTarget(null)}
-        onSuccess={() => showSnackbar('Xarid muvaffaqiyatli qayd etildi')}
-      />
-
-      <RejectPurchaseDialog
-        open={Boolean(rejectTarget)}
-        request={rejectTarget}
-        onClose={() => setRejectTarget(null)}
-        onSuccess={() => showSnackbar('Ariza rad etildi (atkaz)')}
+        onSuccess={(message) =>
+          showSnackbar(message || 'Xarid muvaffaqiyatli qayd etildi')
+        }
       />
 
       <DispatchToWarehouseDialog
         open={Boolean(dispatchTarget)}
         request={dispatchTarget}
-        onClose={() => setDispatchTarget(null)}
-        onSuccess={() => showSnackbar('Omborga jo‘natildi — nakladnoy tayyor')}
+        purchaseBatch={dispatchBatch}
+        onClose={() => {
+          setDispatchTarget(null)
+          setDispatchBatch(null)
+        }}
+        onSuccess={() => showSnackbar('Partiya omborga jo‘natildi — nakladnoy tayyor')}
       />
 
       <Snackbar

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import DoneAllOutlinedIcon from '@mui/icons-material/DoneAllOutlined'
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined'
 import Badge from '@mui/material/Badge'
 import Box from '@mui/material/Box'
@@ -16,6 +17,7 @@ import dayjs from 'dayjs'
 import {
   useGetNotificationsQuery,
   useGetUnreadNotificationCountQuery,
+  useMarkAllNotificationsAsReadMutation,
   useMarkNotificationAsReadMutation,
 } from '@/features/notifications/api/notificationsApi'
 
@@ -43,6 +45,8 @@ export const NotificationsDrawer = () => {
   )
 
   const [markAsRead] = useMarkNotificationAsReadMutation()
+  const [markAllAsRead, { isLoading: isMarkingAllAsRead }] =
+    useMarkAllNotificationsAsReadMutation()
 
   const unreadCount = unreadQuery.data ?? 0
   const items = notificationsQuery.data?.items ?? []
@@ -50,6 +54,18 @@ export const NotificationsDrawer = () => {
 
   const handleOpen = () => setOpen(true)
   const handleClose = () => setOpen(false)
+
+  const handleMarkAllAsRead = async () => {
+    if (!unreadCount || isMarkingAllAsRead) {
+      return
+    }
+
+    try {
+      await markAllAsRead().unwrap()
+    } catch {
+      // ignore
+    }
+  }
 
   const handleItemClick = async (notification) => {
     if (!notification.isRead) {
@@ -81,14 +97,47 @@ export const NotificationsDrawer = () => {
             height: '100%',
           }}
         >
-          <Box sx={{ px: 2, py: 1.5 }}>
-            <Typography variant="h6" fontWeight={700}>
-              Bildirishnomalar
-            </Typography>
-            {unreadCount > 0 && (
-              <Typography variant="body2" color="text.secondary">
-                {unreadCount} ta o‘qilmagan
+          <Box
+            sx={{
+              px: 2,
+              py: 1.5,
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              gap: 1,
+            }}
+          >
+            <Box>
+              <Typography variant="h6" fontWeight={700}>
+                Bildirishnomalar
               </Typography>
+              {unreadCount > 0 && (
+                <Typography variant="body2" color="text.secondary">
+                  {unreadCount} ta o‘qilmagan
+                </Typography>
+              )}
+            </Box>
+            {unreadCount > 0 && (
+              <IconButton
+                size="small"
+                aria-label="Hammasini o‘qilgan deb belgilash"
+                onClick={handleMarkAllAsRead}
+                disabled={isMarkingAllAsRead}
+                sx={{
+                  mt: 0.25,
+                  p: 0,
+                  color: 'text.secondary',
+                  bgcolor: 'transparent',
+                  '&:hover': { bgcolor: 'transparent', color: 'primary.main' },
+                  '&.Mui-disabled': { bgcolor: 'transparent' },
+                }}
+              >
+                {isMarkingAllAsRead ? (
+                  <CircularProgress size={20} />
+                ) : (
+                  <DoneAllOutlinedIcon fontSize="small" />
+                )}
+              </IconButton>
             )}
           </Box>
 

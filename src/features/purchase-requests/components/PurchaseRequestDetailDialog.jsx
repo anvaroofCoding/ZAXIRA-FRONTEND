@@ -4,7 +4,6 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { PurchaseRequestDocumentDownloadButtons } from '@/features/purchase-requests/components/PurchaseRequestDocumentDownloadButtons'
-import { SubmittedDocumentsSection } from '@/features/purchase-requests/components/SubmittedDocumentsSection'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -221,13 +220,6 @@ export const PurchaseRequestDetailDialog = ({
             </Box>
 
             <PurchasePeriodDetailRow request={request} />
-
-            <SubmittedDocumentsSection
-              request={request}
-              downloading={downloading}
-              onDownloadBildirgi={onDownloadBildirgi}
-              onDownloadKelishuv={onDownloadKelishuv}
-            />
 
             <PurchaseRequestItemsTable
               items={request.items}

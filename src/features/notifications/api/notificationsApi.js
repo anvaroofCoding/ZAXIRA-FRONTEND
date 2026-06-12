@@ -21,6 +21,13 @@ export const notificationsApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: [API_TAGS.NOTIFICATION],
     }),
+    markAllNotificationsAsRead: builder.mutation({
+      query: () => ({
+        url: '/notifications/read-all',
+        method: 'PATCH',
+      }),
+      invalidatesTags: [API_TAGS.NOTIFICATION],
+    }),
   }),
 })
 
@@ -28,4 +35,5 @@ export const {
   useGetNotificationsQuery,
   useGetUnreadNotificationCountQuery,
   useMarkNotificationAsReadMutation,
+  useMarkAllNotificationsAsReadMutation,
 } = notificationsApi

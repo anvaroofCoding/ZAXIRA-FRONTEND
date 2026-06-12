@@ -133,9 +133,10 @@ export const PurchaseRequestFormDialog = ({
       comment: comment.trim(),
       commissionAgreementText: commissionAgreementText.trim(),
       purchasePeriodType: periodType,
-      purchasePeriodYear: periodYear,
-      purchasePeriodQuarter: periodType === 'quarter' ? periodQuarter : undefined,
-      purchasePeriodMonth: periodType === 'month' ? periodMonth : undefined,
+      purchasePeriodYear: Number(periodYear) || undefined,
+      purchasePeriodQuarter:
+        periodType === 'quarter' ? Number(periodQuarter) || undefined : undefined,
+      purchasePeriodMonth: periodType === 'month' ? Number(periodMonth) || undefined : undefined,
     }),
     [
       bossId,
@@ -153,10 +154,23 @@ export const PurchaseRequestFormDialog = ({
   const persistSession = useCallback(async () => {
     if (!usesSession || !open || !sessionId || autosaveDisabledRef.current) return
 
+    const payload = buildSessionPayload()
+    if (!payload.bossId || !payload.commissionMemberIds?.length) {
+      return
+    }
+
     try {
-      await saveSession({ id: sessionId, ...buildSessionPayload() }).unwrap()
+      const saved = await saveSession({ id: sessionId, ...payload }).unwrap()
+
+      if (saved?.serverSaved === false) {
+        autosaveDisabledRef.current = true
+        setSessionNotice('Faol seans qurilmada saqlandi (server bilan sinxronlash to‘xtatildi)')
+        return
+      }
+
       setSessionNotice('Faol seans saqlandi')
     } catch {
+      autosaveDisabledRef.current = true
       const cached = getLocalActiveSessionById(currentUserId, sessionId)
       if (cached) {
         setSessionNotice('Faol seans qurilmada saqlandi')

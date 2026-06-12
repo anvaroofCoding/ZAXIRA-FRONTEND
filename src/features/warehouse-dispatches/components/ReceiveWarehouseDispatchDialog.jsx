@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import AddIcon from '@mui/icons-material/Add'
 import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
@@ -34,10 +34,7 @@ import {
 } from '@/features/warehouse-dispatches/api/warehouseDispatchesApi'
 import { useGetWarehouseLocationsQuery } from '@/features/warehouse/api/warehouseApi'
 import { DispatchQrSection } from '@/features/warehouse-dispatches/components/DispatchQrSection'
-import {
-  NomenclatureTextField,
-  WarehouseDispatchSummaryPanel,
-} from '@/features/warehouse-dispatches/components/WarehouseDispatchSummaryPanel'
+import { WarehouseDispatchSummaryPanel } from '@/features/warehouse-dispatches/components/WarehouseDispatchSummaryPanel'
 import { dispatchCodeSx } from '@/features/warehouse-dispatches/utils/dispatchCodeDisplay'
 import { downloadAuthenticatedFile } from '@/shared/utils/downloadFile'
 import { getDispatchStatusChipProps } from '@/features/warehouse-dispatches/utils/dispatchStatusDisplay'
@@ -90,28 +87,19 @@ export const ReceiveWarehouseDispatchDialog = ({
   onSuccess,
   title = 'Omborga qabul qilish',
   permissionPath = WAREHOUSE_RECEIPT_PAGE_PATH,
-  requireNomenclatureVerification = false,
-  savedNomenclatureCode = '',
-  onNomenclatureVerified,
+  requireItemNomenclature = false,
   showItemNomenclature = false,
-  summaryPrimaryField = 'nomenclature',
+  summaryPrimaryField = 'nakladnoy',
 }) => {
   const { canReceiveOnPage } = usePermissions()
   const canReceiveItems = canReceiveOnPage(permissionPath)
 
-  const dialogRootRef = useRef(null)
-  const nomenclatureAnchorRef = useRef(null)
-  const nomenclatureInputRef = useRef(null)
-  const [nomenclatureInputPos, setNomenclatureInputPos] = useState(null)
   const [error, setError] = useState('')
   const [locationId, setLocationId] = useState('')
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
   const [actionLoadingByItem, setActionLoadingByItem] = useState({})
   const [draftByItem, setDraftByItem] = useState({})
-  const [nomenclatureInput, setNomenclatureInput] = useState('')
-  const [nomenclatureError, setNomenclatureError] = useState('')
-  const [nomenclatureVerified, setNomenclatureVerified] = useState(false)
-  const [nomenclatureFocusActive, setNomenclatureFocusActive] = useState(true)
+  const [nomenclatureByItem, setNomenclatureByItem] = useState({})
 
   const detailQuery = useGetWarehouseDispatchByIdQuery(
     { id: dispatchId, markSeen: true },
@@ -131,112 +119,18 @@ export const ReceiveWarehouseDispatchDialog = ({
     [dispatch?.items],
   )
 
-  const nomenclatureLocked = Boolean(
-    open &&
-      requireNomenclatureVerification &&
-      dispatch &&
-      !nomenclatureVerified &&
-      nomenclatureFocusActive,
-  )
-  const canInteractWithReceipt =
-    (!requireNomenclatureVerification || nomenclatureVerified) && canReceiveItems
+  const showItemNomenclatureColumn = showItemNomenclature || requireItemNomenclature
+  const canInteractWithReceipt = canReceiveItems
 
   useEffect(() => {
     if (!open) {
       setDraftByItem({})
-      setNomenclatureInput('')
-      setNomenclatureError('')
-      setNomenclatureVerified(false)
-      setNomenclatureFocusActive(true)
+      setNomenclatureByItem({})
       return
     }
 
-    setNomenclatureInput('')
-    setNomenclatureError('')
-    setNomenclatureFocusActive(true)
     setError('')
-
-    if (!requireNomenclatureVerification) {
-      setNomenclatureVerified(false)
-    }
-  }, [open, dispatchId, requireNomenclatureVerification])
-
-  useEffect(() => {
-    if (!open || !requireNomenclatureVerification) {
-      return
-    }
-
-    if (savedNomenclatureCode.trim()) {
-      setNomenclatureVerified(true)
-      setNomenclatureFocusActive(false)
-    }
-  }, [open, requireNomenclatureVerification, savedNomenclatureCode])
-
-  const updateNomenclatureInputPosition = () => {
-    if (!dialogRootRef.current || !nomenclatureAnchorRef.current) {
-      return false
-    }
-
-    const rootRect = dialogRootRef.current.getBoundingClientRect()
-    const anchorRect = nomenclatureAnchorRef.current.getBoundingClientRect()
-
-    if (anchorRect.width === 0 && anchorRect.height === 0) {
-      return false
-    }
-
-    setNomenclatureInputPos({
-      top: anchorRect.top - rootRect.top,
-      left: anchorRect.left - rootRect.left,
-      width: Math.max(anchorRect.width, 220),
-    })
-    return true
-  }
-
-  useLayoutEffect(() => {
-    if (!nomenclatureLocked) {
-      setNomenclatureInputPos(null)
-      return undefined
-    }
-
-    let frameId = 0
-    let attempts = 0
-
-    const measure = () => {
-      const positioned = updateNomenclatureInputPosition()
-      if (!positioned && attempts < 8) {
-        attempts += 1
-        frameId = window.requestAnimationFrame(measure)
-      }
-    }
-
-    frameId = window.requestAnimationFrame(measure)
-
-    const handleResize = () => updateNomenclatureInputPosition()
-    window.addEventListener('resize', handleResize)
-
-    return () => {
-      window.cancelAnimationFrame(frameId)
-      window.removeEventListener('resize', handleResize)
-    }
-  }, [nomenclatureLocked, open, dispatch?.id, detailQuery.isFetching])
-
-  useEffect(() => {
-    if (
-      !requireNomenclatureVerification ||
-      !open ||
-      !dispatch ||
-      nomenclatureVerified ||
-      !nomenclatureFocusActive
-    ) {
-      return
-    }
-
-    const timer = window.setTimeout(() => {
-      nomenclatureInputRef.current?.focus()
-    }, 50)
-
-    return () => window.clearTimeout(timer)
-  }, [requireNomenclatureVerification, open, dispatch, nomenclatureVerified, nomenclatureFocusActive, nomenclatureInputPos])
+  }, [open, dispatchId])
 
   useEffect(() => {
     if (!open) {
@@ -255,7 +149,22 @@ export const ReceiveWarehouseDispatchDialog = ({
       }
       return next
     })
-  }, [open, pendingItems])
+
+    if (requireItemNomenclature) {
+      setNomenclatureByItem((prev) => {
+        const next = { ...prev }
+        for (const item of pendingItems) {
+          if (next[item.itemIndex] == null) {
+            const existing = item.nomenclatureCode?.trim()
+            if (existing && existing !== dispatch?.dispatchCode) {
+              next[item.itemIndex] = existing
+            }
+          }
+        }
+        return next
+      })
+    }
+  }, [open, pendingItems, requireItemNomenclature, dispatch?.dispatchCode])
 
   const processedItems = useMemo(
     () => dispatch?.items?.filter((item) => item.quantityReceived > 0 || item.quantityRejected > 0) ?? [],
@@ -275,12 +184,17 @@ export const ReceiveWarehouseDispatchDialog = ({
     }
   }
 
-  const ensureLocationSelected = () => {
-    if (requireNomenclatureVerification && !nomenclatureVerified) {
-      setError('Avval nomeklatura raqamini tasdiqlang')
-      return false
-    }
+  const getItemNomenclatureInput = (itemIndex) =>
+    nomenclatureByItem[itemIndex]?.trim() || ''
 
+  const updateItemNomenclature = (itemIndex, value) => {
+    setNomenclatureByItem((prev) => ({
+      ...prev,
+      [itemIndex]: value,
+    }))
+  }
+
+  const ensureLocationSelected = () => {
     if (!hasLocations) {
       setError('Ombor joylari topilmadi. Avval ombor joyini yarating.')
       return false
@@ -302,25 +216,6 @@ export const ReceiveWarehouseDispatchDialog = ({
         [field]: value.replace(/[^\d]/g, ''),
       },
     }))
-  }
-
-  const handleNomenclatureVerify = () => {
-    const code = nomenclatureInput.trim()
-    if (!code) {
-      setNomenclatureError('Nomeklatura raqamini kiriting')
-      return
-    }
-
-    setNomenclatureError('')
-    setNomenclatureVerified(true)
-    setNomenclatureFocusActive(false)
-    setError('')
-    onNomenclatureVerified?.(code)
-  }
-
-  const handleStopNomenclatureFocus = () => {
-    setNomenclatureFocusActive(false)
-    setNomenclatureError('')
   }
 
   const handleSaveItem = async (item) => {
@@ -345,8 +240,12 @@ export const ReceiveWarehouseDispatchDialog = ({
       return
     }
 
-    const activeNomenclatureCode =
-      savedNomenclatureCode.trim() || nomenclatureInput.trim()
+    const itemNomenclatureCode = getItemNomenclatureInput(item.itemIndex)
+
+    if (requireItemNomenclature && receivedQty > 0 && !itemNomenclatureCode) {
+      setError(`«${item.name}» uchun nomeklatura raqamini kiriting`)
+      return
+    }
 
     try {
       await withItemLoading(item.itemIndex, () =>
@@ -354,12 +253,17 @@ export const ReceiveWarehouseDispatchDialog = ({
           id: dispatchId,
           body: {
             locationId: selectedLocationId,
-            ...(requireNomenclatureVerification && activeNomenclatureCode
-              ? { nomenclatureCode: activeNomenclatureCode }
-              : {}),
             receivedItems:
               receivedQty > 0
-                ? [{ itemIndex: item.itemIndex, quantityReceived: receivedQty }]
+                ? [
+                    {
+                      itemIndex: item.itemIndex,
+                      quantityReceived: receivedQty,
+                      ...(itemNomenclatureCode
+                        ? { nomenclatureCode: itemNomenclatureCode }
+                        : {}),
+                    },
+                  ]
                 : [],
             rejectedItems:
               rejectedQty > 0
@@ -401,22 +305,9 @@ export const ReceiveWarehouseDispatchDialog = ({
     ).catch(() => {})
   }
 
-  const nomenclatureInputProps = {
-    value: nomenclatureInput,
-    onChange: (value) => {
-      setNomenclatureInput(value)
-      if (nomenclatureError) {
-        setNomenclatureError('')
-      }
-    },
-    onSubmit: handleNomenclatureVerify,
-    inputRef: nomenclatureInputRef,
-    error: nomenclatureError,
-  }
-
   return (
     <Dialog open={open} onClose={isLoading ? undefined : onClose} maxWidth="lg" fullWidth scroll="paper">
-      <Box ref={dialogRootRef} sx={{ position: 'relative' }}>
+      <Box sx={{ position: 'relative' }}>
         <DialogTitle
           component="div"
           sx={{
@@ -433,14 +324,12 @@ export const ReceiveWarehouseDispatchDialog = ({
             </Typography>
             {dispatch ? (
               <>
-                {!requireNomenclatureVerification || summaryPrimaryField === 'nakladnoy' ? (
-                  <Chip
-                    label={dispatch.dispatchCode}
-                    size="small"
-                    variant="outlined"
-                    sx={{ flexShrink: 0, ...dispatchCodeSx }}
-                  />
-                ) : null}
+                <Chip
+                  label={dispatch.dispatchCode}
+                  size="small"
+                  variant="outlined"
+                  sx={{ flexShrink: 0, ...dispatchCodeSx }}
+                />
                 <Chip
                   size="small"
                   {...getDispatchStatusChipProps(dispatch.status, dispatch.statusLabel)}
@@ -476,15 +365,6 @@ export const ReceiveWarehouseDispatchDialog = ({
                   <WarehouseDispatchSummaryPanel
                     dispatch={dispatch}
                     summaryPrimaryField={summaryPrimaryField}
-                    nomenclatureVerified={requireNomenclatureVerification ? nomenclatureVerified : true}
-                    confirmedNomenclature={savedNomenclatureCode}
-                    nomenclatureAnchorRef={nomenclatureAnchorRef}
-                    nomenclatureFocusActive={nomenclatureFocusActive}
-                    nomenclatureInput={
-                      requireNomenclatureVerification && !nomenclatureVerified
-                        ? nomenclatureInputProps
-                        : null
-                    }
                   />
                 </Box>
 
@@ -534,8 +414,8 @@ export const ReceiveWarehouseDispatchDialog = ({
                           <TableHead>
                             <TableRow>
                               <TableCell>Tovar</TableCell>
-                              {showItemNomenclature ? (
-                                <TableCell width={160}>Nomeklatura raqami</TableCell>
+                              {showItemNomenclatureColumn ? (
+                                <TableCell width={180}>Nomeklatura raqami</TableCell>
                               ) : null}
                               <TableCell width={90} align="right">
                                 Jo‘natilgan
@@ -560,9 +440,13 @@ export const ReceiveWarehouseDispatchDialog = ({
                               const draft = draftByItem[item.itemIndex] ?? emptyDraft()
                               const { receivedFilled, rejectedFilled, receivedQty, rejectedQty } =
                                 getItemDraftState(draft)
+                              const itemNomenclature = getItemNomenclatureInput(item.itemIndex)
+                              const needsItemNomenclature =
+                                requireItemNomenclature && receivedFilled
+                              const hasRequiredNomenclature =
+                                !needsItemNomenclature || Boolean(itemNomenclature)
                               const canSubmit =
-                                canSubmitItemDraft(item, draft) &&
-                                (!requireNomenclatureVerification || nomenclatureVerified)
+                                canSubmitItemDraft(item, draft) && hasRequiredNomenclature
                               const receivedExceeds =
                                 receivedFilled && receivedQty > item.quantityPending
                               const rejectedExceeds =
@@ -575,15 +459,32 @@ export const ReceiveWarehouseDispatchDialog = ({
                                       {item.name}
                                     </Typography>
                                   </TableCell>
-                                  {showItemNomenclature ? (
+                                  {showItemNomenclatureColumn ? (
                                     <TableCell>
-                                      <Typography
-                                        variant="body2"
-                                        fontFamily="monospace"
-                                        sx={{ fontSize: '0.85rem' }}
-                                      >
-                                        {getItemNomenclature(item)}
-                                      </Typography>
+                                      {requireItemNomenclature ? (
+                                        <TextField
+                                          size="small"
+                                          required
+                                          label="Raqam"
+                                          placeholder="NK-..."
+                                          value={nomenclatureByItem[item.itemIndex] ?? ''}
+                                          onChange={(e) =>
+                                            updateItemNomenclature(item.itemIndex, e.target.value)
+                                          }
+                                          slotProps={{ htmlInput: { maxLength: 64 } }}
+                                          disabled={itemLoading || !canInteractWithReceipt}
+                                          error={!itemNomenclature && (receivedFilled || rejectedFilled)}
+                                          sx={{ minWidth: 150 }}
+                                        />
+                                      ) : (
+                                        <Typography
+                                          variant="body2"
+                                          fontFamily="monospace"
+                                          sx={{ fontSize: '0.85rem' }}
+                                        >
+                                          {getItemNomenclature(item)}
+                                        </Typography>
+                                      )}
                                     </TableCell>
                                   ) : null}
                                   <TableCell align="right">{item.quantityDispatched} ta</TableCell>
@@ -636,8 +537,8 @@ export const ReceiveWarehouseDispatchDialog = ({
                                     <TableCell align="center" sx={{ verticalAlign: 'middle' }}>
                                       <Tooltip
                                         title={
-                                          requireNomenclatureVerification && !nomenclatureVerified
-                                            ? 'Avval nomeklatura raqamini tasdiqlang'
+                                          needsItemNomenclature && !itemNomenclature
+                                            ? 'Nomeklatura raqamini kiriting'
                                             : canSubmit
                                                 ? 'Qabul qilish'
                                                 : receivedFilled && rejectedFilled
@@ -690,8 +591,8 @@ export const ReceiveWarehouseDispatchDialog = ({
                           <TableHead>
                             <TableRow>
                               <TableCell>Tovar</TableCell>
-                              {showItemNomenclature ? (
-                                <TableCell width={160}>Nomeklatura raqami</TableCell>
+                              {showItemNomenclatureColumn ? (
+                                <TableCell width={180}>Nomeklatura raqami</TableCell>
                               ) : null}
                               <TableCell width={120} align="right">
                                 Qabul
@@ -727,7 +628,7 @@ export const ReceiveWarehouseDispatchDialog = ({
                                     ) : null}
                                   </Stack>
                                 </TableCell>
-                                {showItemNomenclature ? (
+                                {showItemNomenclatureColumn ? (
                                   <TableCell>
                                     <Typography
                                       variant="body2"
@@ -790,41 +691,6 @@ export const ReceiveWarehouseDispatchDialog = ({
           </Button>
         </DialogActions>
 
-        {nomenclatureLocked ? (
-          <Box
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              bgcolor: 'rgba(0, 0, 0, 0.78)',
-              zIndex: 1200,
-              pointerEvents: 'auto',
-            }}
-          />
-        ) : null}
-
-        {nomenclatureLocked && nomenclatureInputPos ? (
-          <Box
-            sx={{
-              position: 'absolute',
-              top: nomenclatureInputPos.top,
-              left: nomenclatureInputPos.left,
-              width: nomenclatureInputPos.width,
-              zIndex: 1300,
-              pointerEvents: 'auto',
-            }}
-          >
-            <NomenclatureTextField {...nomenclatureInputProps} stacked />
-            <Button
-              type="button"
-              size="small"
-              variant="text"
-              onClick={handleStopNomenclatureFocus}
-              sx={{ mt: 0.5, px: 0, minWidth: 0, color: '#fff' }}
-            >
-              Fokusni to‘xtatish
-            </Button>
-          </Box>
-        ) : null}
       </Box>
 
       <Snackbar

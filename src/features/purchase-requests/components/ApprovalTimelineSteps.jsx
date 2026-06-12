@@ -23,7 +23,13 @@ const STEP_META = {
   RESUBMITTED: { label: 'Qayta yuborildi', icon: EditNoteIcon, color: 'info' },
   BOSS_CONFIRMED: { label: 'Boshliq qarorini tasdiqladi', icon: CheckCircleIcon, color: 'success' },
   BOSS_DECISION: { label: 'Boshliq qarori', icon: GavelIcon, color: 'secondary' },
+  PARTIAL_PURCHASE: { label: 'Qisman xarid qilindi', icon: ShoppingCartIcon, color: 'info' },
   PURCHASED: { label: 'Xarid qilindi', icon: ShoppingCartIcon, color: 'success' },
+  ITEMS_UNAVAILABLE: {
+    label: 'Xarid qilib bo‘lmaydi deb belgilandi',
+    icon: BlockIcon,
+    color: 'warning',
+  },
   PURCHASE_REJECTED: { label: 'Xarid rad etildi (atkaz)', icon: BlockIcon, color: 'error' },
 }
 
@@ -97,6 +103,28 @@ export const ApprovalTimelineSteps = ({ history = [] }) => {
                 >
                   {step.comment}
                 </Typography>
+              ) : null}
+              {step.itemSubstitutions?.length ? (
+                <Box
+                  sx={{
+                    mt: 1,
+                    bgcolor: 'action.hover',
+                    p: 1.5,
+                    borderRadius: 1,
+                  }}
+                >
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
+                    Tovar almashtirishlari
+                  </Typography>
+                  {step.itemSubstitutions.map((row) => (
+                    <Typography key={row.itemIndex} variant="body2" sx={{ mt: 0.5 }}>
+                      <strong>{row.originalName}</strong> ({row.originalQuantity}{' '}
+                      {row.originalUnit || 'dona'}) o‘rniga{' '}
+                      <strong>{row.deliveredName}</strong> ({row.deliveredQuantity}{' '}
+                      {row.deliveredUnit || 'dona'}) olib berildi
+                    </Typography>
+                  ))}
+                </Box>
               ) : null}
               {step.purchaseDeadline ? (
                 <Box

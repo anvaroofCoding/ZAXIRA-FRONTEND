@@ -40,6 +40,11 @@ import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { SkeletonBlock } from '@/shared/components/skeleton'
 import { formatDateTime } from '@/shared/utils/formatDate'
 import { formatUzs } from '@/shared/utils/formatUzs'
+import {
+  getItemNomenclatureCode,
+  NOMENCLATURE_COLUMN_LABEL,
+  nomenclatureTableCellSx,
+} from '@/features/warehouse/utils/itemNomenclature'
 import { printBarcodeLabels } from '@/shared/utils/printBarcodeLabels'
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
@@ -348,6 +353,7 @@ export const MeningOmborimPage = () => {
                           <TableHead>
                             <TableRow>
                               <TableCell>Tovar</TableCell>
+                              <TableCell width={150}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
                               <TableCell width={160}>Barcode</TableCell>
                               <TableCell width={120} align="right">
                                 Soni
@@ -366,6 +372,9 @@ export const MeningOmborimPage = () => {
                                   <Typography variant="body2" fontWeight={600} noWrap>
                                     {item.name}
                                   </Typography>
+                                </TableCell>
+                                <TableCell sx={nomenclatureTableCellSx}>
+                                  {getItemNomenclatureCode(item)}
                                 </TableCell>
                                 <TableCell>{item.barcode || barcodeForItem(item)}</TableCell>
                                 <TableCell align="right">{item.quantity} ta</TableCell>
@@ -481,6 +490,14 @@ export const MeningOmborimPage = () => {
                 </Typography>
                 <Typography variant="body1" fontWeight={700}>
                   {detailForModal.name}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary" display="block">
+                  {NOMENCLATURE_COLUMN_LABEL}
+                </Typography>
+                <Typography variant="body2" sx={nomenclatureTableCellSx}>
+                  {getItemNomenclatureCode(detailForModal)}
                 </Typography>
               </Box>
               <Box>

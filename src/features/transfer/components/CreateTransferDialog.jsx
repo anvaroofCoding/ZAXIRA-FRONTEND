@@ -23,6 +23,11 @@ import { useGetStructuresQuery } from '@/features/structures/api/structuresApi'
 import { filterStructuresWithWarehouse } from '@/features/structures/utils/structureFilters'
 import { useCreateTransferMutation } from '@/features/transfer/api/transferApi'
 import { DispatchQrSection } from '@/features/warehouse-dispatches/components/DispatchQrSection'
+import {
+  getItemNomenclatureCode,
+  NOMENCLATURE_COLUMN_LABEL,
+  nomenclatureTableCellSx,
+} from '@/features/warehouse/utils/itemNomenclature'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 import { downloadAuthenticatedFile } from '@/shared/utils/downloadFile'
 
@@ -109,6 +114,7 @@ export const CreateTransferDialog = ({ open, request, onClose, onSuccess }) => {
                   <TableRow>
                     <TableCell width={56}>T/R</TableCell>
                     <TableCell>Tovar</TableCell>
+                    <TableCell width={140}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
                     <TableCell width={120} align="right">
                       Soni
                     </TableCell>
@@ -119,6 +125,9 @@ export const CreateTransferDialog = ({ open, request, onClose, onSuccess }) => {
                     <TableRow key={`${item.locationId}-${item.barcode}-${index}`}>
                       <TableCell>{index + 1}</TableCell>
                       <TableCell>{item.name}</TableCell>
+                      <TableCell sx={nomenclatureTableCellSx}>
+                        {getItemNomenclatureCode(item)}
+                      </TableCell>
                       <TableCell align="right">{item.quantity} ta</TableCell>
                     </TableRow>
                   ))}

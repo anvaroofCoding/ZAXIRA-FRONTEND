@@ -26,6 +26,11 @@ import {
   resolveTransferDirection,
 } from '@/features/warehouse-dispatches/utils/dispatchStatusDisplay'
 import { WarehouseDispatchSummaryPanel } from '@/features/warehouse-dispatches/components/WarehouseDispatchSummaryPanel'
+import {
+  getItemNomenclatureCode,
+  NOMENCLATURE_COLUMN_LABEL,
+  nomenclatureTableCellSx,
+} from '@/features/warehouse/utils/itemNomenclature'
 import { dispatchCodeSx } from '@/features/warehouse-dispatches/utils/dispatchCodeDisplay'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { usePermissions } from '@/shared/hooks/usePermissions'
@@ -247,6 +252,7 @@ export const TransferlarTarixiPage = () => {
                   <TableHead>
                     <TableRow>
                       <TableCell>Tovar</TableCell>
+                      <TableCell width={140}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
                       <TableCell width={120} align="right">
                         Jo‘natilgan
                       </TableCell>
@@ -272,6 +278,9 @@ export const TransferlarTarixiPage = () => {
                           <Typography variant="caption" color="text.secondary">
                             {row.characteristics}
                           </Typography>
+                        </TableCell>
+                        <TableCell sx={nomenclatureTableCellSx}>
+                          {getItemNomenclatureCode(row)}
                         </TableCell>
                         <TableCell align="right">{row.quantityDispatched} ta</TableCell>
                         <TableCell align="right">{row.quantityReceived} ta</TableCell>

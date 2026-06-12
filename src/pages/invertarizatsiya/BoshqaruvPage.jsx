@@ -31,6 +31,11 @@ import {
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { usePermissions } from '@/shared/hooks/usePermissions'
 import { formatDateTime } from '@/shared/utils/formatDate'
+import {
+  getItemNomenclatureCode,
+  NOMENCLATURE_COLUMN_LABEL,
+  nomenclatureTableCellSx,
+} from '@/features/warehouse/utils/itemNomenclature'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
 const PAGE_PATH = '/invertarizatsiya/boshqaruv'
@@ -333,6 +338,7 @@ export const BoshqaruvPage = () => {
                       <TableHead>
                         <TableRow>
                           <TableCell>Tovar</TableCell>
+                          <TableCell width={140}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
                           <TableCell align="right">Kitobda</TableCell>
                           <TableCell align="right">Sanaldi</TableCell>
                           <TableCell align="right">Ko‘p</TableCell>
@@ -353,6 +359,9 @@ export const BoshqaruvPage = () => {
                                 <Typography variant="body2" fontWeight={600}>
                                   {line.name}
                                 </Typography>
+                              </TableCell>
+                              <TableCell sx={nomenclatureTableCellSx}>
+                                {getItemNomenclatureCode(line)}
                               </TableCell>
                               <TableCell align="right">{line.bookQuantity}</TableCell>
                               <TableCell align="right">{line.countedQuantity}</TableCell>
@@ -408,6 +417,7 @@ export const BoshqaruvPage = () => {
                     <TableHead>
                       <TableRow>
                         <TableCell>Tovar</TableCell>
+                        <TableCell width={140}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
                         <TableCell align="right">Kitobda</TableCell>
                         <TableCell align="right">Sanaldi</TableCell>
                         <TableCell align="right">Kam</TableCell>
@@ -428,6 +438,9 @@ export const BoshqaruvPage = () => {
                               <Typography variant="body2" fontWeight={600}>
                                 {line.name}
                               </Typography>
+                            </TableCell>
+                            <TableCell sx={nomenclatureTableCellSx}>
+                              {getItemNomenclatureCode(line)}
                             </TableCell>
                             <TableCell align="right">{line.bookQuantity}</TableCell>
                             <TableCell align="right">{line.countedQuantity}</TableCell>

@@ -35,6 +35,11 @@ import {
   useGetWarehouseExpenseReasonsQuery,
   useLazyGetWarehouseInventoryItemByBarcodeGloballyQuery,
 } from '@/features/warehouse/api/warehouseApi'
+import {
+  getItemNomenclatureCode,
+  NOMENCLATURE_COLUMN_LABEL,
+  nomenclatureTableCellSx,
+} from '@/features/warehouse/utils/itemNomenclature'
 import { PageShell } from '@/shared/components/layout/PageShell'
 
 const PAGE_PATH = '/omborlar/chiqim-qilish'
@@ -114,6 +119,7 @@ export const ChiqimQilishPage = () => {
             name: found.name,
             characteristics: found.characteristics,
             barcode: found.barcode,
+            nomenclatureCode: found.nomenclatureCode,
             available: found.quantity,
             quantity: 1,
           },
@@ -237,6 +243,7 @@ export const ChiqimQilishPage = () => {
             <TableHead>
               <TableRow>
                 <TableCell>Tovar</TableCell>
+                <TableCell width={140}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
                 <TableCell width={150}>Barcode</TableCell>
                 <TableCell width={170}>Ombor joyi</TableCell>
                 <TableCell width={110} align="right">
@@ -251,7 +258,7 @@ export const ChiqimQilishPage = () => {
             <TableBody>
               {!rows.length ? (
                 <TableRow>
-                  <TableCell colSpan={6}>
+                  <TableCell colSpan={7}>
                     <Typography variant="body2" color="text.secondary">
                       Hozircha tovar qo‘shilmagan
                     </Typography>
@@ -264,6 +271,9 @@ export const ChiqimQilishPage = () => {
                       <Typography variant="body2" fontWeight={700}>
                         {r.name}
                       </Typography>
+                    </TableCell>
+                    <TableCell sx={nomenclatureTableCellSx}>
+                      {getItemNomenclatureCode(r)}
                     </TableCell>
                     <TableCell sx={{ fontFamily: 'monospace' }}>{r.barcode}</TableCell>
                     <TableCell>{r.locationName || '—'}</TableCell>

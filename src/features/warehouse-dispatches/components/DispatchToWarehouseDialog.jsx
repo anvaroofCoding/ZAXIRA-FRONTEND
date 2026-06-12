@@ -23,6 +23,11 @@ import { useGetStructuresQuery } from '@/features/structures/api/structuresApi'
 import { filterStructuresWithWarehouse } from '@/features/structures/utils/structureFilters'
 import { useCreateWarehouseDispatchMutation } from '@/features/warehouse-dispatches/api/warehouseDispatchesApi'
 import { DispatchQrSection } from '@/features/warehouse-dispatches/components/DispatchQrSection'
+import {
+  getItemNomenclatureCode,
+  NOMENCLATURE_COLUMN_LABEL,
+  nomenclatureTableCellSx,
+} from '@/features/warehouse/utils/itemNomenclature'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 import { downloadAuthenticatedFile } from '@/shared/utils/downloadFile'
 
@@ -140,6 +145,7 @@ export const DispatchToWarehouseDialog = ({
                   <TableRow>
                     <TableCell width={56}>T/R</TableCell>
                     <TableCell>Tovar</TableCell>
+                    <TableCell width={140}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
                     <TableCell width={120} align="right">
                       Soni
                     </TableCell>
@@ -150,6 +156,9 @@ export const DispatchToWarehouseDialog = ({
                     <TableRow key={`${request.id}-${item.itemIndex}-${index}`}>
                       <TableCell>{index + 1}</TableCell>
                       <TableCell>{item.name}</TableCell>
+                      <TableCell sx={nomenclatureTableCellSx}>
+                        {getItemNomenclatureCode(item)}
+                      </TableCell>
                       <TableCell align="right">
                         {item.quantity} {item.unit || 'dona'}
                       </TableCell>

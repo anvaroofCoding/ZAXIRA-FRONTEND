@@ -27,6 +27,11 @@ import { CreateTransferDialog } from '@/features/transfer/components/CreateTrans
 import { TransferPageFilters } from '@/features/transfer/components/TransferPageFilters'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { useTransferListFilters } from '@/shared/hooks/useTransferListFilters'
+import {
+  getItemNomenclatureCode,
+  NOMENCLATURE_COLUMN_LABEL,
+  nomenclatureTableCellSx,
+} from '@/features/warehouse/utils/itemNomenclature'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
@@ -119,6 +124,7 @@ export const TransferQilishPage = () => {
           locationId: selectedLocationId,
           barcode: row.barcode,
           name: row.name,
+          nomenclatureCode: row.nomenclatureCode,
           quantity: 1,
           available: row.quantity,
         },
@@ -236,6 +242,7 @@ export const TransferQilishPage = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>Tovar</TableCell>
+                    <TableCell width={140}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
                     <TableCell width={160}>Barcode</TableCell>
                     <TableCell width={120}>Omborda</TableCell>
                     <TableCell width={130}>Tanlangan</TableCell>
@@ -248,6 +255,9 @@ export const TransferQilishPage = () => {
                   {items.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell>{item.name}</TableCell>
+                      <TableCell sx={nomenclatureTableCellSx}>
+                        {getItemNomenclatureCode(item)}
+                      </TableCell>
                       <TableCell>{item.barcode}</TableCell>
                       <TableCell>{item.quantity} ta</TableCell>
                       <TableCell>

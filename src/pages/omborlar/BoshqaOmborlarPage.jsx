@@ -23,6 +23,11 @@ import TablePagination from '@mui/material/TablePagination'
 import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import {
+  getItemNomenclatureCode,
+  NOMENCLATURE_COLUMN_LABEL,
+  nomenclatureTableCellSx,
+} from '@/features/warehouse/utils/itemNomenclature'
 import { useSearchParams } from 'react-router-dom'
 import {
   useGetAllWarehousesOverviewQuery,
@@ -274,6 +279,7 @@ export const BoshqaOmborlarPage = () => {
                       <TableHead>
                         <TableRow>
                           <TableCell>Tovar</TableCell>
+                          <TableCell width={150}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
                           <TableCell width={180}>Barcode</TableCell>
                           <TableCell width={140} align="right">
                             Soni
@@ -283,7 +289,7 @@ export const BoshqaOmborlarPage = () => {
                       <TableBody>
                         {!items.length ? (
                           <TableRow>
-                            <TableCell colSpan={3}>
+                            <TableCell colSpan={4}>
                               <Typography variant="body2" color="text.secondary">
                                 Bu joyda tovarlar yo‘q
                               </Typography>
@@ -299,6 +305,9 @@ export const BoshqaOmborlarPage = () => {
                                 <Typography variant="caption" color="text.secondary" display="block">
                                   {item.characteristics}
                                 </Typography>
+                              </TableCell>
+                              <TableCell sx={nomenclatureTableCellSx}>
+                                {getItemNomenclatureCode(item)}
                               </TableCell>
                               <TableCell sx={{ fontFamily: 'monospace' }}>{item.barcode}</TableCell>
                               <TableCell align="right" sx={{ fontWeight: 700 }}>

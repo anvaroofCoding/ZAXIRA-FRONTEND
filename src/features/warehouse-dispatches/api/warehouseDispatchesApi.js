@@ -46,6 +46,7 @@ export const warehouseDispatchesApi = baseApi.injectEndpoints({
       invalidatesTags: (_result, _error, { id }) => [
         { type: API_TAGS.WAREHOUSE_DISPATCH, id },
         API_TAGS.WAREHOUSE_DISPATCH,
+        API_TAGS.WAREHOUSE_INVENTORY,
         API_TAGS.PURCHASE_REQUEST,
       ],
     }),

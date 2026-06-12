@@ -39,6 +39,11 @@ import {
   filterStocktakeLines,
   STOCKTAKE_TABS,
 } from '@/features/invertarizatsiya/utils/stocktakeLineFilters'
+import {
+  getItemNomenclatureCode,
+  NOMENCLATURE_COLUMN_LABEL,
+  nomenclatureTableCellSx,
+} from '@/features/warehouse/utils/itemNomenclature'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
 const clampInt = (value, min) => {
@@ -335,6 +340,7 @@ export const StocktakeSessionPanel = ({ session, onSessionChange }) => {
           <TableHead>
             <TableRow>
               <TableCell>Tovar</TableCell>
+              <TableCell width={130}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
               <TableCell width={130}>Barcode</TableCell>
               <TableCell width={90} align="right">
                 Kitobda
@@ -353,7 +359,7 @@ export const StocktakeSessionPanel = ({ session, onSessionChange }) => {
           <TableBody>
             {!filteredLines.length ? (
               <TableRow>
-                <TableCell colSpan={6}>
+                <TableCell colSpan={7}>
                   <Typography variant="body2" color="text.secondary">
                     Bu tabda tovar yo‘q
                   </Typography>
@@ -376,6 +382,9 @@ export const StocktakeSessionPanel = ({ session, onSessionChange }) => {
                           {line.characteristics}
                         </Typography>
                       ) : null}
+                    </TableCell>
+                    <TableCell sx={nomenclatureTableCellSx}>
+                      {getItemNomenclatureCode(line)}
                     </TableCell>
                     <TableCell sx={{ fontFamily: 'monospace', fontSize: 12 }}>{line.barcode}</TableCell>
                     <TableCell align="right">{line.bookQuantity}</TableCell>

@@ -29,6 +29,11 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import {
+  getItemNomenclatureCode,
+  NOMENCLATURE_COLUMN_LABEL,
+  nomenclatureTableCellSx,
+} from '@/features/warehouse/utils/itemNomenclature'
+import {
   useDeleteWarehouseExpenseMutation,
   useGetWarehouseExpenseByCodeQuery,
   useGetWarehouseExpenseReasonsQuery,
@@ -448,6 +453,7 @@ export const ChiqimTarixiPage = () => {
                     <TableRow>
                       <TableCell>Tovar</TableCell>
                       <TableCell width={140}>Joy</TableCell>
+                      <TableCell width={140}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
                       <TableCell width={160}>Barcode</TableCell>
                       <TableCell width={80} align="right">
                         Soni
@@ -468,6 +474,9 @@ export const ChiqimTarixiPage = () => {
                           ) : null}
                         </TableCell>
                         <TableCell>{row.locationName}</TableCell>
+                        <TableCell sx={nomenclatureTableCellSx}>
+                          {getItemNomenclatureCode(row)}
+                        </TableCell>
                         <TableCell sx={{ fontFamily: 'monospace' }}>{row.barcode}</TableCell>
                         <TableCell align="right">{row.quantity} ta</TableCell>
                       </TableRow>

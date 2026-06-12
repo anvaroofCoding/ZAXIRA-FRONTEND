@@ -28,6 +28,11 @@ import {
   useGetStocktakesQuery,
 } from '@/features/invertarizatsiya/api/stocktakesApi'
 import { filterStocktakeLines, STOCKTAKE_TABS } from '@/features/invertarizatsiya/utils/stocktakeLineFilters'
+import {
+  getItemNomenclatureCode,
+  NOMENCLATURE_COLUMN_LABEL,
+  nomenclatureTableCellSx,
+} from '@/features/warehouse/utils/itemNomenclature'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { usePermissions } from '@/shared/hooks/usePermissions'
 import { formatDateTime } from '@/shared/utils/formatDate'
@@ -293,6 +298,7 @@ export const InvertarizatsiyaPage = () => {
                   <TableHead>
                     <TableRow>
                       <TableCell>Tovar</TableCell>
+                      <TableCell width={140}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
                       <TableCell align="right">Kitobda</TableCell>
                       <TableCell align="right">Sanaldi</TableCell>
                       <TableCell align="right">Farq</TableCell>
@@ -301,7 +307,7 @@ export const InvertarizatsiyaPage = () => {
                   <TableBody>
                     {!detailLines.length ? (
                       <TableRow>
-                        <TableCell colSpan={4}>
+                        <TableCell colSpan={5}>
                           <Typography variant="body2" color="text.secondary">
                             Tovar yo‘q
                           </Typography>
@@ -311,6 +317,9 @@ export const InvertarizatsiyaPage = () => {
                       detailLines.map((line) => (
                         <TableRow key={line.lineKey}>
                           <TableCell>{line.name}</TableCell>
+                          <TableCell sx={nomenclatureTableCellSx}>
+                            {getItemNomenclatureCode(line)}
+                          </TableCell>
                           <TableCell align="right">{line.bookQuantity}</TableCell>
                           <TableCell align="right">{line.countedQuantity}</TableCell>
                           <TableCell align="right">{line.diff}</TableCell>

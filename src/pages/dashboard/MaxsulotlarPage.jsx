@@ -29,6 +29,11 @@ import {
   useGetProductsQuery,
 } from '@/features/products/api/productsApi'
 import { truncateText } from '@/features/products/utils/truncateText'
+import {
+  getItemNomenclatureCode,
+  NOMENCLATURE_COLUMN_LABEL,
+  nomenclatureTableCellSx,
+} from '@/features/warehouse/utils/itemNomenclature'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { PageShell } from '@/shared/components/layout/PageShell'
 import { useAppDispatch } from '@/shared/hooks/useAppDispatch'
@@ -149,7 +154,7 @@ export const MaxsulotlarPage = () => {
           <TextField
             size="small"
             fullWidth
-            placeholder="Nom, barcode yoki xususiyat bo‘yicha qidirish"
+            placeholder="Nom, nomeklatura, barcode yoki xususiyat bo‘yicha qidirish"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             slotProps={{
@@ -170,6 +175,7 @@ export const MaxsulotlarPage = () => {
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700, minWidth: 180 }}>Tovar nomi</TableCell>
+                  <TableCell sx={{ fontWeight: 700, width: 140 }}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
                   <TableCell sx={{ fontWeight: 700, width: 140 }}>Barcode</TableCell>
                   <TableCell sx={{ fontWeight: 700, minWidth: 280 }}>Xususiyat</TableCell>
                   {canArchive ? (
@@ -183,7 +189,7 @@ export const MaxsulotlarPage = () => {
                 {!items.length ? (
                   <TableRow>
                     <TableCell
-                      colSpan={canArchive ? 4 : 3}
+                      colSpan={canArchive ? 5 : 4}
                       align="center"
                       sx={{ py: 4 }}
                     >
@@ -201,6 +207,9 @@ export const MaxsulotlarPage = () => {
                         <Typography variant="body2" fontWeight={600}>
                           {item.name}
                         </Typography>
+                      </TableCell>
+                      <TableCell sx={nomenclatureTableCellSx}>
+                        {getItemNomenclatureCode(item)}
                       </TableCell>
                       <TableCell>
                         <Typography

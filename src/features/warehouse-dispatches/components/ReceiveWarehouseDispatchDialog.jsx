@@ -38,6 +38,11 @@ import { WarehouseDispatchSummaryPanel } from '@/features/warehouse-dispatches/c
 import { dispatchCodeSx } from '@/features/warehouse-dispatches/utils/dispatchCodeDisplay'
 import { downloadAuthenticatedFile } from '@/shared/utils/downloadFile'
 import { getDispatchStatusChipProps } from '@/features/warehouse-dispatches/utils/dispatchStatusDisplay'
+import {
+  getItemNomenclatureCode,
+  NOMENCLATURE_COLUMN_LABEL,
+  nomenclatureTableCellSx,
+} from '@/features/warehouse/utils/itemNomenclature'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 import { WAREHOUSE_RECEIPT_PAGE_PATH } from '@/features/permissions/constants'
 import { usePermissions } from '@/shared/hooks/usePermissions'
@@ -45,9 +50,6 @@ import { usePermissions } from '@/shared/hooks/usePermissions'
 const REJECT_REASON = 'Kelmadi'
 
 const emptyDraft = () => ({ received: '', rejected: '' })
-
-const getItemNomenclature = (item) =>
-  item.nomenclatureCode?.trim() || item.barcode?.trim() || '—'
 
 const parseQty = (value) => {
   const parsed = Number.parseInt(String(value).trim(), 10)
@@ -119,7 +121,7 @@ export const ReceiveWarehouseDispatchDialog = ({
     [dispatch?.items],
   )
 
-  const showItemNomenclatureColumn = showItemNomenclature || requireItemNomenclature
+  const showItemNomenclatureColumn = true
   const canInteractWithReceipt = canReceiveItems
 
   useEffect(() => {
@@ -154,9 +156,9 @@ export const ReceiveWarehouseDispatchDialog = ({
       setNomenclatureByItem((prev) => {
         const next = { ...prev }
         for (const item of pendingItems) {
-          if (next[item.itemIndex] == null) {
-            const existing = item.nomenclatureCode?.trim()
-            if (existing && existing !== dispatch?.dispatchCode) {
+          if (!next[item.itemIndex]?.trim()) {
+            const existing = getItemNomenclatureCode(item)
+            if (existing !== '—') {
               next[item.itemIndex] = existing
             }
           }
@@ -164,7 +166,7 @@ export const ReceiveWarehouseDispatchDialog = ({
         return next
       })
     }
-  }, [open, pendingItems, requireItemNomenclature, dispatch?.dispatchCode])
+  }, [open, pendingItems, requireItemNomenclature])
 
   const processedItems = useMemo(
     () => dispatch?.items?.filter((item) => item.quantityReceived > 0 || item.quantityRejected > 0) ?? [],
@@ -184,8 +186,9 @@ export const ReceiveWarehouseDispatchDialog = ({
     }
   }
 
-  const getItemNomenclatureInput = (itemIndex) =>
-    nomenclatureByItem[itemIndex]?.trim() || ''
+  const getItemNomenclatureInput = (item) =>
+    nomenclatureByItem[item.itemIndex]?.trim() ||
+    (item.nomenclatureCode?.trim() || '')
 
   const updateItemNomenclature = (itemIndex, value) => {
     setNomenclatureByItem((prev) => ({
@@ -240,7 +243,7 @@ export const ReceiveWarehouseDispatchDialog = ({
       return
     }
 
-    const itemNomenclatureCode = getItemNomenclatureInput(item.itemIndex)
+    const itemNomenclatureCode = getItemNomenclatureInput(item)
 
     if (requireItemNomenclature && receivedQty > 0 && !itemNomenclatureCode) {
       setError(`«${item.name}» uchun nomeklatura raqamini kiriting`)
@@ -259,9 +262,7 @@ export const ReceiveWarehouseDispatchDialog = ({
                     {
                       itemIndex: item.itemIndex,
                       quantityReceived: receivedQty,
-                      ...(itemNomenclatureCode
-                        ? { nomenclatureCode: itemNomenclatureCode }
-                        : {}),
+                      nomenclatureCode: itemNomenclatureCode,
                     },
                   ]
                 : [],
@@ -415,7 +416,7 @@ export const ReceiveWarehouseDispatchDialog = ({
                             <TableRow>
                               <TableCell>Tovar</TableCell>
                               {showItemNomenclatureColumn ? (
-                                <TableCell width={180}>Nomeklatura raqami</TableCell>
+                                <TableCell width={180}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
                               ) : null}
                               <TableCell width={90} align="right">
                                 Jo‘natilgan
@@ -440,7 +441,7 @@ export const ReceiveWarehouseDispatchDialog = ({
                               const draft = draftByItem[item.itemIndex] ?? emptyDraft()
                               const { receivedFilled, rejectedFilled, receivedQty, rejectedQty } =
                                 getItemDraftState(draft)
-                              const itemNomenclature = getItemNomenclatureInput(item.itemIndex)
+                              const itemNomenclature = getItemNomenclatureInput(item)
                               const needsItemNomenclature =
                                 requireItemNomenclature && receivedFilled
                               const hasRequiredNomenclature =
@@ -482,7 +483,7 @@ export const ReceiveWarehouseDispatchDialog = ({
                                           fontFamily="monospace"
                                           sx={{ fontSize: '0.85rem' }}
                                         >
-                                          {getItemNomenclature(item)}
+                                          {getItemNomenclatureCode(item)}
                                         </Typography>
                                       )}
                                     </TableCell>
@@ -592,7 +593,7 @@ export const ReceiveWarehouseDispatchDialog = ({
                             <TableRow>
                               <TableCell>Tovar</TableCell>
                               {showItemNomenclatureColumn ? (
-                                <TableCell width={180}>Nomeklatura raqami</TableCell>
+                                <TableCell width={180}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
                               ) : null}
                               <TableCell width={120} align="right">
                                 Qabul
@@ -635,7 +636,7 @@ export const ReceiveWarehouseDispatchDialog = ({
                                       fontFamily="monospace"
                                       sx={{ fontSize: '0.85rem' }}
                                     >
-                                      {getItemNomenclature(item)}
+                                      {getItemNomenclatureCode(item)}
                                     </Typography>
                                   </TableCell>
                                 ) : null}

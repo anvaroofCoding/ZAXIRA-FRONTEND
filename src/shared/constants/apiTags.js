@@ -11,6 +11,7 @@ export const API_TAGS = {
   WAREHOUSE_LOCATION: 'WarehouseLocation',
   WAREHOUSE_INVENTORY: 'WarehouseInventory',
   WAREHOUSE_EXPENSE: 'WarehouseExpense',
+  WAREHOUSE_FIXED_ASSET: 'WarehouseFixedAsset',
   STOCKTAKE: 'Stocktake',
   NOTIFICATION: 'Notification',
   CHAT: 'Chat',

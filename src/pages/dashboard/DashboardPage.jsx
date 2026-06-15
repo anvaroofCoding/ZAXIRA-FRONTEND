@@ -24,7 +24,6 @@ import dayjs from 'dayjs'
 import { useNavigate } from 'react-router-dom'
 import { useGetStructuresQuery } from '@/features/structures/api/structuresApi'
 import { useGetDashboardDailyMaxQuery, useGetDashboardSummaryQuery } from '@/features/dashboard/api/dashboardApi'
-import { DashboardCalendarDialog } from '@/features/dashboard/components/DashboardCalendarDialog'
 import { usePermissions } from '@/shared/hooks/usePermissions'
 import { formatUzs } from '@/shared/utils/formatUzs'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
@@ -214,7 +213,6 @@ export const DashboardPage = () => {
   const defaultStructureId = isSuperAdmin ? 'all' : (viewerStructureId || 'all')
   const [structureId, setStructureId] = useState(defaultStructureId)
   const [offsetDays, setOffsetDays] = useState(0)
-  const [calendarOpen, setCalendarOpen] = useState(false)
 
   useEffect(() => {
     if (!structureId) {
@@ -290,7 +288,7 @@ export const DashboardPage = () => {
             <Button
               variant="outlined"
               startIcon={<CalendarMonthIcon />}
-              onClick={() => setCalendarOpen(true)}
+              onClick={() => navigate('/dashboard/kalendar')}
             >
               Kalendar
             </Button>
@@ -310,7 +308,7 @@ export const DashboardPage = () => {
               variant="contained"
               onClick={() => navigate('/omborlar/chiqim-qilish')}
             >
-              Chiqim qilish
+              Chiqim
             </Button>
           ) : null}
 
@@ -501,12 +499,6 @@ export const DashboardPage = () => {
         )}
       </Box>
 
-      <DashboardCalendarDialog
-        open={calendarOpen}
-        onClose={() => setCalendarOpen(false)}
-        structureId={scopeParam}
-        onNavigate={(path) => navigate(path)}
-      />
     </Box>
   )
 }

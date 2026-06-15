@@ -40,7 +40,7 @@ const sanitizePagePermission = (path, page) => {
 }
 
 const WAREHOUSE_EXPENSE_PATH = '/omborlar/chiqim-qilish'
-const WAREHOUSE_EXPENSE_LABEL = 'Chiqim qilish (Dashboard tugmasi)'
+const WAREHOUSE_EXPENSE_LABEL = 'Chiqim (Dashboard tugmasi)'
 const ALWAYS_ALLOWED_PATHS = new Set(['/chat'])
 
 const isAlwaysAllowedPath = (path) => ALWAYS_ALLOWED_PATHS.has(path)
@@ -278,12 +278,21 @@ const INVERTARIZATSIYA_PATHS = new Set([
   '/invertarizatsiya/barcha-invertarizatsiyalar',
 ])
 
-/** /omborlar/chiqim-tarixi — alohida ruxsat yo‘q; Chiqim qilish bilan bir xil */
+/** /omborlar/chiqim-tarixi — alohida ruxsat yo‘q; Chiqim bilan bir xil */
 const CHIQIM_HISTORY_PATH = '/omborlar/chiqim-tarixi'
+const ASOSIY_VOSITALAR_PATH = '/omborlar/asosiy-vositalar'
+const DASHBOARD_CALENDAR_PATH = '/dashboard/kalendar'
 
 const resolvePermissionLookupPaths = (path) => {
-  if (path === CHIQIM_HISTORY_PATH || path === WAREHOUSE_EXPENSE_PATH) {
+  if (
+    path === CHIQIM_HISTORY_PATH ||
+    path === ASOSIY_VOSITALAR_PATH ||
+    path === WAREHOUSE_EXPENSE_PATH
+  ) {
     return [WAREHOUSE_EXPENSE_PATH]
+  }
+  if (path === DASHBOARD_CALENDAR_PATH) {
+    return ['/dashboard']
   }
   if (!INVERTARIZATSIYA_PATHS.has(path)) {
     return [path]

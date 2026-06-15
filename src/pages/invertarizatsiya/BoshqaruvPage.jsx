@@ -87,9 +87,9 @@ export const BoshqaruvPage = () => {
 
   const items = listQuery.data?.items ?? []
   const total = listQuery.data?.total ?? 0
-  const detail = detailQuery.data
-  const excessLines = detail?.excessLines ?? []
-  const shortageLines = detail?.shortageLines ?? []
+  const detail = detailOpen ? detailQuery.data : null
+  const excessLines = useMemo(() => detail?.excessLines ?? [], [detail?.excessLines])
+  const shortageLines = useMemo(() => detail?.shortageLines ?? [], [detail?.shortageLines])
 
   const handleOpenDetail = (id) => {
     setSelectedId(id)

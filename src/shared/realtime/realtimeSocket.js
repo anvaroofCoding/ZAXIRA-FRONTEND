@@ -1,6 +1,7 @@
 import { io } from 'socket.io-client'
 import { env } from '@/shared/config/env'
 import { setRealtimeConnected } from '@/shared/realtime/realtimeConnectionState'
+import { getDeviceId, getDeviceName } from '@/shared/utils/deviceIdentity'
 
 const resolveRealtimeUrl = () => {
   if (env.wsUrl) {
@@ -29,7 +30,11 @@ const attachCoreListeners = (socket) => {
 
 const createSocket = (token) => {
   const socket = io(`${resolveRealtimeUrl()}/realtime`, {
-    auth: { token },
+    auth: {
+      token,
+      deviceId: getDeviceId(),
+      deviceName: getDeviceName(),
+    },
     transports: ['polling', 'websocket'],
     autoConnect: true,
     reconnection: true,

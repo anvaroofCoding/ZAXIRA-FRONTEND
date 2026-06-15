@@ -80,6 +80,7 @@ const normalizeSession = (session, index = 1, userId = null) => {
     createdAt: session.createdAt ?? updatedAt,
     updatedAt,
     isLocal: Boolean(session.isLocal ?? String(session.id ?? '').startsWith('local-')),
+    pendingServerSync: Boolean(session.pendingServerSync),
   }
 }
 
@@ -269,3 +270,41 @@ export const deleteLocalActiveSession = (userId, id) => {
 
 export const isLocalActiveSessionId = (id) =>
   typeof id === 'string' && id.startsWith('local-')
+
+export const listSessionsPendingServerSync = (userId) => {
+  if (!userId) return []
+
+  return readStore(userId).filter(
+    (session) => session.pendingServerSync && isMongoObjectId(session.id),
+  )
+}
+
+export const markActiveSessionPendingServerSync = (userId, id) => {
+  if (!userId || !id || isLocalActiveSessionId(id)) return
+
+  const sessions = readStore(userId)
+  const index = sessions.findIndex((session) => session.id === id)
+  if (index === -1) return
+
+  sessions[index] = {
+    ...sessions[index],
+    pendingServerSync: true,
+    isLocal: true,
+  }
+  writeStore(userId, sessions)
+}
+
+export const markActiveSessionServerSynced = (userId, id) => {
+  if (!userId || !id) return
+
+  const sessions = readStore(userId)
+  const index = sessions.findIndex((session) => session.id === id)
+  if (index === -1) return
+
+  sessions[index] = {
+    ...sessions[index],
+    pendingServerSync: false,
+    isLocal: false,
+  }
+  writeStore(userId, sessions)
+}

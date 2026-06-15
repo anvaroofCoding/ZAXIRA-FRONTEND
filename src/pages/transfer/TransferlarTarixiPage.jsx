@@ -37,6 +37,7 @@ import { usePermissions } from '@/shared/hooks/usePermissions'
 import { useTransferListFilters } from '@/shared/hooks/useTransferListFilters'
 import { formatDateTime } from '@/shared/utils/formatDate'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
+import { useQueryParamOpen } from '@/shared/hooks/useQueryParamOpen'
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
 
@@ -66,6 +67,7 @@ export const TransferlarTarixiPage = () => {
     hasActiveFilters,
   } = useTransferListFilters()
   const [detailId, setDetailId] = useState('')
+  useQueryParamOpen('dispatch', setDetailId)
 
   const inboxQuery = useGetTransferHistoryQuery(queryParams)
   const detailQuery = useGetTransferByIdQuery(

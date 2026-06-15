@@ -8,11 +8,44 @@ import {
   isLocalActiveSessionId,
   isMongoObjectId,
   listLocalActiveSessions,
+  listSessionsPendingServerSync,
+  markActiveSessionPendingServerSync,
+  markActiveSessionServerSynced,
   mergeServerSessionsWithLocalCache,
   persistActiveSessionLocally,
 } from '@/features/purchase-requests/utils/activeSessionsStorage'
 
-const isSessionsApiUnavailable = (error) => error?.status === 404
+const isSessionsApiUnavailable = (error) => {
+  if (!error) return false
+
+  const status = error.status
+
+  return (
+    status === 'FETCH_ERROR' ||
+    status === 'PARSING_ERROR' ||
+    status === 'TIMEOUT_ERROR' ||
+    status === 404 ||
+    (typeof status === 'number' && status >= 500)
+  )
+}
+
+const shouldQueueServerSync = (error) => isSessionsApiUnavailable(error)
+
+const syncPendingSessionsToServer = async (userId, baseQuery) => {
+  const pending = listSessionsPendingServerSync(userId)
+  if (!pending.length) return
+
+  await Promise.all(
+    pending.map(async (session) => {
+      const payload = sanitizeSessionPayload(session)
+      const result = await postSessionPayload(baseQuery, session.id, payload)
+
+      if (!result.error) {
+        markActiveSessionServerSynced(userId, session.id)
+      }
+    }),
+  )
+}
 
 const unwrapApiPayload = (payload) =>
   payload && typeof payload === 'object' && 'success' in payload ? payload.data : payload
@@ -113,13 +146,14 @@ const postSessionPayload = async (baseQuery, sessionId, payload) =>
     body: payload,
   })
 
-const buildInboxQueryParams = ({ page, limit, search, dateFrom, dateTo, inboxType }) => ({
+const buildInboxQueryParams = ({ page, limit, search, dateFrom, dateTo, inboxType, structureId }) => ({
   page,
   limit,
   ...(search?.trim() ? { search: search.trim() } : {}),
   ...(dateFrom ? { dateFrom } : {}),
   ...(dateTo ? { dateTo } : {}),
   ...(inboxType ? { inboxType } : {}),
+  ...(structureId ? { structureId } : {}),
 })
 
 export const purchaseRequestsApi = baseApi.injectEndpoints({
@@ -169,9 +203,9 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
       },
     }),
     getPurchasingInbox: builder.query({
-      query: ({ page = 1, limit = 10, search = '', dateFrom, dateTo } = {}) => ({
+      query: ({ page = 1, limit = 10, search = '', dateFrom, dateTo, structureId } = {}) => ({
         url: '/purchase-requests/purchasing/inbox',
-        params: buildInboxQueryParams({ page, limit, search, dateFrom, dateTo }),
+        params: buildInboxQueryParams({ page, limit, search, dateFrom, dateTo, structureId }),
       }),
       providesTags: (result) => {
         if (!result?.items?.length) {
@@ -266,6 +300,8 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
           return { error: result.error }
         }
 
+        await syncPendingSessionsToServer(userId, baseQuery)
+
         return {
           data: mergeServerSessionsWithLocalCache(
             result.data ?? { items: [], total: 0, limit: 10 },
@@ -348,21 +384,30 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
         const result = await postSessionPayload(baseQuery, id, payload)
 
         if (!result.error) {
-          return { data: { ...result.data, serverSaved: true } }
+          markActiveSessionServerSynced(userId, id)
+          return { data: { ...result.data, serverSaved: true, pendingServerSync: false } }
         }
 
         if (syncServer) {
           return { error: result.error }
         }
 
-        if (isSessionsApiUnavailable(result.error)) {
-          return { data: { ...localSnapshot, serverSaved: false } }
+        if (shouldQueueServerSync(result.error)) {
+          markActiveSessionPendingServerSync(userId, id)
+          return {
+            data: {
+              ...localSnapshot,
+              serverSaved: false,
+              pendingServerSync: true,
+            },
+          }
         }
 
         return {
           data: {
             ...localSnapshot,
             serverSaved: false,
+            pendingServerSync: false,
             serverErrorStatus: result.error?.status ?? null,
           },
         }

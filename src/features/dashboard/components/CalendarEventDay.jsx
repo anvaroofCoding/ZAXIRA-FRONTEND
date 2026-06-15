@@ -11,6 +11,7 @@ export const CalendarEventDay = (props) => {
     [dayKey, daySummary],
   )
   const hasEvents = eventTypes.length > 0
+  const hasOverdue = (daySummary?.[dayKey]?.OVERDUE ?? 0) > 0
 
   return (
     <Box
@@ -32,6 +33,13 @@ export const CalendarEventDay = (props) => {
         sx={{
           ...(other.sx ?? {}),
           fontWeight: hasEvents ? 700 : 400,
+          ...(hasOverdue
+            ? {
+                color: 'error.main',
+                border: 2,
+                borderColor: 'error.main',
+              }
+            : {}),
         }}
       />
       {hasEvents ? (

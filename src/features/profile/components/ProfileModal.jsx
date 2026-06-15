@@ -29,6 +29,7 @@ import { usePermissions } from '@/shared/hooks/usePermissions'
 import { isRealtimeConnected } from '@/shared/realtime/realtimeConnectionState'
 import { formatLastOnline } from '@/shared/utils/formatLastOnline'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
+import { getDeviceId, getDeviceName } from '@/shared/utils/deviceIdentity'
 
 const buildProfileForm = (user) => ({
   displayName: user?.displayName ?? '',
@@ -48,6 +49,7 @@ export const ProfileModal = ({ open, onClose }) => {
   const profileQuery = useGetCurrentUserQuery(undefined, {
     skip: !open,
     refetchOnMountOrArgChange: true,
+    pollingInterval: open ? 10000 : 0,
   })
   const structuresQuery = useGetStructuresQuery(undefined, { skip: !open })
   const [updateProfile, updateState] = useUpdateProfileMutation()
@@ -61,6 +63,36 @@ export const ProfileModal = ({ open, onClose }) => {
   const [onlineNow, setOnlineNow] = useState(isRealtimeConnected)
 
   const profileUser = profileQuery.data ?? user
+
+  const activeDevices = useMemo(() => {
+    const remoteDevices = profileUser?.activeDevices ?? []
+    const currentDeviceId = getDeviceId()
+    const hasCurrentDevice = remoteDevices.some(
+      (device) => device.deviceId === currentDeviceId,
+    )
+
+    if (hasCurrentDevice) {
+      return remoteDevices
+    }
+
+    const isOnline = onlineNow || profileUser?.isOnline
+    if (!isOnline) {
+      return remoteDevices
+    }
+
+    return [
+      {
+        deviceId: currentDeviceId,
+        deviceName: getDeviceName(),
+        isCurrent: true,
+        isOnline: true,
+        lastActiveAt: new Date().toISOString(),
+      },
+      ...remoteDevices,
+    ]
+  }, [profileUser?.activeDevices, profileUser?.isOnline, onlineNow])
+
+  const onlineDeviceCount = activeDevices.filter((device) => device.isOnline).length
 
   const isSuperAdmin = user?.isSuperAdmin || user?.role === 'SUPER_ADMIN'
   const showStructureField = !isSuperAdmin
@@ -257,6 +289,80 @@ export const ProfileModal = ({ open, onClose }) => {
                 </Typography>
               ) : null}
             </Stack>
+          </Box>
+
+          <Divider />
+
+          <Box>
+            <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+              Faol qurilmalar
+              {onlineDeviceCount > 0 ? ` (${onlineDeviceCount})` : ''}
+            </Typography>
+
+            {profileQuery.isLoading ? (
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                <CircularProgress size={18} />
+                <Typography variant="body2" color="text.secondary">
+                  Qurilmalar yuklanmoqda...
+                </Typography>
+              </Stack>
+            ) : activeDevices.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                Hozircha faol qurilma yo‘q
+              </Typography>
+            ) : (
+              <Stack spacing={1}>
+                {activeDevices.map((device) => (
+                  <Box
+                    key={device.deviceId}
+                    sx={{
+                      border: 1,
+                      borderColor: 'divider',
+                      borderRadius: 1.5,
+                      px: 1.5,
+                      py: 1.25,
+                    }}
+                  >
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      sx={{
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: 0.5,
+                      }}
+                    >
+                      <Typography variant="body2" fontWeight={600}>
+                        {device.deviceName}
+                      </Typography>
+                      <Stack direction="row" spacing={0.75}>
+                        {device.isCurrent ? (
+                          <Chip
+                            label="Joriy qurilma"
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                          />
+                        ) : null}
+                        {device.isOnline ? (
+                          <Chip
+                            label="Onlayn"
+                            size="small"
+                            color="success"
+                            variant="outlined"
+                          />
+                        ) : null}
+                      </Stack>
+                    </Stack>
+                    <Typography variant="caption" color="text.secondary">
+                      Oxirgi faollik:{' '}
+                      {formatLastOnline(device.lastActiveAt) || 'ma’lumot yo‘q'}
+                    </Typography>
+                  </Box>
+                ))}
+              </Stack>
+            )}
           </Box>
 
           <Divider />

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import dayjs from 'dayjs'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import SearchIcon from '@mui/icons-material/Search'
@@ -56,6 +57,7 @@ const ALL_STRUCTURES_VALUE = ''
 
 export const ChiqimTarixiPage = () => {
   const dispatch = useAppDispatch()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user, canDelete } = usePermissions()
   const viewerStructureId = user?.structureId ?? ''
   const canDeleteExpense =
@@ -94,6 +96,19 @@ export const ChiqimTarixiPage = () => {
     if (structureFilter !== null) return
     setStructureFilter(viewerStructureId || ALL_STRUCTURES_VALUE)
   }, [structureFilter, viewerStructureId])
+
+  useEffect(() => {
+    const code = searchParams.get('chiqim')?.trim()
+    if (!code) return
+
+    const structureId = searchParams.get('structureId')?.trim() || undefined
+    setDetailSelection({ code, structureId })
+
+    const next = new URLSearchParams(searchParams)
+    next.delete('chiqim')
+    next.delete('structureId')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
 
   const structuresQuery = useGetStructuresQuery()
   const structuresForFilter = useMemo(() => {
@@ -425,6 +440,16 @@ export const ChiqimTarixiPage = () => {
                     {detailQuery.data.reasonLabel}
                   </Typography>
                 </Box>
+                {detailQuery.data.serviceStructureName ? (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Xizmat
+                    </Typography>
+                    <Typography variant="body2" fontWeight={600}>
+                      {detailQuery.data.serviceStructureName}
+                    </Typography>
+                  </Box>
+                ) : null}
                 <Box>
                   <Typography variant="caption" color="text.secondary">
                     Sana

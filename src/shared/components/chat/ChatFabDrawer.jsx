@@ -556,24 +556,53 @@ export const ChatFabDrawer = () => {
     typingTimerRef.current = setTimeout(() => sendTypingSignal(false), 900)
   }
 
-  const handleFilePick = async (event) => {
-    const file = event.target.files?.[0]
+  const attachFile = async (file, fallbackName = 'attachment') => {
     if (!file) return
+
     const source = await fileToDataUrl(file)
     if (file.type?.startsWith('image/')) {
       const compressed = await compressImageDataUrl(source)
       setImageDataUrl(compressed)
       setFileDataUrl('')
-      setFileName(file.name)
+      setFileName(file.name || fallbackName)
       setFileMime(file.type || 'image/jpeg')
     } else {
       setFileDataUrl(source)
-      setFileName(file.name)
+      setFileName(file.name || fallbackName)
       setFileMime(file.type || 'application/octet-stream')
       setImageDataUrl('')
     }
-    event.target.value = ''
+
     if (sendError) setSendError('')
+  }
+
+  const handleFilePick = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    await attachFile(file)
+    event.target.value = ''
+  }
+
+  const handlePaste = async (event) => {
+    const items = event.clipboardData?.items
+    if (!items?.length) return
+
+    const imageItem = Array.from(items).find((item) => item.type.startsWith('image/'))
+    if (!imageItem) return
+
+    event.preventDefault()
+
+    const file = imageItem.getAsFile()
+    if (!file) return
+
+    const extension =
+      file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
+
+    try {
+      await attachFile(file, `screenshot-${Date.now()}.${extension}`)
+    } catch {
+      setSendError('Rasmni qo‘shib bo‘lmadi')
+    }
   }
 
   const downloadDataUrl = (dataUrl, name = 'download') => {
@@ -1062,6 +1091,7 @@ export const ChatFabDrawer = () => {
                     placeholder="Xabar yozing..."
                     value={text}
                     onChange={(e) => handleInputChange(e.target.value)}
+                    onPaste={handlePaste}
                   />
                   <IconButton component="label">
                     <AttachFileIcon />

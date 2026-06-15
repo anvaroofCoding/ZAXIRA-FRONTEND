@@ -57,6 +57,10 @@ export const warehouseApi = baseApi.injectEndpoints({
         API_TAGS.WAREHOUSE_INVENTORY,
       ],
     }),
+    getWarehouseInventoryItemHistory: builder.query({
+      query: ({ locationId, inventoryId }) =>
+        `/warehouse/locations/${locationId}/inventory/${inventoryId}/history`,
+    }),
     getAllWarehousesOverview: builder.query({
       query: () => '/warehouse/all/overview',
     }),
@@ -117,7 +121,11 @@ export const warehouseApi = baseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (result, error, arg) => {
-        const tags = [API_TAGS.WAREHOUSE_EXPENSE, API_TAGS.WAREHOUSE_INVENTORY]
+        const tags = [
+          API_TAGS.WAREHOUSE_EXPENSE,
+          API_TAGS.WAREHOUSE_INVENTORY,
+          API_TAGS.WAREHOUSE_FIXED_ASSET,
+        ]
         const locationId = arg?.items?.[0]?.locationId
         if (locationId) {
           tags.push({ type: API_TAGS.WAREHOUSE_INVENTORY, id: locationId })
@@ -131,7 +139,39 @@ export const warehouseApi = baseApi.injectEndpoints({
         method: 'DELETE',
         ...(structureId ? { params: { structureId } } : {}),
       }),
-      invalidatesTags: [API_TAGS.WAREHOUSE_EXPENSE, API_TAGS.WAREHOUSE_INVENTORY],
+      invalidatesTags: [
+        API_TAGS.WAREHOUSE_EXPENSE,
+        API_TAGS.WAREHOUSE_INVENTORY,
+        API_TAGS.WAREHOUSE_FIXED_ASSET,
+      ],
+    }),
+    getWarehouseFixedAssets: builder.query({
+      query: ({ page = 1, limit = 10, search = '', serviceStructureId, status = 'active' } = {}) => ({
+        url: '/warehouse/fixed-assets',
+        params: {
+          page,
+          limit,
+          status,
+          ...(search?.trim() ? { search: search.trim() } : {}),
+          ...(serviceStructureId ? { serviceStructureId } : {}),
+        },
+      }),
+      providesTags: [API_TAGS.WAREHOUSE_FIXED_ASSET],
+    }),
+    returnWarehouseFixedAsset: builder.mutation({
+      query: (id) => ({
+        url: `/warehouse/fixed-assets/${id}/return`,
+        method: 'POST',
+      }),
+      invalidatesTags: [API_TAGS.WAREHOUSE_FIXED_ASSET, API_TAGS.WAREHOUSE_INVENTORY],
+    }),
+    discardWarehouseFixedAsset: builder.mutation({
+      query: ({ id, reason }) => ({
+        url: `/warehouse/fixed-assets/${id}/discard`,
+        method: 'POST',
+        body: { reason },
+      }),
+      invalidatesTags: [API_TAGS.WAREHOUSE_FIXED_ASSET],
     }),
   }),
 })
@@ -142,6 +182,7 @@ export const {
   useUpdateWarehouseLocationMutation,
   useDeleteWarehouseLocationMutation,
   useGetWarehouseInventoryByLocationQuery,
+  useGetWarehouseInventoryItemHistoryQuery,
   useGetAllWarehousesOverviewQuery,
   useGetWarehouseInventoryByAnyLocationQuery,
   useLazyGetWarehouseInventoryItemByBarcodeQuery,
@@ -151,5 +192,8 @@ export const {
   useGetWarehouseExpenseByCodeQuery,
   useCreateWarehouseExpenseMutation,
   useDeleteWarehouseExpenseMutation,
+  useGetWarehouseFixedAssetsQuery,
+  useReturnWarehouseFixedAssetMutation,
+  useDiscardWarehouseFixedAssetMutation,
 } = warehouseApi
 

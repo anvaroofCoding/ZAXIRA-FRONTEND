@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
 import HistoryIcon from '@mui/icons-material/History'
+import Inventory2Icon from '@mui/icons-material/Inventory2'
 import RemoveIcon from '@mui/icons-material/Remove'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -40,9 +41,12 @@ import {
   NOMENCLATURE_COLUMN_LABEL,
   nomenclatureTableCellSx,
 } from '@/features/warehouse/utils/itemNomenclature'
+import { useGetStructuresQuery } from '@/features/structures/api/structuresApi'
 import { PageShell } from '@/shared/components/layout/PageShell'
 
+export const FIXED_ASSET_REASON_KEY = 'fixed_asset'
 const PAGE_PATH = '/omborlar/chiqim-qilish'
+
 
 const clampInt = (value, min, max) => {
   const n = Number.parseInt(String(value ?? ''), 10)
@@ -58,12 +62,23 @@ export const ChiqimQilishPage = () => {
   const canCreateExpense = canCreate(PAGE_PATH)
 
   const reasonsQuery = useGetWarehouseExpenseReasonsQuery()
+  const structuresQuery = useGetStructuresQuery()
   const [lookupByBarcode, lookupState] = useLazyGetWarehouseInventoryItemByBarcodeGloballyQuery()
   const [createExpense, createExpenseState] = useCreateWarehouseExpenseMutation()
 
   const reasons = reasonsQuery.data ?? []
+  const serviceStructures = useMemo(
+    () =>
+      (structuresQuery.data ?? [])
+        .filter((structure) => structure.isActive !== false)
+        .sort((a, b) =>
+          (a.shortName || a.fullName).localeCompare(b.shortName || b.fullName, 'uz'),
+        ),
+    [structuresQuery.data],
+  )
 
   const [reasonKey, setReasonKey] = useState('')
+  const [serviceStructureId, setServiceStructureId] = useState('')
   const [comment, setComment] = useState('')
   const [barcode, setBarcode] = useState('')
   const [error, setError] = useState('')
@@ -88,7 +103,11 @@ export const ChiqimQilishPage = () => {
     rows.length > 0 &&
     rows.every((r) => r.quantity >= 1 && r.quantity <= r.available) &&
     !createExpenseState.isLoading
-  const canSubmit = canOpenSaveDialog && Boolean(reasonKey)
+  const isFixedAssetReason = reasonKey === FIXED_ASSET_REASON_KEY
+  const canSubmit =
+    canOpenSaveDialog &&
+    Boolean(reasonKey) &&
+    (!isFixedAssetReason || Boolean(serviceStructureId))
 
   const handleScan = async () => {
     setError('')
@@ -150,6 +169,7 @@ export const ChiqimQilishPage = () => {
 
   const resetForm = () => {
     setReasonKey('')
+    setServiceStructureId('')
     setComment('')
     setRows([])
     setBarcode('')
@@ -165,6 +185,7 @@ export const ChiqimQilishPage = () => {
       const result = await createExpense({
         reasonKey,
         comment,
+        ...(isFixedAssetReason ? { serviceStructureId } : {}),
         items: rows.map((r) => ({ locationId: r.locationId, barcode: r.barcode, quantity: r.quantity })),
       }).unwrap()
 
@@ -195,16 +216,25 @@ export const ChiqimQilishPage = () => {
           }}
         >
           <Typography variant="h5" component="h1" fontWeight={700}>
-            Chiqim qilish
+            Chiqim
           </Typography>
           {canViewExpense ? (
-            <Button
-              variant="outlined"
-              startIcon={<HistoryIcon />}
-              onClick={() => navigate('/omborlar/chiqim-tarixi')}
-            >
-              Chiqim tarixi
-            </Button>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Button
+                variant="outlined"
+                startIcon={<Inventory2Icon />}
+                onClick={() => navigate('/omborlar/asosiy-vositalar')}
+              >
+                Asosiy vositalar
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<HistoryIcon />}
+                onClick={() => navigate('/omborlar/chiqim-tarixi')}
+              >
+                Chiqim tarixi
+              </Button>
+            </Stack>
           ) : null}
         </Box>
 
@@ -356,7 +386,13 @@ export const ChiqimQilishPage = () => {
                 labelId="expense-reason-label"
                 label="Chiqim sababi"
                 value={reasonKey}
-                onChange={(e) => setReasonKey(e.target.value)}
+                onChange={(e) => {
+                  const nextReason = e.target.value
+                  setReasonKey(nextReason)
+                  if (nextReason !== FIXED_ASSET_REASON_KEY) {
+                    setServiceStructureId('')
+                  }
+                }}
               >
                 {reasons.map((r) => (
                   <MenuItem key={r.key} value={r.key}>
@@ -365,6 +401,28 @@ export const ChiqimQilishPage = () => {
                 ))}
               </Select>
             </FormControl>
+
+            {isFixedAssetReason ? (
+              <FormControl
+                fullWidth
+                size="small"
+                disabled={structuresQuery.isLoading || createExpenseState.isLoading}
+              >
+                <InputLabel id="service-structure-label">Qaysi xizmatga ishlatildi</InputLabel>
+                <Select
+                  labelId="service-structure-label"
+                  label="Qaysi xizmatga ishlatildi"
+                  value={serviceStructureId}
+                  onChange={(e) => setServiceStructureId(e.target.value)}
+                >
+                  {serviceStructures.map((structure) => (
+                    <MenuItem key={structure.id} value={structure.id}>
+                      {structure.shortName || structure.fullName}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : null}
 
             <TextField
               size="small"

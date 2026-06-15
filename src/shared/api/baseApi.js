@@ -4,6 +4,7 @@ import { env } from '@/shared/config/env'
 import { API_TAGS } from '@/shared/constants/apiTags'
 import { PERMISSION_DENIED_MESSAGE } from '@/shared/constants/messages'
 import { showNotification } from '@/shared/model/notificationSlice'
+import { getDeviceHeaders } from '@/shared/utils/deviceIdentity'
 import {
   getApiErrorText,
   handleSessionExpired,
@@ -18,6 +19,10 @@ const rawBaseQuery = fetchBaseQuery({
     if (token) {
       headers.set('Authorization', `Bearer ${token}`)
     }
+
+    const deviceHeaders = getDeviceHeaders()
+    headers.set('X-Device-Id', deviceHeaders['X-Device-Id'])
+    headers.set('X-Device-Name', deviceHeaders['X-Device-Name'])
 
     return headers
   },

@@ -4,6 +4,7 @@ const initialState = {
   open: false,
   message: '',
   severity: 'info',
+  duration: 4500,
 }
 
 const notificationSlice = createSlice({
@@ -14,6 +15,7 @@ const notificationSlice = createSlice({
       state.open = true
       state.message = action.payload.message
       state.severity = action.payload.severity ?? 'info'
+      state.duration = action.payload.duration ?? 4500
     },
     hideNotification: (state) => {
       state.open = false

@@ -11,7 +11,7 @@ export const GlobalSnackbar = () => {
   return (
     <Snackbar
       open={notification.open}
-      autoHideDuration={4500}
+      autoHideDuration={notification.duration ?? 4500}
       onClose={() => dispatch(hideNotification())}
       anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
     >

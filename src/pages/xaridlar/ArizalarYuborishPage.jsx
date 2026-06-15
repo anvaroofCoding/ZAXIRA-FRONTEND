@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import AddIcon from '@mui/icons-material/Add'
 import SearchIcon from '@mui/icons-material/Search'
 import Alert from '@mui/material/Alert'
@@ -83,6 +83,17 @@ export const ArizalarYuborishPage = () => {
   const sessionsQuery = useGetPurchaseRequestSessionsQuery(undefined, {
     skip: !canCreate,
   })
+
+  useEffect(() => {
+    if (!canCreate) return undefined
+
+    const handleOnline = () => {
+      void sessionsQuery.refetch()
+    }
+
+    window.addEventListener('online', handleOnline)
+    return () => window.removeEventListener('online', handleOnline)
+  }, [canCreate, sessionsQuery.refetch])
   const [createSession, createSessionState] = useCreatePurchaseRequestSessionMutation()
   const [submitPurchaseRequestSession, submitSessionState] =
     useSubmitPurchaseRequestSessionMutation()

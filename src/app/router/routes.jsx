@@ -6,6 +6,7 @@ import { PermissionRoute } from './PermissionRoute'
 import { RequireAuth } from './RequireAuth'
 
 const { DashboardPage } = lazyImport(() => import('@/pages/dashboard'), 'DashboardPage')
+const { KalendarPage } = lazyImport(() => import('@/pages/dashboard'), 'KalendarPage')
 const { MaxsulotlarPage } = lazyImport(
   () => import('@/pages/dashboard'),
   'MaxsulotlarPage',
@@ -61,6 +62,10 @@ const { ChiqimQilishPage } = lazyImport(
 const { ChiqimTarixiPage } = lazyImport(
   () => import('@/pages/omborlar'),
   'ChiqimTarixiPage',
+)
+const { AsosiyVositalarPage } = lazyImport(
+  () => import('@/pages/omborlar'),
+  'AsosiyVositalarPage',
 )
 
 const { TransferQilishPage } = lazyImport(
@@ -135,6 +140,10 @@ export const routes = [
             Component: DashboardPage,
           },
           {
+            path: 'dashboard/kalendar',
+            Component: KalendarPage,
+          },
+          {
             path: 'dashboard/maxsulotlar',
             Component: MaxsulotlarPage,
           },
@@ -177,6 +186,10 @@ export const routes = [
           {
             path: 'omborlar/chiqim-qilish',
             Component: ChiqimQilishPage,
+          },
+          {
+            path: 'omborlar/asosiy-vositalar',
+            Component: AsosiyVositalarPage,
           },
           {
             path: 'omborlar/chiqim-tarixi',

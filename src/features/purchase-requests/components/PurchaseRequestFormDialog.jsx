@@ -36,6 +36,8 @@ import { getLocalActiveSessionById } from '@/features/purchase-requests/utils/ac
 import { splitAutocompleteOptionProps } from '@/shared/utils/autocompleteOptionProps'
 import { buildYearOptions } from '@/features/purchase-requests/utils/formatPurchasePeriod'
 
+const SESSION_AUTOSAVE_DEBOUNCE_MS = 2000
+
 const emptyItem = () => ({
   name: '',
   characteristics: '',
@@ -108,7 +110,6 @@ export const PurchaseRequestFormDialog = ({
   const [saveSession, saveSessionState] = useSavePurchaseRequestSessionMutation()
   const skipNextAutosaveRef = useRef(true)
   const autosaveTimerRef = useRef(null)
-  const autosaveDisabledRef = useRef(false)
   const initializedForRef = useRef(null)
   const commissionHydratedRef = useRef(false)
 
@@ -152,32 +153,33 @@ export const PurchaseRequestFormDialog = ({
   )
 
   const persistSession = useCallback(async () => {
-    if (!usesSession || !open || !sessionId || autosaveDisabledRef.current) return
+    if (!usesSession || !open || !sessionId) return
 
     const payload = buildSessionPayload()
-    if (!payload.bossId || !payload.commissionMemberIds?.length) {
-      return
-    }
 
     try {
       const saved = await saveSession({ id: sessionId, ...payload }).unwrap()
 
       if (saved?.serverSaved === false) {
-        autosaveDisabledRef.current = true
-        setSessionNotice('Faol seans qurilmada saqlandi (server bilan sinxronlash to‘xtatildi)')
+        if (saved?.pendingServerSync) {
+          setSessionNotice(
+            'Qurilmada saqlandi. Server ishga tushgach avtomatik sinxronlanadi.',
+          )
+        } else {
+          setSessionNotice('Qurilmada saqlandi')
+        }
         return
       }
 
-      setSessionNotice('Faol seans saqlandi')
+      setSessionNotice('Saqlangan')
     } catch {
-      autosaveDisabledRef.current = true
       const cached = getLocalActiveSessionById(currentUserId, sessionId)
       if (cached) {
-        setSessionNotice('Faol seans qurilmada saqlandi')
+        setSessionNotice('Qurilmada saqlandi')
         return
       }
 
-      setSessionNotice('Faol seansni saqlashda xatolik')
+      setSessionNotice('Saqlashda xatolik')
     }
   }, [buildSessionPayload, currentUserId, open, saveSession, sessionId, usesSession])
 
@@ -196,7 +198,6 @@ export const PurchaseRequestFormDialog = ({
     initializedForRef.current = sourceKey
     commissionHydratedRef.current = false
     skipNextAutosaveRef.current = true
-    autosaveDisabledRef.current = false
     setSelectedCommission(null)
 
     if (request) {
@@ -284,7 +285,7 @@ export const PurchaseRequestFormDialog = ({
 
     autosaveTimerRef.current = window.setTimeout(() => {
       persistSession()
-    }, 1200)
+    }, SESSION_AUTOSAVE_DEBOUNCE_MS)
 
     return () => {
       if (autosaveTimerRef.current) {
@@ -483,7 +484,8 @@ export const PurchaseRequestFormDialog = ({
 
             {usesSession ? (
               <Alert severity="info" variant="outlined">
-                Faol seans: yozganlaringiz avtomatik saqlanadi. Istagan paytda qaytib davom etishingiz mumkin.
+                Faol seans: yozganlaringiz 2 soniyadan keyin avtomatik saqlanadi. Internet
+                bo‘lmasa ma’lumot qurilmada saqlanib qoladi va server tiklangach sinxronlanadi.
               </Alert>
             ) : null}
 

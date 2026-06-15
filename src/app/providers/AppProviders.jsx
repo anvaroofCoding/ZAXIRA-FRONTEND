@@ -6,6 +6,7 @@ import { AuthBootstrap } from '@/features/auth/components/AuthBootstrap'
 import { router } from '@/app/router/router'
 import { store } from '@/app/store/store'
 import { GlobalSnackbar } from '@/shared/components/feedback/GlobalSnackbar'
+import { InternetStatusBanner } from '@/shared/components/feedback/InternetStatusBanner'
 import { ColorModeProvider } from '@/shared/theme/ColorModeProvider'
 
 export const AppProviders = () => (
@@ -13,6 +14,7 @@ export const AppProviders = () => (
     <ColorModeProvider>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <AuthBootstrap>
+          <InternetStatusBanner />
           <RouterProvider router={router} />
           <GlobalSnackbar />
         </AuthBootstrap>

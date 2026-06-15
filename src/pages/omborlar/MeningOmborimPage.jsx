@@ -32,9 +32,11 @@ import {
   useCreateWarehouseLocationMutation,
   useDeleteWarehouseLocationMutation,
   useGetWarehouseInventoryByLocationQuery,
+  useGetWarehouseInventoryItemHistoryQuery,
   useGetWarehouseLocationsQuery,
   useUpdateWarehouseLocationMutation,
 } from '@/features/warehouse/api/warehouseApi'
+import { WarehouseItemHistoryTimeline } from '@/features/warehouse/components/WarehouseItemHistoryTimeline'
 import { usePermissions } from '@/shared/hooks/usePermissions'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { SkeletonBlock } from '@/shared/components/skeleton'
@@ -126,6 +128,16 @@ export const MeningOmborimPage = () => {
   const [printOpen, setPrintOpen] = useState(false)
   const [printName, setPrintName] = useState('')
   const [printCount, setPrintCount] = useState(1)
+
+  const historyQuery = useGetWarehouseInventoryItemHistoryQuery(
+    {
+      locationId: selectedLocationId,
+      inventoryId: detailItem?.id,
+    },
+    {
+      skip: !selectedLocationId || !detailItem?.id,
+    },
+  )
 
   const selectedTabIndex = useMemo(() => {
     if (!locations.length || !selectedLocationId) return 0
@@ -479,11 +491,12 @@ export const MeningOmborimPage = () => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={Boolean(detailItem)} onClose={() => setDetailItem(null)} maxWidth="sm" fullWidth>
+      <Dialog open={Boolean(detailItem)} onClose={() => setDetailItem(null)} maxWidth="md" fullWidth>
         <DialogTitle>Tovar ma’lumoti</DialogTitle>
         <DialogContent dividers>
           {detailForModal ? (
-            <Stack spacing={1}>
+            <Stack spacing={2}>
+              <Stack spacing={1}>
               <Box>
                 <Typography variant="caption" color="text.secondary" display="block">
                   Tovar
@@ -554,6 +567,13 @@ export const MeningOmborimPage = () => {
                     : '—'}
                 </Typography>
               </Box>
+              </Stack>
+
+              <WarehouseItemHistoryTimeline
+                events={historyQuery.data?.events ?? []}
+                isLoading={historyQuery.isLoading}
+                isError={historyQuery.isError}
+              />
             </Stack>
           ) : null}
         </DialogContent>

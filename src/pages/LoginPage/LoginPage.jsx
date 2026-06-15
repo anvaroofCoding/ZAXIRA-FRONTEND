@@ -14,6 +14,7 @@ import { setCredentials } from '@/features/auth/model/authSlice'
 import { clearLegacyActiveSessionsStorage } from '@/features/purchase-requests/utils/activeSessionsStorage'
 import { baseApi } from '@/shared/api/baseApi'
 import { useAppDispatch } from '@/shared/hooks/useAppDispatch'
+import { getDeviceId, getDeviceName } from '@/shared/utils/deviceIdentity'
 
 const getErrorMessage = (error) => {
   const message = error?.data?.message
@@ -109,7 +110,11 @@ export const LoginPage = () => {
     }
 
     try {
-      const data = await login(form).unwrap()
+      const data = await login({
+        ...form,
+        deviceId: getDeviceId(),
+        deviceName: getDeviceName(),
+      }).unwrap()
       setLockUntil(null)
       clearLegacyActiveSessionsStorage()
       dispatch(baseApi.util.resetApiState())

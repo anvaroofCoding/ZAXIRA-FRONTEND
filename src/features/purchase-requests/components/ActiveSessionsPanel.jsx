@@ -3,6 +3,7 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import Paper from '@mui/material/Paper'
@@ -54,16 +55,31 @@ export const ActiveSessionsPanel = ({
             }}
           >
             <Box sx={{ flex: 1, minWidth: 200 }}>
-              <Typography variant="body2" fontWeight={600}>
-                {session.title || 'Nomsiz ariza'}
-              </Typography>
-              <Typography variant="caption" color="text.secondary" display="block">
+              <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" sx={{ mb: 0.25 }}>
+                <Typography variant="body2" fontWeight={600}>
+                  {session.title || 'Nomsiz ariza'}
+                </Typography>
+                {session.pendingServerSync || session.isLocal ? (
+                  <Chip
+                    size="small"
+                    label={session.pendingServerSync ? 'Sinxronlash kutilmoqda' : 'Qurilmada'}
+                    color="warning"
+                    variant="outlined"
+                  />
+                ) : null}
+              </Stack>
+              <Typography variant="caption" color="text.secondary" component="div">
                 {session.preview?.trim()
                   ? session.preview
                   : 'Hali to‘ldirilmagan'}
               </Typography>
               {session.updatedAt ? (
-                <Typography variant="caption" color="text.secondary" display="block">
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  component="div"
+                  sx={{ mt: 0.25 }}
+                >
                   Yangilangan: {formatDateTime(session.updatedAt)}
                 </Typography>
               ) : null}

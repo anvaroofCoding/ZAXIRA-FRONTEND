@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Snackbar from '@mui/material/Snackbar'
 import TablePagination from '@mui/material/TablePagination'
@@ -32,7 +32,14 @@ export const SotibOlinadiganTovarlarPage = () => {
     queryParams,
     clearFilters,
     hasActiveFilters,
-  } = usePurchasingListFilters()
+    structureFilter,
+    setStructureFilter,
+    structureFilterReady,
+    viewerStructureId,
+  } = usePurchasingListFilters(10, {
+    withStructureFilter: true,
+    structureFilterDefault: 'all',
+  })
 
   const [detailTarget, setDetailTarget] = useState(null)
   const openDetailFromQuery = useCallback((id) => setDetailTarget({ id }), [])
@@ -42,10 +49,17 @@ export const SotibOlinadiganTovarlarPage = () => {
   const [dispatchBatch, setDispatchBatch] = useState(null)
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
 
-  const inboxQuery = useGetPurchasingInboxQuery(queryParams)
+  const inboxQuery = useGetPurchasingInboxQuery(queryParams, {
+    skip: !structureFilterReady,
+    refetchOnMountOrArgChange: true,
+  })
 
   const items = inboxQuery.data?.items ?? []
   const total = inboxQuery.data?.total ?? 0
+  const structuresForFilter = useMemo(
+    () => inboxQuery.data?.structureFilters ?? [],
+    [inboxQuery.data?.structureFilters],
+  )
   const isReady = !inboxQuery.isLoading && !inboxQuery.isUninitialized
 
   const showSnackbar = (message, severity = 'success') => {
@@ -74,6 +88,7 @@ export const SotibOlinadiganTovarlarPage = () => {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <PurchasingPageFilters
             title="Sotib olinadigan maxsulotlar"
+            subtitle="Tuzilma bo‘yicha filtrlang — shu tuzilmaning barcha arizalari ko‘rinadi"
             search={search}
             onSearchChange={setSearch}
             dateFrom={dateFrom}
@@ -84,6 +99,11 @@ export const SotibOlinadiganTovarlarPage = () => {
             dateToLabel="Yangilangan (gacha)"
             onClearFilters={clearFilters}
             hasActiveFilters={hasActiveFilters}
+            structureFilter={structureFilter}
+            onStructureFilterChange={setStructureFilter}
+            structures={structuresForFilter}
+            structureFilterDisabled={!structureFilterReady}
+            viewerStructureId={viewerStructureId}
           />
 
           <PurchasingQueueTable

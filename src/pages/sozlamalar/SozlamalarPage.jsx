@@ -14,6 +14,7 @@ import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
 import { ThemeColorPicker } from '@/features/settings/components/ThemeColorPicker'
+import { InternetSpeedCard } from '@/features/settings/components/InternetSpeedCard'
 import { useUserPreferences } from '@/shared/hooks/useUserPreferences'
 
 const SettingRow = ({ icon, title, description, checked, onChange }) => (
@@ -74,7 +75,7 @@ export const SozlamalarPage = () => {
             Sozlamalar
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Interfeys, bildirishnomalar va chat uchun shaxsiy sozlamalar
+            Interfeys, internet tezligi, bildirishnomalar va chat uchun shaxsiy sozlamalar
           </Typography>
         </Stack>
       </Paper>
@@ -84,6 +85,8 @@ export const SozlamalarPage = () => {
           <ThemeColorPicker />
         </CardContent>
       </Card>
+
+      <InternetSpeedCard />
 
       <Card variant="outlined">
         <CardContent sx={{ p: { xs: 2, sm: 3 }, '&:last-child': { pb: { xs: 2, sm: 3 } } }}>

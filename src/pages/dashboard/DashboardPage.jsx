@@ -198,10 +198,10 @@ export const DashboardPage = () => {
   const isSuperAdmin = user?.isSuperAdmin || user?.role === 'SUPER_ADMIN'
   const viewerStructureId = user?.structureId ?? ''
   const hasExpensePermission = canCreate('/omborlar/chiqim-qilish')
-  const hasTicketPermission = canCreate('/xarid-qilish/xaridni-qabul-qilish')
+  const canAccessExpense = canAccess('/omborlar/chiqim-qilish')
   const hasDashboardAccess = canAccess('/dashboard')
   const canViewProducts = canAccess('/dashboard/maxsulotlar')
-  const canExpense = Boolean(isSuperAdmin || (hasExpensePermission && hasTicketPermission))
+  const canExpense = Boolean(isSuperAdmin || hasExpensePermission || canAccessExpense)
 
   const { data: structures = [] } = useGetStructuresQuery()
   const activeStructures = useMemo(() => structures.filter((s) => s.isActive), [structures])

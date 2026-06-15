@@ -31,6 +31,7 @@ import { PurchaseInfoSection } from '@/features/purchase-requests/components/Pur
 import { PurchaseRequestItemsTable } from '@/features/purchase-requests/components/PurchaseRequestItemsTable'
 import { useGetPurchaseRequestByIdQuery } from '@/features/purchase-requests/api/purchaseRequestsApi'
 import { formatMemberLabel } from '@/features/purchase-requests/utils/formatMemberLabel'
+import { formatBossDocumentName } from '@/features/purchase-requests/utils/formatBossDocumentName'
 import {
   getDecisionChipColor,
   getStatusChipColor,
@@ -166,8 +167,12 @@ export const PurchaseRequestReadOnlyDetailDialog = ({
                 }
               />
               <DetailRow
+                label="Tuzilma raxbari"
+                value={request.applicantStructure?.leaderName?.trim() || '—'}
+              />
+              <DetailRow
                 label="Boshliq"
-                value={`${request.boss.displayName} (${request.boss.login})`}
+                value={`${formatBossDocumentName(request.boss)} (${request.boss.login})`}
               />
             </Stack>
 

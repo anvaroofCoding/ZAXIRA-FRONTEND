@@ -23,6 +23,7 @@ import { ApprovalTimelineSteps } from '@/features/purchase-requests/components/A
 import { PurchaseDeadlineDetailRow } from '@/features/purchase-requests/components/PurchaseDeadlineDetailRow'
 import { PurchasePeriodDetailRow } from '@/features/purchase-requests/components/PurchasePeriodDetailRow'
 import { formatMemberLabel } from '@/features/purchase-requests/utils/formatMemberLabel'
+import { formatBossDocumentName } from '@/features/purchase-requests/utils/formatBossDocumentName'
 import { BossDecisionAlert } from '@/features/purchase-requests/components/BossDecisionAlert'
 import { useGetPurchaseRequestByIdQuery } from '@/features/purchase-requests/api/purchaseRequestsApi'
 import { canDeletePurchaseRequest } from '@/features/purchase-requests/utils/purchaseRequestDelete'
@@ -192,8 +193,12 @@ export const PurchaseRequestDetailDialog = ({
                 }
               />
               <DetailRow
+                label="Tuzilma raxbari"
+                value={request.applicantStructure?.leaderName?.trim() || '—'}
+              />
+              <DetailRow
                 label="Boshliq"
-                value={`${request.boss.displayName} (${request.boss.login})`}
+                value={`${formatBossDocumentName(request.boss)} (${request.boss.login})`}
               />
             </Stack>
 

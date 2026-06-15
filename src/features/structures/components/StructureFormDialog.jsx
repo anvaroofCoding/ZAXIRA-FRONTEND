@@ -65,8 +65,8 @@ const StructureFormFields = ({
 
     const leaderName = form.leaderName.trim()
 
-    if (form.hasLeader && !leaderName) {
-      setError('Raxbar ismini kiriting')
+    if (!leaderName) {
+      setError('Raxbari F.I.O. ni kiriting')
       return
     }
 
@@ -117,6 +117,19 @@ const StructureFormFields = ({
             slotProps={{ htmlInput: { maxLength: 32 } }}
           />
 
+          <TextField
+            label="Raxbari F.I.O."
+            value={form.leaderName}
+            onChange={(event) =>
+              setForm((prev) => ({ ...prev, leaderName: event.target.value }))
+            }
+            required
+            fullWidth
+            disabled={loading}
+            placeholder="Masalan: Karimov Alisher Akmalovich"
+            slotProps={{ htmlInput: { maxLength: 120 } }}
+          />
+
           <BooleanChoiceField
             label="Ombori bormi?"
             value={form.hasWarehouse}
@@ -127,30 +140,9 @@ const StructureFormFields = ({
           <BooleanChoiceField
             label="Raxbarmi?"
             value={form.hasLeader}
-            onChange={(value) =>
-              setForm((prev) => ({
-                ...prev,
-                hasLeader: value,
-                leaderName: value ? prev.leaderName : '',
-              }))
-            }
+            onChange={(value) => setForm((prev) => ({ ...prev, hasLeader: value }))}
             disabled={loading}
           />
-
-          {form.hasLeader ? (
-            <TextField
-              label="Raxbar ismi"
-              value={form.leaderName}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, leaderName: event.target.value }))
-              }
-              required
-              fullWidth
-              disabled={loading}
-              placeholder="Masalan: Karimov Alisher Akmalovich"
-              slotProps={{ htmlInput: { maxLength: 120 } }}
-            />
-          ) : null}
         </Stack>
       </DialogContent>
 

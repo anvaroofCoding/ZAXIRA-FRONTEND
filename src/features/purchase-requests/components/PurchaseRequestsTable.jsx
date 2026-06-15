@@ -8,6 +8,7 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
+import { formatBossDocumentName } from '@/features/purchase-requests/utils/formatBossDocumentName'
 import { formatDateTime } from '@/shared/utils/formatDate'
 import { PurchaseRequestRowActionsMenu } from './PurchaseRequestRowActionsMenu'
 
@@ -70,7 +71,7 @@ export const PurchaseRequestsTable = ({
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2" noWrap title={item.boss.login}>
-                    {item.boss.displayName}
+                    {formatBossDocumentName(item.boss)}
                   </Typography>
                 </TableCell>
                 <TableCell>

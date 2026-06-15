@@ -7,6 +7,7 @@ import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
 import TextField from '@mui/material/TextField'
+import Typography from '@mui/material/Typography'
 import { AppContainer } from '@/shared/components/layout/AppContainer'
 import { ThemeToggle } from '@/shared/components/ThemeToggle'
 import { useLoginMutation } from '@/features/auth/api/authApi'
@@ -15,6 +16,11 @@ import { clearLegacyActiveSessionsStorage } from '@/features/purchase-requests/u
 import { baseApi } from '@/shared/api/baseApi'
 import { useAppDispatch } from '@/shared/hooks/useAppDispatch'
 import { getDeviceId, getDeviceName } from '@/shared/utils/deviceIdentity'
+import {
+  clearRefreshLock,
+  getRefreshLockUntil,
+  recordLoginPageRefresh,
+} from './loginRefreshGuard'
 
 const getErrorMessage = (error) => {
   const message = error?.data?.message
@@ -37,6 +43,19 @@ const parseLockUntil = (value) => {
   return timestamp
 }
 
+const readInitialLoginLockUntil = () => {
+  const localValue = window.localStorage.getItem(LOGIN_LOCK_STORAGE_KEY)
+  return parseLockUntil(localValue)
+}
+
+const readInitialRefreshLockUntil = () => getRefreshLockUntil()
+
+const mergeLockUntil = (...values) => {
+  const active = values.filter(Boolean)
+  if (!active.length) return null
+  return Math.max(...active)
+}
+
 export const LoginPage = () => {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
@@ -45,47 +64,105 @@ export const LoginPage = () => {
   const [form, setForm] = useState({ login: '', password: '' })
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
-  const [lockUntil, setLockUntil] = useState(() => {
-    const localValue = window.localStorage.getItem(LOGIN_LOCK_STORAGE_KEY)
-    return parseLockUntil(localValue)
-  })
+  const [loginLockUntil, setLoginLockUntil] = useState(readInitialLoginLockUntil)
+  const [refreshLockUntil, setRefreshLockUntil] = useState(readInitialRefreshLockUntil)
+  const lockUntil = useMemo(
+    () => mergeLockUntil(loginLockUntil, refreshLockUntil),
+    [loginLockUntil, refreshLockUntil],
+  )
   const [remainingSeconds, setRemainingSeconds] = useState(() =>
     lockUntil ? Math.max(0, Math.ceil((lockUntil - Date.now()) / 1000)) : 0,
   )
+  const [refreshRemainingSeconds, setRefreshRemainingSeconds] = useState(() =>
+    refreshLockUntil
+      ? Math.max(0, Math.ceil((refreshLockUntil - Date.now()) / 1000))
+      : 0,
+  )
 
   useEffect(() => {
-    if (!lockUntil) {
+    const refreshResult = recordLoginPageRefresh()
+    if (refreshResult.lockUntil) {
+      setRefreshLockUntil(refreshResult.lockUntil)
+      if (refreshResult.triggered) {
+        setError('Sahifa juda ko‘p yangilandi. Ekran vaqtincha bloklandi.')
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    const preventContextMenu = (event) => {
+      event.preventDefault()
+    }
+
+    document.addEventListener('contextmenu', preventContextMenu)
+
+    return () => {
+      document.removeEventListener('contextmenu', preventContextMenu)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!loginLockUntil) {
       window.localStorage.removeItem(LOGIN_LOCK_STORAGE_KEY)
       return
     }
     window.localStorage.setItem(
       LOGIN_LOCK_STORAGE_KEY,
-      new Date(lockUntil).toISOString(),
+      new Date(loginLockUntil).toISOString(),
     )
-  }, [lockUntil])
+  }, [loginLockUntil])
+
+  useEffect(() => {
+    if (!refreshLockUntil) {
+      clearRefreshLock()
+      return
+    }
+    window.localStorage.setItem(
+      'zaxira_login_refresh_lock_until',
+      new Date(refreshLockUntil).toISOString(),
+    )
+  }, [refreshLockUntil])
 
   useEffect(() => {
     if (!lockUntil) return undefined
 
     setRemainingSeconds(Math.max(0, Math.ceil((lockUntil - Date.now()) / 1000)))
+    if (refreshLockUntil) {
+      setRefreshRemainingSeconds(
+        Math.max(0, Math.ceil((refreshLockUntil - Date.now()) / 1000)),
+      )
+    }
     const timerId = window.setInterval(() => {
       const nextSeconds = Math.max(0, Math.ceil((lockUntil - Date.now()) / 1000))
       setRemainingSeconds(nextSeconds)
+      if (refreshLockUntil) {
+        setRefreshRemainingSeconds(
+          Math.max(0, Math.ceil((refreshLockUntil - Date.now()) / 1000)),
+        )
+      }
 
       if (nextSeconds <= 0) {
-        setLockUntil(null)
+        if (loginLockUntil && Date.now() >= loginLockUntil) {
+          setLoginLockUntil(null)
+        }
+        if (refreshLockUntil && Date.now() >= refreshLockUntil) {
+          setRefreshLockUntil(null)
+        }
         setError('')
       }
     }, ONE_SECOND_MS)
 
     return () => window.clearInterval(timerId)
-  }, [lockUntil])
+  }, [lockUntil, loginLockUntil, refreshLockUntil])
 
   useEffect(() => {
     if (!lockUntil) {
       setRemainingSeconds(0)
     }
-  }, [lockUntil])
+    if (!refreshLockUntil) {
+      setRefreshRemainingSeconds(0)
+    }
+  }, [lockUntil, refreshLockUntil])
 
   const lockCountdownLabel = useMemo(() => {
     if (!remainingSeconds) return ''
@@ -93,6 +170,13 @@ export const LoginPage = () => {
     const seconds = remainingSeconds % 60
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
   }, [remainingSeconds])
+
+  const refreshCountdownLabel = useMemo(() => {
+    if (!refreshRemainingSeconds) return ''
+    const minutes = Math.floor(refreshRemainingSeconds / 60)
+    const seconds = refreshRemainingSeconds % 60
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }, [refreshRemainingSeconds])
 
   const handleChange = (field) => (event) => {
     setForm((prev) => ({ ...prev, [field]: event.target.value }))
@@ -115,7 +199,9 @@ export const LoginPage = () => {
         deviceId: getDeviceId(),
         deviceName: getDeviceName(),
       }).unwrap()
-      setLockUntil(null)
+      setLoginLockUntil(null)
+      setRefreshLockUntil(null)
+      clearRefreshLock()
       clearLegacyActiveSessionsStorage()
       dispatch(baseApi.util.resetApiState())
       dispatch(
@@ -131,7 +217,7 @@ export const LoginPage = () => {
         (typeof err?.data?.message === 'object' ? err.data.message?.lockUntil : null)
       const parsedLockUntil = parseLockUntil(lockValue)
       if (parsedLockUntil) {
-        setLockUntil(parsedLockUntil)
+        setLoginLockUntil(parsedLockUntil)
         const seconds =
           Number(err?.data?.remainingSeconds) ||
           Number(
@@ -153,9 +239,39 @@ export const LoginPage = () => {
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
+        position: 'relative',
       }}
     >
-      <ThemeToggle sx={{ position: 'fixed', top: 16, right: 16 }} />
+      {refreshRemainingSeconds > 0 ? (
+        <Box
+          sx={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1400,
+            bgcolor: 'rgba(0, 0, 0, 0.72)',
+            color: 'common.white',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 1.5,
+            px: 2,
+            textAlign: 'center',
+          }}
+        >
+          <Typography variant="h6" fontWeight={700}>
+            Ekran vaqtincha bloklandi
+          </Typography>
+          <Typography variant="body1">
+            Sahifa juda ko‘p yangilandi. Iltimos, kuting.
+          </Typography>
+          <Typography variant="h4" fontWeight={700} sx={{ fontVariantNumeric: 'tabular-nums' }}>
+            {refreshCountdownLabel}
+          </Typography>
+        </Box>
+      ) : null}
+
+      <ThemeToggle sx={{ position: 'fixed', top: 16, right: 16, zIndex: 1500 }} />
 
       <AppContainer
         sx={{
@@ -183,9 +299,10 @@ export const LoginPage = () => {
           value={form.login}
           onChange={handleChange('login')}
           autoComplete="username"
-          autoFocus
+          autoFocus={remainingSeconds <= 0}
           required
           fullWidth
+          disabled={remainingSeconds > 0}
         />
 
         <TextField
@@ -199,6 +316,7 @@ export const LoginPage = () => {
           autoComplete="current-password"
           required
           fullWidth
+          disabled={remainingSeconds > 0}
           slotProps={{
             input: {
               endAdornment: (

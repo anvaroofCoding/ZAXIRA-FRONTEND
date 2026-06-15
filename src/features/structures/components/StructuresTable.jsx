@@ -68,13 +68,9 @@ export const StructuresTable = ({
                 <BooleanChip value={structure.hasWarehouse} />
               </TableCell>
               <TableCell>
-                {structure.hasLeader ? (
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {structure.leaderName?.trim() || '—'}
-                  </Typography>
-                ) : (
-                  <BooleanChip value={false} />
-                )}
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {structure.leaderName?.trim() || '—'}
+                </Typography>
               </TableCell>
               <TableCell>
                 <Chip

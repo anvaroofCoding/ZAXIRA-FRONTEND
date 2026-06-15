@@ -22,7 +22,7 @@ import Typography from '@mui/material/Typography'
 import { useGetStructuresQuery } from '@/features/structures/api/structuresApi'
 import { filterStructuresWithWarehouse } from '@/features/structures/utils/structureFilters'
 import { useCreateWarehouseDispatchMutation } from '@/features/warehouse-dispatches/api/warehouseDispatchesApi'
-import { DispatchQrSection } from '@/features/warehouse-dispatches/components/DispatchQrSection'
+import { DispatchNakladnoyTable } from '@/features/warehouse-dispatches/components/DispatchNakladnoyTable'
 import {
   getItemNomenclatureCode,
   NOMENCLATURE_COLUMN_LABEL,
@@ -213,7 +213,7 @@ export const DispatchToWarehouseDialog = ({
                   </Button>
                 </Stack>
 
-                <DispatchQrSection dispatch={createdDispatch} />
+                <DispatchNakladnoyTable dispatch={createdDispatch} />
               </Stack>
             ) : null}
           </Stack>

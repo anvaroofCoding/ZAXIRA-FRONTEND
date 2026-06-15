@@ -22,7 +22,7 @@ import Typography from '@mui/material/Typography'
 import { useGetStructuresQuery } from '@/features/structures/api/structuresApi'
 import { filterStructuresWithWarehouse } from '@/features/structures/utils/structureFilters'
 import { useCreateTransferMutation } from '@/features/transfer/api/transferApi'
-import { DispatchQrSection } from '@/features/warehouse-dispatches/components/DispatchQrSection'
+import { DispatchNakladnoyTable } from '@/features/warehouse-dispatches/components/DispatchNakladnoyTable'
 import {
   getItemNomenclatureCode,
   NOMENCLATURE_COLUMN_LABEL,
@@ -176,7 +176,7 @@ export const CreateTransferDialog = ({ open, request, onClose, onSuccess }) => {
                     Nakladnoy Word
                   </Button>
                 </Stack>
-                <DispatchQrSection dispatch={createdTransfer} />
+                <DispatchNakladnoyTable dispatch={createdTransfer} />
               </Stack>
             ) : null}
           </Stack>

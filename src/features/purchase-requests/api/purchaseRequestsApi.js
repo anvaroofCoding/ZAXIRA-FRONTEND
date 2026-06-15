@@ -96,6 +96,50 @@ const submitSessionWithFiles = async (
   return { data: unwrapApiPayload(payload) }
 }
 
+const updateRequestWithDocuments = async (
+  requestId,
+  bildirgiFile,
+  kelishuvFile,
+  token,
+  payload,
+) => {
+  const formData = new FormData()
+  formData.append('bildirgi', bildirgiFile, bildirgiFile.name || 'bildirgi.docx')
+  formData.append('kelishuv', kelishuvFile, kelishuvFile.name || 'kelishuv.docx')
+  formData.append('payload', JSON.stringify(sanitizeSessionPayload(payload)))
+
+  const response = await fetch(
+    `${env.apiBaseUrl}/purchase-requests/${requestId}/update-with-documents`,
+    {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    },
+  )
+
+  let responsePayload = null
+  try {
+    responsePayload = await response.json()
+  } catch {
+    responsePayload = null
+  }
+
+  if (!response.ok) {
+    const message =
+      responsePayload?.message ?? responsePayload?.error ?? 'Arizani yangilab bo‘lmadi'
+    return {
+      error: {
+        status: response.status,
+        data: {
+          message: Array.isArray(message) ? message[0] ?? 'Arizani yangilab bo‘lmadi' : message,
+        },
+      },
+    }
+  }
+
+  return { data: unwrapApiPayload(responsePayload) }
+}
+
 const resolveActiveSessionsUserId = (api) => selectAuthUser(api.getState())?.id ?? null
 
 const sanitizeSessionPayload = (body, { minimal = false } = {}) => {
@@ -261,10 +305,13 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
       ],
     }),
     markItemsUnavailable: builder.mutation({
-      query: ({ id, itemIndexes, comment }) => ({
+      query: ({ id, itemIndexes, unavailableItems, comment }) => ({
         url: `/purchase-requests/${id}/purchase/unavailable`,
         method: 'POST',
-        body: { itemIndexes, comment },
+        body: {
+          ...(unavailableItems ? { unavailableItems } : { itemIndexes }),
+          comment,
+        },
       }),
       invalidatesTags: (_result, _error, { id }) => [
         { type: API_TAGS.PURCHASE_REQUEST, id },
@@ -280,6 +327,55 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
       invalidatesTags: (_result, _error, { id }) => [
         { type: API_TAGS.PURCHASE_REQUEST, id },
         API_TAGS.PURCHASE_REQUEST,
+      ],
+    }),
+    createEditPurchaseRequestSession: builder.mutation({
+      query: (requestId) => ({
+        url: `/purchase-requests/${requestId}/edit-session`,
+        method: 'POST',
+      }),
+      invalidatesTags: [API_TAGS.PURCHASE_REQUEST_SESSION],
+    }),
+    updatePurchaseRequestWithDocuments: builder.mutation({
+      queryFn: async (arg, api) => {
+        const requestId = arg?.requestId
+        const bildirgiFile = arg?.bildirgiFile
+        const kelishuvFile = arg?.kelishuvFile
+        const sessionPayload = arg?.sessionPayload
+
+        if (!requestId) {
+          return {
+            error: {
+              status: 400,
+              data: { message: 'Ariza aniqlanmadi' },
+            },
+          }
+        }
+
+        if (!bildirgiFile || !kelishuvFile) {
+          return {
+            error: {
+              status: 400,
+              data: {
+                message: 'Bildirgi va kelishuv Word fayllari yuborilishi shart',
+              },
+            },
+          }
+        }
+
+        const token = selectAccessToken(api.getState())
+        return updateRequestWithDocuments(
+          requestId,
+          bildirgiFile,
+          kelishuvFile,
+          token,
+          sessionPayload ?? arg,
+        )
+      },
+      invalidatesTags: (_result, _error, { requestId }) => [
+        { type: API_TAGS.PURCHASE_REQUEST, id: requestId },
+        API_TAGS.PURCHASE_REQUEST,
+        API_TAGS.PURCHASE_REQUEST_SESSION,
       ],
     }),
     getPurchaseRequestSessions: builder.query({
@@ -694,6 +790,8 @@ export const {
   useDeletePurchaseRequestSessionMutation,
   useCreatePurchaseRequestMutation,
   useUpdatePurchaseRequestMutation,
+  useCreateEditPurchaseRequestSessionMutation,
+  useUpdatePurchaseRequestWithDocumentsMutation,
   useGetPurchaseRequestHistoryQuery,
   useGetApprovalInboxQuery,
   useSubmitApprovalDecisionMutation,

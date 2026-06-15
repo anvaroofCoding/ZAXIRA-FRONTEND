@@ -1,0 +1,145 @@
+import Grid from '@mui/material/Grid'
+import Paper from '@mui/material/Paper'
+import Stack from '@mui/material/Stack'
+import Table from '@mui/material/Table'
+import TableBody from '@mui/material/TableBody'
+import TableCell from '@mui/material/TableCell'
+import TableContainer from '@mui/material/TableContainer'
+import TableHead from '@mui/material/TableHead'
+import TableRow from '@mui/material/TableRow'
+import Typography from '@mui/material/Typography'
+import { dispatchCodeSx } from '@/features/warehouse-dispatches/utils/dispatchCodeDisplay'
+import {
+  getItemNomenclatureCode,
+  NOMENCLATURE_COLUMN_LABEL,
+  nomenclatureTableCellSx,
+} from '@/features/warehouse/utils/itemNomenclature'
+import { formatDateTime } from '@/shared/utils/formatDate'
+
+const MetaItem = ({ label, value }) => (
+  <Stack spacing={0.25}>
+    <Typography variant="caption" color="text.secondary">
+      {label}
+    </Typography>
+    <Typography variant="body2" fontWeight={600}>
+      {value}
+    </Typography>
+  </Stack>
+)
+
+export const DispatchNakladnoyTable = ({ dispatch }) => {
+  if (!dispatch) {
+    return null
+  }
+
+  const items = dispatch.items ?? []
+
+  return (
+    <Paper variant="outlined" sx={{ overflow: 'hidden' }}>
+      <BoxHeader dispatch={dispatch} />
+
+      <TableContainer>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell width={48}>T/R</TableCell>
+              <TableCell>Tovar</TableCell>
+              <TableCell>Xususiyat</TableCell>
+              <TableCell width={160}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
+              <TableCell width={90} align="right">
+                Soni
+              </TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {items.length ? (
+              items.map((item, index) => (
+                <TableRow key={item.itemIndex ?? index}>
+                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" fontWeight={600}>
+                      {item.name}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>{item.characteristics?.trim() || '—'}</TableCell>
+                  <TableCell sx={nomenclatureTableCellSx}>
+                    {getItemNomenclatureCode(item)}
+                  </TableCell>
+                  <TableCell align="right">{item.quantityDispatched} ta</TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={5}>
+                  <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
+                    Tovarlar yo‘q
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Paper>
+  )
+}
+
+const BoxHeader = ({ dispatch }) => (
+  <Stack
+    spacing={2}
+    sx={{
+      px: 2,
+      py: 1.5,
+      borderBottom: 1,
+      borderColor: 'divider',
+      bgcolor: 'grey.50',
+    }}
+  >
+    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+      <Typography variant="subtitle2" fontWeight={700}>
+        Nakladnoy
+      </Typography>
+      <Typography component="span" variant="body2" sx={dispatchCodeSx}>
+        {dispatch.dispatchCode}
+      </Typography>
+    </Stack>
+
+    <Grid container spacing={2}>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <MetaItem label="Ariza" value={dispatch.requestCode || '—'} />
+      </Grid>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <MetaItem
+          label="Qabul qiluvchi"
+          value={`${dispatch.targetStructure?.shortName || '—'} — ${dispatch.targetStructure?.fullName || '—'}`}
+        />
+      </Grid>
+      {dispatch.sourceStructure ? (
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <MetaItem
+            label="Jo‘natuvchi"
+            value={`${dispatch.sourceStructure.shortName} — ${dispatch.sourceStructure.fullName}`}
+          />
+        </Grid>
+      ) : null}
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <MetaItem label="Jo‘natilgan sana" value={formatDateTime(dispatch.dispatchedAt)} />
+      </Grid>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <MetaItem
+          label="Rejalashtirilgan kelish"
+          value={formatDateTime(dispatch.plannedArrivalAt)}
+        />
+      </Grid>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <MetaItem label="Holat" value={dispatch.statusLabel || '—'} />
+      </Grid>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <MetaItem
+          label="Jo‘natuvchi xodim"
+          value={dispatch.dispatchedBy?.displayName || dispatch.dispatchedBy?.login || '—'}
+        />
+      </Grid>
+    </Grid>
+  </Stack>
+)

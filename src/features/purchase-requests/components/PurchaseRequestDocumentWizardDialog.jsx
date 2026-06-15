@@ -15,6 +15,7 @@ import { ForceLightModeScope } from '@/shared/theme/ForceLightModeScope'
 import {
   usePreparePurchaseRequestDocumentsMutation,
   useSubmitPurchaseRequestSessionMutation,
+  useUpdatePurchaseRequestWithDocumentsMutation,
   useUploadSessionDocumentMutation,
 } from '@/features/purchase-requests/api/purchaseRequestsApi'
 import { exportSuperDocBlob } from '@/features/purchase-requests/utils/exportSuperDocBlob'
@@ -31,10 +32,13 @@ const STEPS = ['Bildirgi', 'Kelishuv varaqasi']
 
 export const PurchaseRequestDocumentWizardDialog = ({
   open,
+  mode = 'create',
+  requestId = null,
   sessionId,
   sessionPayload = null,
   onClose,
   onSubmitted,
+  onUpdated,
 }) => {
   const [activeStep, setActiveStep] = useState(0)
   const [prepared, setPrepared] = useState(false)
@@ -49,6 +53,10 @@ export const PurchaseRequestDocumentWizardDialog = ({
   const [prepareDocuments, prepareState] = usePreparePurchaseRequestDocumentsMutation()
   const [uploadDocument, uploadState] = useUploadSessionDocumentMutation()
   const [submitSession, submitState] = useSubmitPurchaseRequestSessionMutation()
+  const [updateWithDocuments, updateWithDocumentsState] =
+    useUpdatePurchaseRequestWithDocumentsMutation()
+
+  const isEditMode = mode === 'edit'
 
   const resetEditorState = useCallback(() => {
     setDocumentFile(null)
@@ -125,6 +133,7 @@ export const PurchaseRequestDocumentWizardDialog = ({
     documentLoading ||
     uploadState.isLoading ||
     submitSession.isLoading ||
+    updateWithDocumentsState.isLoading ||
     saving
 
   const handleEditorReady = useCallback((instance) => {
@@ -170,6 +179,23 @@ export const PurchaseRequestDocumentWizardDialog = ({
 
       const kelishuvFile = await saveCurrentDocument()
 
+      if (isEditMode) {
+        if (!requestId) {
+          throw new Error('Tahrirlanayotgan ariza aniqlanmadi')
+        }
+
+        const updated = await updateWithDocuments({
+          requestId,
+          sessionPayload: sessionPayload ?? undefined,
+          bildirgiFile,
+          kelishuvFile,
+        }).unwrap()
+
+        onUpdated?.(updated)
+        onClose?.()
+        return
+      }
+
       const created = await submitSession({
         sessionId,
         bildirgiFile,
@@ -179,7 +205,12 @@ export const PurchaseRequestDocumentWizardDialog = ({
       onSubmitted?.(created)
       onClose?.()
     } catch (submitError) {
-      setError(getApiErrorMessage(submitError, 'Arizani yuborib bo‘lmadi'))
+      setError(
+        getApiErrorMessage(
+          submitError,
+          isEditMode ? 'Arizani yangilab bo‘lmadi' : 'Arizani yuborib bo‘lmadi',
+        ),
+      )
     } finally {
       setSaving(false)
     }
@@ -206,7 +237,7 @@ export const PurchaseRequestDocumentWizardDialog = ({
     >
       <DialogTitle component="div" sx={{ pb: 1, flexShrink: 0 }}>
         <Typography component="p" variant="h6" fontWeight={600}>
-          Hujjatlarni tahrirlash
+          {isEditMode ? 'Hujjatlarni tahrirlash (ariza yangilash)' : 'Hujjatlarni tahrirlash'}
         </Typography>
         <Typography component="p" variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           {stepInfo.title} — {stepInfo.hint}
@@ -288,6 +319,8 @@ export const PurchaseRequestDocumentWizardDialog = ({
           >
             {saving ? (
               <CircularProgress size={20} color="inherit" />
+            ) : isEditMode ? (
+              'Saqlash'
             ) : (
               'Saqlash va yuborish'
             )}

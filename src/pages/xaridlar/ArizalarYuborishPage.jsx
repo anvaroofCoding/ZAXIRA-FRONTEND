@@ -24,6 +24,7 @@ import { PurchaseRequestsPageSkeleton } from '@/features/purchase-requests/compo
 import { PurchaseRequestsTable } from '@/features/purchase-requests/components/PurchaseRequestsTable'
 import {
   useCreatePurchaseRequestMutation,
+  useCreateEditPurchaseRequestSessionMutation,
   useCreatePurchaseRequestSessionMutation,
   useDeletePurchaseRequestMutation,
   useDeletePurchaseRequestSessionMutation,
@@ -32,7 +33,6 @@ import {
   useResubmitPurchaseRequestMutation,
   useSavePurchaseRequestSessionMutation,
   useSubmitPurchaseRequestSessionMutation,
-  useUpdatePurchaseRequestMutation,
 } from '@/features/purchase-requests/api/purchaseRequestsApi'
 import { canDeletePurchaseRequest } from '@/features/purchase-requests/utils/purchaseRequestDelete'
 import {
@@ -67,6 +67,7 @@ export const ArizalarYuborishPage = () => {
   const [editTarget, setEditTarget] = useState(null)
   const [documentWizardSessionId, setDocumentWizardSessionId] = useState(null)
   const [documentWizardPayload, setDocumentWizardPayload] = useState(null)
+  const [editDocumentWizard, setEditDocumentWizard] = useState(null)
 
   const debouncedSearch = useDebouncedValue(search, 350)
 
@@ -103,7 +104,8 @@ export const ArizalarYuborishPage = () => {
     useDeletePurchaseRequestSessionMutation()
   const [resubmitPurchaseRequest, resubmitState] = useResubmitPurchaseRequestMutation()
   const [deletePurchaseRequest, deleteState] = useDeletePurchaseRequestMutation()
-  const [updatePurchaseRequest, updateState] = useUpdatePurchaseRequestMutation()
+  const [createEditSession, createEditSessionState] =
+    useCreateEditPurchaseRequestSessionMutation()
 
   const items = useMemo(() => requestsQuery.data?.items ?? [], [requestsQuery.data?.items])
   const total = requestsQuery.data?.total ?? 0
@@ -277,18 +279,44 @@ export const ArizalarYuborishPage = () => {
     setEditTarget(item)
   }
 
-  const handleUpdate = async (payload) => {
+  const handleContinueToEditDocuments = async (payload) => {
     if (!editTarget?.id) return
 
     try {
-      const updated = await updatePurchaseRequest({ id: editTarget.id, ...payload }).unwrap()
+      const session = await createEditSession(editTarget.id).unwrap()
+
+      await savePurchaseRequestSession({ id: session.id, ...payload }).unwrap()
+
       setEditTarget(null)
-      setDetailTarget(null)
-      showSnackbar(`Ariza ${updated.requestCode} yangilandi`)
+      setEditDocumentWizard({
+        sessionId: session.id,
+        requestId: editTarget.id,
+        payload,
+      })
     } catch (error) {
-      const message = getApiErrorMessage(error, 'Tahrirlashda xatolik')
+      const message = getApiErrorMessage(error, 'Tahrirlash seansini ochib bo‘lmadi')
       throw new Error(message, { cause: error })
     }
+  }
+
+  const handleEditWizardUpdated = async (updated) => {
+    const sessionId = editDocumentWizard?.sessionId
+
+    setEditDocumentWizard(null)
+
+    if (sessionId) {
+      try {
+        await deletePurchaseRequestSession(sessionId).unwrap()
+      } catch {
+        // seans allaqachon o‘chirilgan bo‘lishi mumkin
+      }
+    }
+
+    if (updated?.id) {
+      setDetailTarget(updated)
+    }
+
+    showSnackbar(`Ariza ${updated?.requestCode ?? ''} yangilandi`)
   }
 
   const handleConfirmDelete = async () => {
@@ -430,6 +458,7 @@ export const ArizalarYuborishPage = () => {
 
       <PurchaseRequestDocumentWizardDialog
         open={Boolean(documentWizardSessionId)}
+        mode="create"
         sessionId={documentWizardSessionId}
         sessionPayload={documentWizardPayload}
         onClose={() => {
@@ -439,12 +468,23 @@ export const ArizalarYuborishPage = () => {
         onSubmitted={handleWizardSubmitted}
       />
 
+      <PurchaseRequestDocumentWizardDialog
+        open={Boolean(editDocumentWizard)}
+        mode="edit"
+        requestId={editDocumentWizard?.requestId ?? null}
+        sessionId={editDocumentWizard?.sessionId ?? null}
+        sessionPayload={editDocumentWizard?.payload ?? null}
+        onClose={() => setEditDocumentWizard(null)}
+        onUpdated={handleEditWizardUpdated}
+      />
+
       <PurchaseRequestFormDialog
         open={Boolean(editTarget)}
         request={editTarget}
-        loading={updateState.isLoading}
+        loading={createEditSessionState.isLoading}
         onClose={() => setEditTarget(null)}
-        onSubmit={handleUpdate}
+        onSubmit={handleContinueToEditDocuments}
+        submitLabel="Davom etish"
       />
 
       <PurchaseRequestDetailDialog

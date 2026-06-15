@@ -43,6 +43,7 @@ const buildPendingRow = (item, index) => ({
   name: item.name,
   characteristics: item.characteristics,
   quantity: String(item.quantity),
+  originalQuantity: item.quantity,
   unit: item.unit?.trim() || 'dona',
   amount: '',
 })
@@ -56,6 +57,14 @@ const resolveUnitOptions = (currentUnit) => {
 
   return MEASUREMENT_UNITS
 }
+
+const isItemPending = (item) => !item.isPurchased && !item.isPurchaseUnavailable
+
+const buildPendingRowsFromRequest = (request) =>
+  (request?.items ?? [])
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => isItemPending(item))
+    .map(({ item, index }) => buildPendingRow(item, index))
 
 const formatAmountInput = (value) => {
   const digits = value.replace(/\D/g, '')
@@ -108,6 +117,17 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
     )
   }, [liveRequest?.purchaseUnavailableBatches])
 
+  const pendingItemsSignature = useMemo(
+    () =>
+      (liveRequest?.items ?? [])
+        .map(
+          (item, index) =>
+            `${index}:${item.quantity}:${item.isPurchased}:${item.isPurchaseUnavailable}`,
+        )
+        .join('|'),
+    [liveRequest?.items],
+  )
+
   useEffect(() => {
     if (!open || !liveRequest) {
       return
@@ -117,13 +137,11 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
     setDispatchBatch(null)
     setLinks([])
     setFileRows([])
-    const unpurchased = liveRequest.items
-      .map((item, index) => ({ item, index }))
-      .filter(({ item }) => isItemPending(item))
+    setPendingRows(buildPendingRowsFromRequest(liveRequest))
 
-    setPendingRows(unpurchased.map(({ item, index }) => buildPendingRow(item, index)))
+    const unpurchasedCount = buildPendingRowsFromRequest(liveRequest).length
 
-    if (unpurchased.length) {
+    if (unpurchasedCount) {
       setActiveTab(0)
     } else if ((liveRequest.purchaseBatches ?? []).length) {
       setActiveTab(1)
@@ -132,7 +150,7 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
     }
 
     setError('')
-  }, [open, liveRequest?.id, liveRequest?.updatedAt])
+  }, [open, liveRequest?.id, liveRequest?.updatedAt, pendingItemsSignature])
 
   const selectedRows = pendingRows.filter((row) => row.selected)
 
@@ -170,6 +188,13 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
         return
       }
 
+      if (quantity > row.originalQuantity) {
+        setError(
+          `${row.itemIndex + 1}-tovar soni so‘ralgan miqdordan (${row.originalQuantity}) ko‘p bo‘lishi mumkin emas`,
+        )
+        return
+      }
+
       if (!amount || amount < 1) {
         setError(`${row.itemIndex + 1}-tovar summasi kiritilishi shart`)
         return
@@ -202,7 +227,31 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
     formData.append('fileLabels', JSON.stringify(fileLabels))
 
     try {
-      await completePurchase({ id: liveRequest.id, formData }).unwrap()
+      const result = await completePurchase({ id: liveRequest.id, formData }).unwrap()
+      const remainingItems = (result.items ?? []).filter(
+        (item) => !item.isPurchased && !item.isPurchaseUnavailable,
+      )
+      const remainingCount = remainingItems.length
+      const remainingQuantity = remainingItems.reduce(
+        (sum, item) => sum + Number(item.quantity ?? 0),
+        0,
+      )
+
+      if (remainingCount > 0) {
+        setPendingRows(buildPendingRowsFromRequest(result))
+        setActiveTab(0)
+        onSuccess?.(
+          remainingQuantity > remainingCount
+            ? `Qisman xarid qilindi — ${remainingQuantity} dona navbatda qoldi`
+            : `${selectedRows.length} ta tovar xarid qilindi — ${remainingCount} ta tovar navbatda qoldi`,
+        )
+        setComment('')
+        setLinks([])
+        setFileRows([])
+        setError('')
+        return
+      }
+
       onSuccess?.()
       onClose()
     } catch (submitError) {
@@ -227,14 +276,57 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
       return
     }
 
+    for (const row of selectedRows) {
+      const quantity = Number(row.quantity)
+
+      if (!Number.isFinite(quantity) || quantity < 1) {
+        setError(`${row.itemIndex + 1}-tovar soni noto‘g‘ri`)
+        return
+      }
+
+      if (quantity > row.originalQuantity) {
+        setError(
+          `${row.itemIndex + 1}-tovar soni so‘ralgan miqdordan (${row.originalQuantity}) ko‘p bo‘lishi mumkin emas`,
+        )
+        return
+      }
+    }
+
     try {
-      await markItemsUnavailable({
+      const result = await markItemsUnavailable({
         id: liveRequest.id,
-        itemIndexes: selectedRows.map((row) => row.itemIndex),
+        unavailableItems: selectedRows.map((row) => ({
+          itemIndex: row.itemIndex,
+          quantity: Math.round(Number(row.quantity)),
+        })),
         comment: trimmedComment,
       }).unwrap()
+
+      const remainingItems = (result.items ?? []).filter(
+        (item) => !item.isPurchased && !item.isPurchaseUnavailable,
+      )
+      const remainingCount = remainingItems.length
+      const remainingQuantity = remainingItems.reduce(
+        (sum, item) => sum + Number(item.quantity ?? 0),
+        0,
+      )
+
       setComment('')
+
+      if (remainingCount > 0) {
+        setPendingRows(buildPendingRowsFromRequest(result))
+        setActiveTab(0)
+        onSuccess?.(
+          remainingQuantity > remainingCount
+            ? `Qisman belgilandi — ${remainingQuantity} dona navbatda qoldi`
+            : `${selectedRows.length} ta tovar belgilandi — ${remainingCount} ta tovar navbatda qoldi`,
+        )
+        setError('')
+        return
+      }
+
       onSuccess?.('Tovarlar xarid qilib bo‘lmaydi deb belgilandi')
+      onClose()
     } catch (submitError) {
       setError(getApiErrorMessage(submitError, 'Belgilanishda xatolik'))
     }
@@ -293,7 +385,9 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
             {hasPending ? (
               <Typography variant="body2" color="text.secondary">
                 Izoh, havola va fayllar shu xarid partiyasiga saqlanadi va «Xarid qilingan tovarlar»
-                bo‘limida alohida karta sifatida ko‘rinadi.
+                bo‘limida alohida karta sifatida ko‘rinadi. Sonni kamaytirsangiz (masalan, 20 o‘rniga
+                10), qolgan miqdor xarid navbatida alohida qator sifatida qoladi — xarid qilishda ham,
+                «Xarid qilib bo‘lmaydi» da ham.
               </Typography>
             ) : null}
 
@@ -475,11 +569,17 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
                               size="small"
                               fullWidth
                               disabled={!row.selected}
+                              helperText={
+                                row.selected && row.originalQuantity > 1
+                                  ? `So‘ralgan: ${row.originalQuantity}`
+                                  : undefined
+                              }
                               slotProps={{
                                 htmlInput: {
                                   inputMode: 'numeric',
                                   pattern: '[0-9]*',
                                   min: 1,
+                                  max: row.originalQuantity,
                                   style: { textAlign: 'center' },
                                 },
                               }}

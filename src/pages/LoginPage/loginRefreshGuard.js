@@ -1,10 +1,12 @@
 const REFRESH_LIMIT = 10
+const RAPID_REFRESH_GAP_MS = 2000
 
 /** 1-chi: 10s, 2-chi: 30s, 3-chi: 60s, 4-chi: 2min, 5-chi: 5min, keyin yana 10s dan */
 export const REFRESH_BLOCK_DURATIONS_SEC = [10, 30, 60, 120, 300]
 
 const STORAGE_KEYS = {
   refreshCount: 'zaxira_login_refresh_count',
+  lastRefreshAt: 'zaxira_login_refresh_last_at',
   escalation: 'zaxira_login_refresh_escalation',
   lockUntil: 'zaxira_login_refresh_lock_until',
   visited: 'zaxira_login_refresh_seen',
@@ -47,7 +49,7 @@ export const clearExpiredRefreshLock = () => {
 
 /**
  * Login sahifasi yuklanganda chaqiriladi.
- * 10 marta ketma-ket refresh bo‘lsa, blok vaqti qo‘llanadi.
+ * 2 soniyadan kam oraliq bilan ketma-ket 10 marta refresh bo‘lsa, blok qo‘llanadi.
  */
 export const recordLoginPageRefresh = () => {
   clearExpiredRefreshLock()
@@ -64,6 +66,8 @@ export const recordLoginPageRefresh = () => {
   const hasVisited = window.sessionStorage.getItem(STORAGE_KEYS.visited)
   if (!hasVisited) {
     window.sessionStorage.setItem(STORAGE_KEYS.visited, '1')
+    window.sessionStorage.setItem(STORAGE_KEYS.refreshCount, '0')
+    window.sessionStorage.setItem(STORAGE_KEYS.lastRefreshAt, String(Date.now()))
     return {
       triggered: false,
       lockUntil: null,
@@ -72,11 +76,26 @@ export const recordLoginPageRefresh = () => {
     }
   }
 
+  const now = Date.now()
+  const lastRefreshAt = Number.parseInt(
+    window.sessionStorage.getItem(STORAGE_KEYS.lastRefreshAt) ?? '0',
+    10,
+  )
   const previousCount = Number.parseInt(
     window.sessionStorage.getItem(STORAGE_KEYS.refreshCount) ?? '0',
     10,
   )
-  const nextCount = (Number.isFinite(previousCount) ? previousCount : 0) + 1
+
+  const isRapidRefresh =
+    Number.isFinite(lastRefreshAt) &&
+    lastRefreshAt > 0 &&
+    now - lastRefreshAt < RAPID_REFRESH_GAP_MS
+
+  const nextCount = isRapidRefresh
+    ? (Number.isFinite(previousCount) ? previousCount : 0) + 1
+    : 1
+
+  window.sessionStorage.setItem(STORAGE_KEYS.lastRefreshAt, String(now))
 
   if (nextCount < REFRESH_LIMIT) {
     window.sessionStorage.setItem(STORAGE_KEYS.refreshCount, String(nextCount))

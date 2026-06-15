@@ -59,6 +59,14 @@ export const PurchasingQueueTable = ({
         <TableBody>
           {items.map((item) => {
             const purchasedCount = item.items.filter((row) => row.isPurchased).length
+            const pendingCount =
+              item.pendingPurchaseItemCount ??
+              item.items.filter((row) => !row.isPurchased && !row.isPurchaseUnavailable).length
+            const pendingQuantity =
+              item.pendingPurchaseQuantity ??
+              item.items
+                .filter((row) => !row.isPurchased && !row.isPurchaseUnavailable)
+                .reduce((sum, row) => sum + Number(row.quantity ?? 0), 0)
             const hasPurchase = purchasedCount > 0
             const displayDate = hasPurchase ? item.purchase?.purchasedAt : item.createdAt
 
@@ -89,8 +97,12 @@ export const PurchasingQueueTable = ({
                 </TableCell>
                 <TableCell align="right">
                   <Typography variant="body2">
-                    {hasPurchase
-                      ? `${purchasedCount}/${item.items.length}`
+                    {pendingCount > 0
+                      ? pendingQuantity > pendingCount
+                        ? `${pendingQuantity} dona qolgan`
+                        : hasPurchase
+                          ? `${pendingCount} qolgan / ${item.items.length} ta`
+                          : `${item.items.length} ta`
                       : `${item.items.length} ta`}
                   </Typography>
                 </TableCell>
@@ -113,9 +125,8 @@ export const PurchasingQueueTable = ({
                   <Stack
                     direction="row"
                     spacing={0.75}
-                    justifyContent="flex-end"
-                    flexWrap="wrap"
                     useFlexGap
+                    sx={{ justifyContent: 'flex-end', flexWrap: 'wrap' }}
                   >
                     {item.canRejectPurchase && onReject ? (
                       <Button

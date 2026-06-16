@@ -1,18 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
-import SearchIcon from '@mui/icons-material/Search'
+import { useCallback, useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import InputAdornment from '@mui/material/InputAdornment'
 import Snackbar from '@mui/material/Snackbar'
 import TablePagination from '@mui/material/TablePagination'
-import TextField from '@mui/material/TextField'
-import Typography from '@mui/material/Typography'
 import { useGetApprovalInboxQuery } from '@/features/purchase-requests/api/purchaseRequestsApi'
 import { PurchaseApprovalsTable } from '@/features/purchase-requests/components/PurchaseApprovalsTable'
 import { PurchaseRequestApprovalDetailDialog } from '@/features/purchase-requests/components/PurchaseRequestApprovalDetailDialog'
 import { PurchaseRequestsPageSkeleton } from '@/features/purchase-requests/components/PurchaseRequestsPageSkeleton'
+import { PurchasingPageFilters } from '@/features/purchase-requests/components/PurchasingPageFilters'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
-import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
+import { usePurchasingListFilters } from '@/shared/hooks/usePurchasingListFilters'
 import { useSubmittedDocumentDownload } from '@/features/purchase-requests/hooks/useSubmittedDocumentDownload'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
@@ -20,30 +17,47 @@ const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
 
 export const ArizalarniTasdiqlashPage = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState(0)
-  const [rowsPerPage, setRowsPerPage] = useState(10)
   const [detailTarget, setDetailTarget] = useState(null)
 
-  const debouncedSearch = useDebouncedValue(search, 350)
+  const {
+    search,
+    setSearch,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+    queryParams,
+    clearFilters,
+    hasActiveFilters,
+    structureFilter,
+    setStructureFilter,
+    structureFilterReady,
+    viewerStructureId,
+  } = usePurchasingListFilters(10, {
+    withStructureFilter: true,
+    structureFilterDefault: 'all',
+  })
 
-  useEffect(() => {
-    setPage(0)
-  }, [debouncedSearch])
-
-  const inboxQuery = useGetApprovalInboxQuery({
-    page: page + 1,
-    limit: rowsPerPage,
-    search: debouncedSearch,
+  const inboxQuery = useGetApprovalInboxQuery(queryParams, {
+    skip: !structureFilterReady,
+    refetchOnMountOrArgChange: true,
   })
 
   const items = useMemo(() => inboxQuery.data?.items ?? [], [inboxQuery.data?.items])
   const total = inboxQuery.data?.total ?? 0
+  const structuresForFilter = useMemo(
+    () => inboxQuery.data?.structureFilters ?? [],
+    [inboxQuery.data?.structureFilters],
+  )
   const isReady = !inboxQuery.isLoading && !inboxQuery.isUninitialized
 
-  const showSnackbar = (message, severity = 'success') => {
+  const showSnackbar = useCallback((message, severity = 'success') => {
     setSnackbar({ open: true, message, severity })
-  }
+  }, [])
 
   const { downloadingId, downloadHandlers } = useSubmittedDocumentDownload({
     onError: (error) => showSnackbar(error.message || 'Yuklab olishda xatolik', 'error'),
@@ -64,25 +78,24 @@ export const ArizalarniTasdiqlashPage = () => {
         }
       >
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Typography variant="h5" component="h1" fontWeight={600}>
-            Arizalarni tasdiqlash
-          </Typography>
-
-          <TextField
-            size="small"
-            placeholder="Qidirish"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            sx={{ minWidth: { xs: '100%', sm: 280 }, maxWidth: 400 }}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" color="action" />
-                  </InputAdornment>
-                ),
-              },
-            }}
+          <PurchasingPageFilters
+            title="Arizalarni tasdiqlash"
+            subtitle="Tuzilma va sana bo‘yicha filtrlang"
+            search={search}
+            onSearchChange={setSearch}
+            dateFrom={dateFrom}
+            onDateFromChange={setDateFrom}
+            dateTo={dateTo}
+            onDateToChange={setDateTo}
+            dateFromLabel="Yuborilgan (dan)"
+            dateToLabel="Yuborilgan (gacha)"
+            onClearFilters={clearFilters}
+            hasActiveFilters={hasActiveFilters}
+            structureFilter={structureFilter}
+            onStructureFilterChange={setStructureFilter}
+            structures={structuresForFilter}
+            structureFilterDisabled={!structureFilterReady}
+            viewerStructureId={viewerStructureId}
           />
 
           {inboxQuery.isError ? (

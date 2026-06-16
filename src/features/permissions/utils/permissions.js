@@ -23,6 +23,9 @@ const isLegacyStrippedActions = (path, actions) => {
 export const isPageActionDisabled = (path, actionKey) =>
   disabledActionsForPath(path).includes(actionKey)
 
+export const isAccessOnlyPage = (path) =>
+  PERMISSION_ACTION_KEYS.every((key) => isPageActionDisabled(path, key))
+
 const sanitizePageActions = (path, actions = {}) => {
   const next = { ...actions }
   disabledActionsForPath(path).forEach((key) => {
@@ -41,7 +44,7 @@ const sanitizePagePermission = (path, page) => {
 
 const WAREHOUSE_EXPENSE_PATH = '/omborlar/chiqim-qilish'
 const WAREHOUSE_EXPENSE_LABEL = 'Chiqim (Dashboard tugmasi)'
-const ALWAYS_ALLOWED_PATHS = new Set(['/chat'])
+const ALWAYS_ALLOWED_PATHS = new Set(['/chat', '/sozlamalar'])
 
 const isAlwaysAllowedPath = (path) => ALWAYS_ALLOWED_PATHS.has(path)
 

@@ -51,9 +51,17 @@ const { MeningOmborimPage } = lazyImport(
   () => import('@/pages/omborlar'),
   'MeningOmborimPage',
 )
+const { TavarImportQilishPage } = lazyImport(
+  () => import('@/pages/omborlar'),
+  'TavarImportQilishPage',
+)
 const { BoshqaOmborlarPage } = lazyImport(
   () => import('@/pages/omborlar'),
   'BoshqaOmborlarPage',
+)
+const { Omborlar2DPage } = lazyImport(
+  () => import('@/pages/omborlar'),
+  'Omborlar2DPage',
 )
 const { ChiqimQilishPage } = lazyImport(
   () => import('@/pages/omborlar'),
@@ -107,7 +115,36 @@ const { SozlamalarPage } = lazyImport(
   'SozlamalarPage',
 )
 
+const { PurchaseRequestVerifyPublicPage } = lazyImport(
+  () => import('@/pages/public'),
+  'PurchaseRequestVerifyPublicPage',
+)
+const { PurchaseRequestPdfPublicPage } = lazyImport(
+  () => import('@/pages/public'),
+  'PurchaseRequestPdfPublicPage',
+)
+const { NakladnoyPdfPublicPage } = lazyImport(
+  () => import('@/pages/public'),
+  'NakladnoyPdfPublicPage',
+)
+
 export const routes = [
+  {
+    path: '/public/ariza/tekshirish/:token',
+    Component: PurchaseRequestVerifyPublicPage,
+  },
+  {
+    path: '/public/ariza/:id/pdf',
+    element: <PurchaseRequestPdfPublicPage variant="bildirgi" />,
+  },
+  {
+    path: '/public/ariza/:id/kelishuv-pdf',
+    element: <PurchaseRequestPdfPublicPage variant="kelishuv" />,
+  },
+  {
+    path: '/public/nakladnoy/:id/pdf',
+    Component: NakladnoyPdfPublicPage,
+  },
   {
     path: '/403',
     Component: ForbiddenPage,
@@ -138,6 +175,10 @@ export const routes = [
           {
             path: 'dashboard',
             Component: DashboardPage,
+          },
+          {
+            path: 'dashboard/tavar-import',
+            element: <Navigate to="/omborlar/tavar-import-qilish" replace />,
           },
           {
             path: 'dashboard/kalendar',
@@ -180,8 +221,16 @@ export const routes = [
             Component: MeningOmborimPage,
           },
           {
+            path: 'omborlar/tavar-import-qilish',
+            Component: TavarImportQilishPage,
+          },
+          {
             path: 'omborlar/boshqa-omborlar',
             Component: BoshqaOmborlarPage,
+          },
+          {
+            path: 'omborlar/2d-omborlar',
+            Component: Omborlar2DPage,
           },
           {
             path: 'omborlar/chiqim-qilish',

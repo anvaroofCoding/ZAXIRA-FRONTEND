@@ -9,7 +9,6 @@ import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
-import Divider from '@mui/material/Divider'
 import FormControl from '@mui/material/FormControl'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
@@ -291,8 +290,6 @@ export const ProfileModal = ({ open, onClose }) => {
             </Stack>
           </Box>
 
-          <Divider />
-
           <Box>
             <Typography variant="subtitle2" fontWeight={600} gutterBottom>
               Faol qurilmalar
@@ -364,8 +361,6 @@ export const ProfileModal = ({ open, onClose }) => {
               </Stack>
             )}
           </Box>
-
-          <Divider />
 
           <Box>
             <Button

@@ -1,6 +1,7 @@
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import BuildCircleOutlinedIcon from '@mui/icons-material/BuildCircleOutlined'
+import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined'
 import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined'
 import ShoppingCartCheckoutOutlinedIcon from '@mui/icons-material/ShoppingCartCheckoutOutlined'
 import UndoOutlinedIcon from '@mui/icons-material/UndoOutlined'
@@ -17,6 +18,10 @@ const EVENT_META = {
   purchase_receipt: {
     color: 'success.main',
     icon: ShoppingCartCheckoutOutlinedIcon,
+  },
+  import: {
+    color: 'success.main',
+    icon: FileUploadOutlinedIcon,
   },
   transfer_in: {
     color: 'info.main',
@@ -109,13 +114,33 @@ export const WarehouseItemHistoryTimeline = ({
               {!isLast ? (
                 <Box
                   sx={{
-                    width: 2,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
                     flexGrow: 1,
-                    minHeight: 24,
-                    bgcolor: 'divider',
                     my: 0.5,
+                    minHeight: 24,
                   }}
-                />
+                >
+                  <Box
+                    sx={{
+                      width: 1,
+                      flexGrow: 1,
+                      bgcolor: 'divider',
+                    }}
+                  />
+                  <Box
+                    sx={{
+                      width: 0,
+                      height: 0,
+                      borderLeft: '3px solid transparent',
+                      borderRight: '3px solid transparent',
+                      borderTop: '4px solid',
+                      borderTopColor: 'divider',
+                      mt: '-1px',
+                    }}
+                  />
+                </Box>
               ) : null}
             </Box>
 

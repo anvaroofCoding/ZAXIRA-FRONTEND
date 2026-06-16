@@ -8,10 +8,10 @@ import { createAppTheme } from './createAppTheme'
  * Also sets document color-scheme to light so third-party widgets (e.g. SuperDoc) stay light.
  */
 export const ForceLightModeScope = ({ active = true, children }) => {
-  const { primaryColor } = useColorMode()
+  const { primaryColor, statusColors } = useColorMode()
   const lightTheme = useMemo(
-    () => createAppTheme('light', primaryColor),
-    [primaryColor],
+    () => createAppTheme('light', primaryColor, statusColors),
+    [primaryColor, statusColors],
   )
 
   useEffect(() => {

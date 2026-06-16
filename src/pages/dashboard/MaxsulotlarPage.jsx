@@ -13,7 +13,6 @@ import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
 import Paper from '@mui/material/Paper'
-import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -35,7 +34,6 @@ import {
   nomenclatureTableCellSx,
 } from '@/features/warehouse/utils/itemNomenclature'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
-import { PageShell } from '@/shared/components/layout/PageShell'
 import { useAppDispatch } from '@/shared/hooks/useAppDispatch'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { usePermissions } from '@/shared/hooks/usePermissions'
@@ -133,44 +131,42 @@ export const MaxsulotlarPage = () => {
   }
 
   return (
-    <Box>
-      <Typography variant="h5" component="h1" fontWeight={700} sx={{ mb: 2 }}>
-        Maxsulotlar
-      </Typography>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Box>
+        <Typography variant="h5" component="h1" fontWeight={700}>
+          Maxsulotlar
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          «Omborga qabul qilindi» statusidagi tovarlar ro‘yxati. Arxivlash faqat nomni
+          yashiradi — ombordagi qoldiq o‘zgarmaydi.
+        </Typography>
+      </Box>
 
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        «Omborga qabul qilindi» statusidagi tovarlar ro‘yxati. Arxivlash faqat nomni
-        yashiradi — ombordagi qoldiq o‘zgarmaydi.
-      </Typography>
+      <TextField
+        size="small"
+        placeholder="Qidirish"
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+        sx={{ maxWidth: 400 }}
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" color="action" />
+              </InputAdornment>
+            ),
+          },
+        }}
+      />
 
       {productsQuery.isError ? (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error">
           {getApiErrorMessage(productsQuery.error, 'Maxsulotlar yuklanmadi')}
         </Alert>
       ) : null}
 
-      <PageShell sx={{ p: 0, overflow: 'hidden' }}>
-        <Box sx={{ px: { xs: 2, sm: 2.5 }, pt: { xs: 2, sm: 2.5 }, pb: 1.5 }}>
-          <TextField
-            size="small"
-            fullWidth
-            placeholder="Nom, nomeklatura, barcode yoki xususiyat bo‘yicha qidirish"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" />
-                  </InputAdornment>
-                ),
-              },
-            }}
-          />
-        </Box>
-
-        <QuerySkeleton loading={productsQuery.isLoading && !productsQuery.data}>
-          <TableContainer component={Paper} variant="outlined" elevation={0}>
+      <QuerySkeleton loading={productsQuery.isLoading && !productsQuery.data}>
+        <TableContainer component={Paper} variant="outlined" elevation={0}>
             <Table size="small" stickyHeader>
               <TableHead>
                 <TableRow>
@@ -246,21 +242,20 @@ export const MaxsulotlarPage = () => {
             </Table>
           </TableContainer>
 
-          <TablePagination
-            component="div"
-            count={total}
-            page={page}
-            onPageChange={(_event, nextPage) => setPage(nextPage)}
-            rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={(event) => {
-              setRowsPerPage(Number.parseInt(event.target.value, 10))
-              setPage(0)
-            }}
-            rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
-            labelRowsPerPage="Qatorlar:"
-          />
-        </QuerySkeleton>
-      </PageShell>
+        <TablePagination
+          component="div"
+          count={total}
+          page={page}
+          onPageChange={(_event, nextPage) => setPage(nextPage)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(event) => {
+            setRowsPerPage(Number.parseInt(event.target.value, 10))
+            setPage(0)
+          }}
+          rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
+          labelRowsPerPage="Qatorlar:"
+        />
+      </QuerySkeleton>
 
       <Dialog open={Boolean(archiveTarget)} onClose={() => setArchiveTarget(null)}>
         <DialogTitle>Maxsulotni arxivlash</DialogTitle>

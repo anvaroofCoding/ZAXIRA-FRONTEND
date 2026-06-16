@@ -160,7 +160,9 @@ const resubmitRequestWithDocuments = async (
     'payload',
     JSON.stringify({
       ...sanitizeSessionPayload(payload),
-      ...(payload?.resubmitTarget ? { resubmitTarget: payload.resubmitTarget } : {}),
+      commissionMemberIds: payload?.commissionMemberIds ?? [],
+      bossId: payload?.bossId ?? '',
+      resubmitTarget: payload?.resubmitTarget === 'boss' ? 'boss' : 'commission',
       ...(payload?.resubmitToMemberIds?.length
         ? { resubmitToMemberIds: payload.resubmitToMemberIds }
         : {}),
@@ -267,12 +269,22 @@ const buildInboxQueryParams = ({ page, limit, search, dateFrom, dateTo, inboxTyp
 export const purchaseRequestsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getPurchaseRequests: builder.query({
-      query: ({ page = 1, limit = 10, search = '' } = {}) => ({
+      query: ({
+        page = 1,
+        limit = 10,
+        search = '',
+        status = '',
+        dateFrom,
+        dateTo,
+      } = {}) => ({
         url: '/purchase-requests',
         params: {
           page,
           limit,
           ...(search.trim() ? { search: search.trim() } : {}),
+          ...(status ? { status } : {}),
+          ...(dateFrom ? { dateFrom } : {}),
+          ...(dateTo ? { dateTo } : {}),
         },
       }),
       providesTags: (result) => {
@@ -777,13 +789,23 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
       providesTags: [API_TAGS.PURCHASE_REQUEST],
     }),
     getApprovalInbox: builder.query({
-      query: ({ page = 1, limit = 10, search = '' } = {}) => ({
+      query: ({
+        page = 1,
+        limit = 10,
+        search = '',
+        dateFrom,
+        dateTo,
+        structureId,
+      } = {}) => ({
         url: '/purchase-requests/approvals/inbox',
-        params: {
+        params: buildInboxQueryParams({
           page,
           limit,
-          ...(search.trim() ? { search: search.trim() } : {}),
-        },
+          search,
+          dateFrom,
+          dateTo,
+          structureId,
+        }),
       }),
       providesTags: (result) => {
         if (!result?.items?.length) {

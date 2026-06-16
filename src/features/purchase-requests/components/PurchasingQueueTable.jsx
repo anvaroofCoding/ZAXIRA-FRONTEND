@@ -1,5 +1,9 @@
-import Button from '@mui/material/Button'
+import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined'
+import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined'
+import ShoppingCartCheckoutOutlinedIcon from '@mui/icons-material/ShoppingCartCheckoutOutlined'
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import Chip from '@mui/material/Chip'
+import IconButton from '@mui/material/IconButton'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
@@ -8,6 +12,7 @@ import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { getPurchaseRequestStatusLabel, getStatusChipColor } from '@/features/purchase-requests/utils/purchaseRequestStatus'
 import { formatDateTime } from '@/shared/utils/formatDate'
@@ -16,6 +21,17 @@ import { formatUzs } from '@/shared/utils/formatUzs'
 const stopRowClick = (event) => {
   event.stopPropagation()
 }
+
+const countDispatchableBatches = (item) =>
+  (item.purchaseBatches ?? []).filter((batch) => batch.canDispatchToWarehouse).length
+
+const ActionIconButton = ({ title, color = 'default', onClick, children }) => (
+  <Tooltip title={title} arrow>
+    <IconButton size="small" color={color} aria-label={title} onClick={onClick}>
+      {children}
+    </IconButton>
+  </Tooltip>
+)
 
 export const PurchasingQueueTable = ({
   items,
@@ -50,7 +66,7 @@ export const PurchasingQueueTable = ({
             <TableCell width={130} align="right">
               Jami summa
             </TableCell>
-            <TableCell width={280} align="right">
+            <TableCell width={128} align="right">
               Amallar
             </TableCell>
           </TableRow>
@@ -68,7 +84,23 @@ export const PurchasingQueueTable = ({
                 .filter((row) => !row.isPurchased && !row.isPurchaseUnavailable)
                 .reduce((sum, row) => sum + Number(row.quantity ?? 0), 0)
             const hasPurchase = purchasedCount > 0
+            const dispatchableBatchCount = countDispatchableBatches(item)
+            const awaitingWarehouseDispatch =
+              dispatchableBatchCount > 0 || item.canDispatchToWarehouse
             const displayDate = hasPurchase ? item.purchase?.purchasedAt : item.createdAt
+
+            const itemsSummary =
+              pendingCount > 0
+                ? pendingQuantity > pendingCount
+                  ? `${pendingQuantity} dona qolgan`
+                  : hasPurchase
+                    ? `${pendingCount} qolgan / ${item.items.length} ta`
+                    : `${item.items.length} ta`
+                : awaitingWarehouseDispatch
+                  ? dispatchableBatchCount > 1
+                    ? `${dispatchableBatchCount} partiya omborga jo‘natilmagan`
+                    : 'Omborga jo‘natish kutilmoqda'
+                  : `${item.items.length} ta`
 
             return (
               <TableRow
@@ -96,15 +128,7 @@ export const PurchasingQueueTable = ({
                   </Typography>
                 </TableCell>
                 <TableCell align="right">
-                  <Typography variant="body2">
-                    {pendingCount > 0
-                      ? pendingQuantity > pendingCount
-                        ? `${pendingQuantity} dona qolgan`
-                        : hasPurchase
-                          ? `${pendingCount} qolgan / ${item.items.length} ta`
-                          : `${item.items.length} ta`
-                      : `${item.items.length} ta`}
-                  </Typography>
+                  <Typography variant="body2">{itemsSummary}</Typography>
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2" noWrap>
@@ -121,45 +145,42 @@ export const PurchasingQueueTable = ({
                     {hasPurchase ? formatUzs(item.purchaseTotalAmount) : '—'}
                   </Typography>
                 </TableCell>
-                <TableCell align="right" onClick={stopRowClick}>
+                <TableCell align="right" onClick={stopRowClick} sx={{ whiteSpace: 'nowrap' }}>
                   <Stack
                     direction="row"
-                    spacing={0.75}
-                    useFlexGap
-                    sx={{ justifyContent: 'flex-end', flexWrap: 'wrap' }}
+                    spacing={0.25}
+                    sx={{ justifyContent: 'flex-end', alignItems: 'center' }}
                   >
-                    {item.canRejectPurchase && onReject ? (
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="error"
-                        onClick={() => onReject(item)}
-                      >
-                        Rad etish
-                      </Button>
-                    ) : null}
                     {item.canCompletePurchase && onPurchase ? (
-                      <Button
-                        size="small"
-                        variant="contained"
+                      <ActionIconButton
+                        title="Xarid qilish"
                         color="success"
                         onClick={() => onPurchase(item)}
                       >
-                        Xarid qilish
-                      </Button>
+                        <ShoppingCartCheckoutOutlinedIcon fontSize="small" />
+                      </ActionIconButton>
                     ) : null}
                     {item.canDispatchToWarehouse && onDispatch ? (
-                      <Button
-                        size="small"
-                        variant="contained"
+                      <ActionIconButton
+                        title="Omborga jo‘natish"
+                        color="primary"
                         onClick={() => onDispatch(item)}
                       >
-                        Omborga jo‘natish
-                      </Button>
+                        <LocalShippingOutlinedIcon fontSize="small" />
+                      </ActionIconButton>
                     ) : null}
-                    <Button size="small" variant="outlined" onClick={() => onView(item)}>
-                      Batafsil
-                    </Button>
+                    {item.canRejectPurchase && onReject ? (
+                      <ActionIconButton
+                        title="Rad etish"
+                        color="error"
+                        onClick={() => onReject(item)}
+                      >
+                        <BlockOutlinedIcon fontSize="small" />
+                      </ActionIconButton>
+                    ) : null}
+                    <ActionIconButton title="Batafsil" onClick={() => onView(item)}>
+                      <VisibilityOutlinedIcon fontSize="small" />
+                    </ActionIconButton>
                   </Stack>
                 </TableCell>
               </TableRow>

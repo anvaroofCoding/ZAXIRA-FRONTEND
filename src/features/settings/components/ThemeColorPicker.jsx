@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react'
-import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined'
-import RestartAltOutlinedIcon from '@mui/icons-material/RestartAltOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Grid from '@mui/material/Grid'
@@ -57,13 +55,10 @@ export const ThemeColorPicker = () => {
   }
 
   return (
-    <Stack spacing={2.5}>
-      <Stack direction="row" alignItems="center" spacing={1}>
-        <PaletteOutlinedIcon color="primary" />
-        <Typography variant="subtitle1" fontWeight={600}>
-          Interfeys rangi
-        </Typography>
-      </Stack>
+    <Stack spacing={2}>
+      <Typography variant="subtitle1" fontWeight={600}>
+        Interfeys rangi
+      </Typography>
 
       <Grid container spacing={1}>
         {THEME_COLOR_PRESETS.map((preset) => (
@@ -127,7 +122,6 @@ export const ThemeColorPicker = () => {
 
         <Button
           variant="text"
-          startIcon={<RestartAltOutlinedIcon />}
           onClick={resetPrimaryColor}
           disabled={isDefault}
         >

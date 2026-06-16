@@ -16,6 +16,7 @@ export const ActiveSessionsPanel = ({
   loading,
   deletingId,
   maxSessions = 10,
+  infoMessage = 'To‘ldirilmagan arizalar saqlanib qoladi. Istagan paytda davom eting yoki o‘chiring.',
   onContinue,
   onDelete,
 }) => {
@@ -38,7 +39,7 @@ export const ActiveSessionsPanel = ({
       </Stack>
 
       <Alert severity="info" sx={{ mb: 1.5 }}>
-        To‘ldirilmagan arizalar saqlanib qoladi. Istagan paytda davom eting yoki o‘chiring.
+        {infoMessage}
       </Alert>
 
       <Stack spacing={1}>

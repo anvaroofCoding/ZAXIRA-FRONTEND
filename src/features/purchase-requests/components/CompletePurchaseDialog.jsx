@@ -21,6 +21,7 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Tabs from '@mui/material/Tabs'
 import TextField from '@mui/material/TextField'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import {
   useCompletePurchaseMutation,
@@ -28,6 +29,7 @@ import {
   useMarkItemsUnavailableMutation,
 } from '@/features/purchase-requests/api/purchaseRequestsApi'
 import { PurchaseBatchCard } from '@/features/purchase-requests/components/PurchaseBatchCard'
+import { PurchaseRequestItemCharacteristicsField } from '@/features/purchase-requests/components/PurchaseRequestItemCharacteristicsField'
 import { PurchaseUnavailableBatchCard } from '@/features/purchase-requests/components/PurchaseUnavailableBatchCard'
 import { DispatchToWarehouseDialog } from '@/features/warehouse-dispatches/components/DispatchToWarehouseDialog'
 import { MEASUREMENT_UNITS } from '@/features/purchase-requests/constants/measurementUnits'
@@ -487,24 +489,34 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
               </Tabs>
 
               {activeTab === 0 && hasPending ? (
-                <TableContainer>
-                  <Table size="small">
+                <TableContainer sx={{ maxHeight: 440, overflow: 'auto' }}>
+                  <Table size="small" stickyHeader sx={{ tableLayout: 'fixed', minWidth: 820 }}>
                     <TableHead>
                       <TableRow>
-                        <TableCell padding="checkbox" width={48}>
+                        <TableCell padding="checkbox" width={48} sx={{ verticalAlign: 'top' }}>
                           Tanlash
                         </TableCell>
-                        <TableCell sx={{ minWidth: 140 }}>Olib beriladigan nomi</TableCell>
-                        <TableCell sx={{ minWidth: 180 }}>Xususiyat</TableCell>
-                        <TableCell width={120}>Soni</TableCell>
-                        <TableCell width={150}>Birlik</TableCell>
-                        <TableCell width={150}>Summa (1 dona)</TableCell>
+                        <TableCell sx={{ minWidth: 200, width: '22%', verticalAlign: 'top' }}>
+                          Olib beriladigan nomi
+                        </TableCell>
+                        <TableCell sx={{ minWidth: 220, width: '30%', verticalAlign: 'top' }}>
+                          Xususiyat
+                        </TableCell>
+                        <TableCell width={108} sx={{ verticalAlign: 'top' }}>
+                          Soni
+                        </TableCell>
+                        <TableCell width={130} sx={{ verticalAlign: 'top' }}>
+                          Birlik
+                        </TableCell>
+                        <TableCell width={150} sx={{ verticalAlign: 'top' }}>
+                          Summa (1 dona)
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {pendingRows.map((row, rowIndex) => (
                         <TableRow key={row.itemIndex} selected={row.selected}>
-                          <TableCell padding="checkbox">
+                          <TableCell padding="checkbox" sx={{ verticalAlign: 'top', pt: 1.25 }}>
                             <Checkbox
                               checked={row.selected}
                               onChange={(event) =>
@@ -518,50 +530,60 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
                               }
                             />
                           </TableCell>
-                          <TableCell>
-                            <TextField
-                              value={row.name}
-                              onChange={(event) =>
-                                setPendingRows((prev) =>
-                                  prev.map((entry, entryIndex) =>
-                                    entryIndex === rowIndex
-                                      ? { ...entry, name: event.target.value }
-                                      : entry,
-                                  ),
-                                )
-                              }
-                              size="small"
-                              fullWidth
-                              disabled={!row.selected}
-                            />
+                          <TableCell sx={{ verticalAlign: 'top', py: 1 }}>
+                            <Tooltip
+                              title={row.name.length > 40 ? row.name : ''}
+                              placement="top-start"
+                              slotProps={{ popper: { sx: { maxWidth: 360 } } }}
+                            >
+                              <TextField
+                                value={row.name}
+                                onChange={(event) =>
+                                  setPendingRows((prev) =>
+                                    prev.map((entry, entryIndex) =>
+                                      entryIndex === rowIndex
+                                        ? { ...entry, name: event.target.value }
+                                        : entry,
+                                    ),
+                                  )
+                                }
+                                size="small"
+                                fullWidth
+                                disabled={!row.selected}
+                                slotProps={{
+                                  htmlInput: {
+                                    style: { textOverflow: 'ellipsis' },
+                                  },
+                                }}
+                              />
+                            </Tooltip>
                           </TableCell>
-                          <TableCell>
-                            <TextField
+                          <TableCell sx={{ verticalAlign: 'top', py: 1 }}>
+                            <PurchaseRequestItemCharacteristicsField
                               value={row.characteristics}
-                              onChange={(event) =>
+                              disabled={!row.selected}
+                              onChange={(nextValue) =>
                                 setPendingRows((prev) =>
                                   prev.map((entry, entryIndex) =>
                                     entryIndex === rowIndex
-                                      ? { ...entry, characteristics: event.target.value }
+                                      ? { ...entry, characteristics: nextValue }
                                       : entry,
                                   ),
                                 )
                               }
-                              size="small"
-                              fullWidth
-                              multiline
-                              minRows={1}
-                              disabled={!row.selected}
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell sx={{ verticalAlign: 'top', py: 1 }}>
                             <TextField
                               value={row.quantity}
                               onChange={(event) =>
                                 setPendingRows((prev) =>
                                   prev.map((entry, entryIndex) =>
                                     entryIndex === rowIndex
-                                      ? { ...entry, quantity: event.target.value.replace(/\D/g, '') }
+                                      ? {
+                                          ...entry,
+                                          quantity: event.target.value.replace(/\D/g, ''),
+                                        }
                                       : entry,
                                   ),
                                 )
@@ -569,11 +591,6 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
                               size="small"
                               fullWidth
                               disabled={!row.selected}
-                              helperText={
-                                row.selected && row.originalQuantity > 1
-                                  ? `So‘ralgan: ${row.originalQuantity}`
-                                  : undefined
-                              }
                               slotProps={{
                                 htmlInput: {
                                   inputMode: 'numeric',
@@ -583,10 +600,19 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
                                   style: { textAlign: 'center' },
                                 },
                               }}
-                              sx={{ minWidth: 96 }}
+                              sx={{ minWidth: 72 }}
                             />
+                            {row.selected && row.originalQuantity > 1 ? (
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ display: 'block', mt: 0.25, textAlign: 'center', lineHeight: 1.2 }}
+                              >
+                                So‘ralgan: {row.originalQuantity}
+                              </Typography>
+                            ) : null}
                           </TableCell>
-                          <TableCell>
+                          <TableCell sx={{ verticalAlign: 'top', py: 1 }}>
                             <TextField
                               select
                               value={row.unit}
@@ -602,7 +628,7 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
                               size="small"
                               fullWidth
                               disabled={!row.selected}
-                              sx={{ minWidth: 130 }}
+                              sx={{ minWidth: 110 }}
                             >
                               {resolveUnitOptions(row.unit).map((unit) => (
                                 <MenuItem key={unit} value={unit}>
@@ -611,7 +637,7 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
                               ))}
                             </TextField>
                           </TableCell>
-                          <TableCell>
+                          <TableCell sx={{ verticalAlign: 'top', py: 1 }}>
                             <TextField
                               value={row.amount}
                               onChange={(event) =>

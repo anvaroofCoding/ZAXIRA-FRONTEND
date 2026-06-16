@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AddIcon from '@mui/icons-material/Add'
-import SearchIcon from '@mui/icons-material/Search'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -10,10 +9,8 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogTitle from '@mui/material/DialogTitle'
-import InputAdornment from '@mui/material/InputAdornment'
 import Snackbar from '@mui/material/Snackbar'
 import TablePagination from '@mui/material/TablePagination'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { ActiveSessionsPanel } from '@/features/purchase-requests/components/ActiveSessionsPanel'
 import { PurchaseRequestDetailDialog } from '@/features/purchase-requests/components/PurchaseRequestDetailDialog'
@@ -21,6 +18,7 @@ import { PurchaseRequestDocumentWizardDialog } from '@/features/purchase-request
 import { PurchaseRequestFormDialog } from '@/features/purchase-requests/components/PurchaseRequestFormDialog'
 import { PurchaseRequestsPageSkeleton } from '@/features/purchase-requests/components/PurchaseRequestsPageSkeleton'
 import { PurchaseRequestsTable } from '@/features/purchase-requests/components/PurchaseRequestsTable'
+import { SubmittedRequestsPageFilters } from '@/features/purchase-requests/components/SubmittedRequestsPageFilters'
 import {
   useCreatePurchaseRequestMutation,
   useCreateEditPurchaseRequestSessionMutation,
@@ -40,7 +38,7 @@ import {
 } from '@/features/purchase-requests/utils/purchaseRequestEdit'
 import { hasPageAction } from '@/features/permissions/utils/permissions'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
-import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
+import { useSubmittedRequestsListFilters } from '@/shared/hooks/useSubmittedRequestsListFilters'
 import { usePermissions } from '@/shared/hooks/usePermissions'
 import { useSubmittedDocumentDownload } from '@/features/purchase-requests/hooks/useSubmittedDocumentDownload'
 import { isLocalActiveSessionId } from '@/features/purchase-requests/utils/activeSessionsStorage'
@@ -57,9 +55,23 @@ export const ArizalarYuborishPage = () => {
   const [activeSessionId, setActiveSessionId] = useState(null)
   const [deleteSessionTarget, setDeleteSessionTarget] = useState(null)
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState(0)
-  const [rowsPerPage, setRowsPerPage] = useState(10)
+  const {
+    search,
+    setSearch,
+    status,
+    setStatus,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+    queryParams,
+    clearFilters,
+    hasActiveFilters,
+  } = useSubmittedRequestsListFilters(10)
   const [detailTarget, setDetailTarget] = useState(null)
   const [resubmitTarget, setResubmitTarget] = useState(null)
   const [resubmitPreselectedMemberIds, setResubmitPreselectedMemberIds] = useState([])
@@ -83,18 +95,13 @@ export const ArizalarYuborishPage = () => {
     setResubmitMode('commission')
   }, [])
 
-  const debouncedSearch = useDebouncedValue(search, 350)
+  const requestsQuery = useGetPurchaseRequestsQuery(queryParams)
 
   const isSuperAdmin =
     authUser?.isSuperAdmin || authUser?.role === 'SUPER_ADMIN'
   const canCreate =
     isSuperAdmin || hasPageAction(authUser, PAGE_PATH, 'create')
 
-  const requestsQuery = useGetPurchaseRequestsQuery({
-    page: page + 1,
-    limit: rowsPerPage,
-    search: debouncedSearch,
-  })
   const sessionsQuery = useGetPurchaseRequestSessionsQuery(undefined, {
     skip: !canCreate,
   })
@@ -441,21 +448,17 @@ export const ArizalarYuborishPage = () => {
             />
           ) : null}
 
-          <TextField
-            size="small"
-            placeholder="Qidirish"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            sx={{ minWidth: { xs: '100%', sm: 280 }, maxWidth: 400 }}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" color="action" />
-                  </InputAdornment>
-                ),
-              },
-            }}
+          <SubmittedRequestsPageFilters
+            search={search}
+            onSearchChange={setSearch}
+            status={status}
+            onStatusChange={setStatus}
+            dateFrom={dateFrom}
+            onDateFromChange={setDateFrom}
+            dateTo={dateTo}
+            onDateToChange={setDateTo}
+            onClearFilters={clearFilters}
+            hasActiveFilters={hasActiveFilters}
           />
 
           {requestsQuery.isError ? (

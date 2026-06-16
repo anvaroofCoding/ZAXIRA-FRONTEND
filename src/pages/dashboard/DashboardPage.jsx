@@ -16,6 +16,7 @@ import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
 import Button from '@mui/material/Button'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
+import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import { LineChart } from '@mui/x-charts/LineChart'
@@ -24,6 +25,7 @@ import dayjs from 'dayjs'
 import { useNavigate } from 'react-router-dom'
 import { useGetStructuresQuery } from '@/features/structures/api/structuresApi'
 import { useGetDashboardDailyMaxQuery, useGetDashboardSummaryQuery } from '@/features/dashboard/api/dashboardApi'
+import { TAVAR_IMPORT_PAGE_PATH } from '@/features/permissions/constants'
 import { usePermissions } from '@/shared/hooks/usePermissions'
 import { formatUzs } from '@/shared/utils/formatUzs'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
@@ -201,6 +203,7 @@ export const DashboardPage = () => {
   const canAccessExpense = canAccess('/omborlar/chiqim-qilish')
   const hasDashboardAccess = canAccess('/dashboard')
   const canViewProducts = canAccess('/dashboard/maxsulotlar')
+  const canImportProducts = canAccess(TAVAR_IMPORT_PAGE_PATH)
   const canExpense = Boolean(isSuperAdmin || hasExpensePermission || canAccessExpense)
 
   const { data: structures = [] } = useGetStructuresQuery()
@@ -284,11 +287,23 @@ export const DashboardPage = () => {
         </Typography>
 
         <Stack direction="row" spacing={1.25} sx={{ ml: 'auto', alignItems: 'center' }}>
+          {canImportProducts ? (
+            <Button
+              variant="outlined"
+              startIcon={<FileUploadOutlinedIcon />}
+              onClick={() => navigate(TAVAR_IMPORT_PAGE_PATH)}
+              sx={{ textTransform: 'none' }}
+            >
+              Tavar import
+            </Button>
+          ) : null}
+
           {hasDashboardAccess ? (
             <Button
               variant="outlined"
               startIcon={<CalendarMonthIcon />}
               onClick={() => navigate('/dashboard/kalendar')}
+              sx={{ textTransform: 'none' }}
             >
               Kalendar
             </Button>
@@ -298,6 +313,7 @@ export const DashboardPage = () => {
             <Button
               variant="outlined"
               onClick={() => navigate('/dashboard/maxsulotlar')}
+              sx={{ textTransform: 'none' }}
             >
               Maxsulotlar
             </Button>
@@ -307,6 +323,7 @@ export const DashboardPage = () => {
             <Button
               variant="contained"
               onClick={() => navigate('/omborlar/chiqim-qilish')}
+              sx={{ textTransform: 'none' }}
             >
               Chiqim
             </Button>

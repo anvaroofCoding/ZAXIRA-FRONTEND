@@ -26,8 +26,10 @@ export const NAV_ITEMS = [
     type: 'group',
     label: 'Omborlar',
     children: [
+      { label: 'Tavar import qilish', path: '/omborlar/tavar-import-qilish' },
       { label: 'Mening omborim', path: '/omborlar/mening-omborim' },
       { label: 'Boshqa omborlar', path: '/omborlar/boshqa-omborlar' },
+      { label: '2D Omborlar', path: '/omborlar/2d-omborlar' },
     ],
   },
   {
@@ -50,11 +52,6 @@ export const NAV_ITEMS = [
       },
       { label: 'Boshqaruv', path: '/invertarizatsiya/boshqaruv' },
     ],
-  },
-  {
-    type: 'link',
-    label: 'Sozlamalar',
-    path: '/sozlamalar',
   },
   {
     type: 'group',

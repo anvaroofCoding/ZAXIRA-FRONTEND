@@ -1,4 +1,4 @@
-export const NOMENCLATURE_COLUMN_LABEL = 'Nomeklatura raqami'
+export const NOMENCLATURE_COLUMN_LABEL = 'Nomeklatura'
 
 export const getItemNomenclatureCode = (item) => {
   const value =

@@ -10,6 +10,13 @@ import {
   resetStoredThemeColor,
   setStoredThemeColor,
 } from './themeColor'
+import {
+  DEFAULT_STATUS_COLORS,
+  STATUS_COLORS_CHANGED,
+  getStoredStatusColors,
+  resetStoredStatusColors,
+  setStoredStatusColors,
+} from './statusColors'
 
 const STORAGE_KEY = 'zaxira-color-mode'
 
@@ -24,6 +31,7 @@ const getInitialMode = () => {
 export const ColorModeProvider = ({ children }) => {
   const [mode, setMode] = useState(getInitialMode)
   const [primaryColor, setPrimaryColorState] = useState(getStoredThemeColor)
+  const [statusColors, setStatusColorsState] = useState(getStoredStatusColors)
 
   useEffect(() => {
     const syncThemeColor = () => {
@@ -32,6 +40,15 @@ export const ColorModeProvider = ({ children }) => {
 
     window.addEventListener(THEME_COLOR_CHANGED, syncThemeColor)
     return () => window.removeEventListener(THEME_COLOR_CHANGED, syncThemeColor)
+  }, [])
+
+  useEffect(() => {
+    const syncStatusColors = () => {
+      setStatusColorsState(getStoredStatusColors())
+    }
+
+    window.addEventListener(STATUS_COLORS_CHANGED, syncStatusColors)
+    return () => window.removeEventListener(STATUS_COLORS_CHANGED, syncStatusColors)
   }, [])
 
   const toggleMode = useCallback(() => {
@@ -50,9 +67,17 @@ export const ColorModeProvider = ({ children }) => {
     setPrimaryColorState(resetStoredThemeColor())
   }, [])
 
+  const setStatusColors = useCallback((colors) => {
+    setStatusColorsState(setStoredStatusColors(colors))
+  }, [])
+
+  const resetStatusColors = useCallback(() => {
+    setStatusColorsState(resetStoredStatusColors())
+  }, [])
+
   const theme = useMemo(
-    () => createAppTheme(mode, primaryColor),
-    [mode, primaryColor],
+    () => createAppTheme(mode, primaryColor, statusColors),
+    [mode, primaryColor, statusColors],
   )
 
   const contextValue = useMemo(
@@ -63,8 +88,21 @@ export const ColorModeProvider = ({ children }) => {
       setPrimaryColor,
       resetPrimaryColor,
       defaultPrimaryColor: DEFAULT_PRIMARY_COLOR,
+      statusColors,
+      setStatusColors,
+      resetStatusColors,
+      defaultStatusColors: DEFAULT_STATUS_COLORS,
     }),
-    [mode, primaryColor, resetPrimaryColor, setPrimaryColor, toggleMode],
+    [
+      mode,
+      primaryColor,
+      resetPrimaryColor,
+      resetStatusColors,
+      setPrimaryColor,
+      setStatusColors,
+      statusColors,
+      toggleMode,
+    ],
   )
 
   return (

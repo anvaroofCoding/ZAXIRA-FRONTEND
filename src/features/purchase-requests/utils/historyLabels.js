@@ -19,4 +19,6 @@ export const PURCHASE_REQUEST_STATUS_OPTIONS = [
   { value: 'BOSS_DECISION_PENDING', label: 'Boshliq kelishmoqda' },
   { value: 'PURCHASING', label: 'Sotib olinmoqda' },
   { value: 'PURCHASED', label: 'Xarid qilindi' },
+  { value: 'WAREHOUSE_IN_TRANSIT', label: 'Omborga jo‘natilgan' },
+  { value: 'WAREHOUSE_COMPLETED', label: 'Omborga qabul qilindi' },
 ]

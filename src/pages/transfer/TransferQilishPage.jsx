@@ -5,7 +5,6 @@ import RemoveIcon from '@mui/icons-material/Remove'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import FormControl from '@mui/material/FormControl'
 import InputLabel from '@mui/material/InputLabel'
@@ -21,6 +20,7 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TablePagination from '@mui/material/TablePagination'
 import TableRow from '@mui/material/TableRow'
+import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useGetWarehouseInventoryByLocationQuery, useGetWarehouseLocationsQuery } from '@/features/warehouse/api/warehouseApi'
 import { CreateTransferDialog } from '@/features/transfer/components/CreateTransferDialog'
@@ -35,6 +35,12 @@ import {
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
+
+const clampInt = (value, min, max) => {
+  const n = Number.parseInt(String(value ?? ''), 10)
+  if (Number.isNaN(n)) return min
+  return Math.max(min, Math.min(max, n))
+}
 
 export const TransferQilishPage = () => {
   const {
@@ -155,6 +161,39 @@ export const TransferQilishPage = () => {
     )
   }
 
+  const setQuantity = (row, nextQty) => {
+    const key = `${selectedLocationId}|${row.barcode}`
+    const qty = clampInt(nextQty, 0, row.quantity)
+
+    if (qty === 0) {
+      removeItem(row)
+      return
+    }
+
+    setSelectedItems((prev) => {
+      const existing = prev.find((item) => `${item.locationId}|${item.barcode}` === key)
+      if (existing) {
+        return prev.map((item) =>
+          `${item.locationId}|${item.barcode}` === key
+            ? { ...item, quantity: qty }
+            : item,
+        )
+      }
+
+      return [
+        ...prev,
+        {
+          locationId: selectedLocationId,
+          barcode: row.barcode,
+          name: row.name,
+          nomenclatureCode: row.nomenclatureCode,
+          quantity: qty,
+          available: row.quantity,
+        },
+      ]
+    })
+  }
+
   return (
     <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
       <QuerySkeleton
@@ -265,11 +304,19 @@ export const TransferQilishPage = () => {
                           const selected = selectedMap.get(`${selectedLocationId}|${item.barcode}`)
                           const selectedQty = selected?.quantity ?? 0
                           return (
-                        <Chip
-                          size="small"
-                          color="info"
-                          label={`${selectedQty} ta`}
-                        />
+                            <TextField
+                              size="small"
+                              value={selectedQty || ''}
+                              onChange={(e) => setQuantity(item, e.target.value)}
+                              inputMode="numeric"
+                              placeholder="0"
+                              sx={{ width: 80 }}
+                              inputProps={{
+                                min: 0,
+                                max: item.quantity,
+                                style: { textAlign: 'center' },
+                              }}
+                            />
                           )
                         })()}
                       </TableCell>

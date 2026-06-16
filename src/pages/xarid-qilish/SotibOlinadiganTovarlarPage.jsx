@@ -17,6 +17,22 @@ import { useQueryParamOpen } from '@/shared/hooks/useQueryParamOpen'
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
 
+const resolveDispatchableBatch = (request) => {
+  const batches = [...(request?.purchaseBatches ?? [])].sort(
+    (left, right) => new Date(right.purchasedAt).getTime() - new Date(left.purchasedAt).getTime(),
+  )
+  const batchIndex = batches.findIndex((batch) => batch.canDispatchToWarehouse)
+
+  if (batchIndex === -1) {
+    return null
+  }
+
+  return {
+    ...batches[batchIndex],
+    batchNumber: batches.length - batchIndex,
+  }
+}
+
 export const SotibOlinadiganTovarlarPage = () => {
   const {
     search,
@@ -88,7 +104,7 @@ export const SotibOlinadiganTovarlarPage = () => {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <PurchasingPageFilters
             title="Sotib olinadigan maxsulotlar"
-            subtitle="Tuzilma bo‘yicha filtrlang — shu tuzilmaning barcha arizalari ko‘rinadi"
+            subtitle="Xarid qilinmagan yoki omborga jo‘natilmagan tovarlar shu yerda ko‘rinadi"
             search={search}
             onSearchChange={setSearch}
             dateFrom={dateFrom}
@@ -111,6 +127,10 @@ export const SotibOlinadiganTovarlarPage = () => {
             emptyMessage="Sotib olinadigan maxsulotlar topilmadi"
             onView={setDetailTarget}
             onPurchase={setPurchaseTarget}
+            onDispatch={(request) => {
+              setDispatchTarget(request)
+              setDispatchBatch(resolveDispatchableBatch(request))
+            }}
           />
 
           <TablePagination
@@ -163,7 +183,11 @@ export const SotibOlinadiganTovarlarPage = () => {
           setDispatchTarget(null)
           setDispatchBatch(null)
         }}
-        onSuccess={() => showSnackbar('Partiya omborga jo‘natildi — nakladnoy tayyor')}
+        onSuccess={() => {
+          showSnackbar('Partiya omborga jo‘natildi — nakladnoy tayyor')
+          setDispatchTarget(null)
+          setDispatchBatch(null)
+        }}
       />
 
       <Snackbar

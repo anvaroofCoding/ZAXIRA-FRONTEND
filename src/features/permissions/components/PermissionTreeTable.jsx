@@ -24,6 +24,7 @@ import {
   getGroupActionState,
   getGroupCheckState,
   getGroupPaths,
+  isAccessOnlyPage,
   isPageActionDisabled,
   isWarehousePermissionPath,
   setGroupAccess,
@@ -59,6 +60,7 @@ const PageRow = ({
     !isWarehousePermissionAllowed(warehousePermissionMode) &&
     isWarehousePermissionPath(path)
   const accessDisabled = disabled || warehouseBlocked
+  const accessOnly = isAccessOnlyPage(path)
 
   return (
     <>
@@ -78,6 +80,16 @@ const PageRow = ({
         </TableCell>
 
         {PERMISSION_COLUMNS.slice(1).map((column) => {
+          if (accessOnly) {
+            return (
+              <TableCell key={column.key} align="center" padding="checkbox">
+                <Typography variant="caption" color="text.disabled">
+                  —
+                </Typography>
+              </TableCell>
+            )
+          }
+
           const actionDisabled =
             accessDisabled ||
             !page.access ||

@@ -118,24 +118,54 @@ export const BoshqaOmborlarPage = () => {
 
   return (
     <Stack spacing={2}>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 2,
-          flexWrap: 'wrap',
-        }}
-      >
-        <Typography variant="h6" fontWeight={700}>
-          {selectedStructure ? `Ombor: ${selectedStructure.structure.shortName}` : 'Boshqa omborlar'}
-        </Typography>
-        {!selectedStructure && !overviewQuery.isLoading ? (
-          <Typography variant="body2" color="text.secondary" fontWeight={600} sx={{ ml: 'auto' }}>
-            Jami omborlar: {structures.length}
+      {selectedStructure ? (
+        <Stack spacing={1}>
+          <Box>
+            <Button
+              size="small"
+              startIcon={<ArrowBackIcon />}
+              onClick={() => setSearchParams({})}
+            >
+              Ro'yxatga qaytish
+            </Button>
+          </Box>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 2,
+              flexWrap: 'wrap',
+            }}
+          >
+            <Typography variant="h6" fontWeight={700}>
+              Ombor: {selectedStructure.structure.shortName}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {selectedStructure.locations.length} ta joy
+            </Typography>
+          </Box>
+        </Stack>
+      ) : (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 2,
+            flexWrap: 'wrap',
+          }}
+        >
+          <Typography variant="h6" fontWeight={700}>
+            Boshqa omborlar
           </Typography>
-        ) : null}
-      </Box>
+          {!overviewQuery.isLoading ? (
+            <Typography variant="body2" color="text.secondary" fontWeight={600} sx={{ ml: 'auto' }}>
+              Jami omborlar: {structures.length}
+            </Typography>
+          ) : null}
+        </Box>
+      )}
 
       {!selectedStructure ? (
         <QuerySkeleton
@@ -197,32 +227,7 @@ export const BoshqaOmborlarPage = () => {
       ) : null}
 
       {selectedStructure ? (
-        <Paper variant="outlined">
-          <Box
-            sx={{
-              px: 2,
-              py: 1.5,
-              borderBottom: 1,
-              borderColor: 'divider',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 1,
-              flexWrap: 'wrap',
-            }}
-          >
-            <Button
-              size="small"
-              startIcon={<ArrowBackIcon />}
-              onClick={() => setSearchParams({})}
-            >
-              Omborlar ro'yxatiga qaytish
-            </Button>
-            <Typography variant="body2" color="text.secondary">
-              {selectedStructure.locations.length} ta joy
-            </Typography>
-          </Box>
-
+        <Box>
           {!locationTabs.length ? (
             <Box sx={{ p: 2 }}>
               <Alert severity="info">Bu omborda joylar topilmadi.</Alert>
@@ -247,34 +252,42 @@ export const BoshqaOmborlarPage = () => {
                 ))}
               </Tabs>
 
-              <Box sx={{ p: 2 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
                 {inventoryQuery.isError ? (
-                  <Alert severity="error" sx={{ mb: 1.5 }}>
+                  <Alert severity="error">
                     {getApiErrorMessage(inventoryQuery.error, 'Joy ichidagi tovarlarni yuklashda xatolik')}
                   </Alert>
                 ) : null}
-                <Stack spacing={1.5}>
-                  <TextField
-                    size="small"
-                    placeholder="Tovar qidirish..."
-                    value={search}
-                    onChange={(e) => {
-                      setSearch(e.target.value)
-                      setPage(0)
-                    }}
-                    fullWidth
-                    slotProps={{
-                      input: {
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <SearchIcon fontSize="small" />
-                          </InputAdornment>
-                        ),
-                      },
-                    }}
-                  />
+                <TextField
+                  size="small"
+                  placeholder="Tovar qidirish..."
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value)
+                    setPage(0)
+                  }}
+                  fullWidth
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon fontSize="small" />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
 
-                  <TableContainer sx={{ border: 1, borderColor: 'divider', borderRadius: 1 }}>
+                {!items.length && !inventoryQuery.isFetching ? (
+                  <Paper variant="outlined" sx={{ py: 6, textAlign: 'center' }}>
+                    <Typography color="text.secondary">
+                      {search.trim()
+                        ? 'Qidiruv bo‘yicha tovar topilmadi'
+                        : 'Bu joyda tovarlar yo‘q'}
+                    </Typography>
+                  </Paper>
+                ) : (
+                  <TableContainer component={Paper} variant="outlined">
                     <Table size="small">
                       <TableHead>
                         <TableRow>
@@ -287,57 +300,47 @@ export const BoshqaOmborlarPage = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {!items.length ? (
-                          <TableRow>
-                            <TableCell colSpan={4}>
-                              <Typography variant="body2" color="text.secondary">
-                                Bu joyda tovarlar yo‘q
+                        {items.map((item) => (
+                          <TableRow key={item.id} hover>
+                            <TableCell>
+                              <Typography variant="body2" fontWeight={600}>
+                                {item.name}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                {item.characteristics}
                               </Typography>
                             </TableCell>
+                            <TableCell sx={nomenclatureTableCellSx}>
+                              {getItemNomenclatureCode(item)}
+                            </TableCell>
+                            <TableCell sx={{ fontFamily: 'monospace' }}>{item.barcode}</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 700 }}>
+                              {item.quantity}
+                            </TableCell>
                           </TableRow>
-                        ) : (
-                          items.map((item) => (
-                            <TableRow key={item.id} hover>
-                              <TableCell>
-                                <Typography variant="body2" fontWeight={600}>
-                                  {item.name}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary" display="block">
-                                  {item.characteristics}
-                                </Typography>
-                              </TableCell>
-                              <TableCell sx={nomenclatureTableCellSx}>
-                                {getItemNomenclatureCode(item)}
-                              </TableCell>
-                              <TableCell sx={{ fontFamily: 'monospace' }}>{item.barcode}</TableCell>
-                              <TableCell align="right" sx={{ fontWeight: 700 }}>
-                                {item.quantity}
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
+                        ))}
                       </TableBody>
                     </Table>
                   </TableContainer>
+                )}
 
-                  <TablePagination
-                    component="div"
-                    count={total}
-                    page={page}
-                    onPageChange={(_e, next) => setPage(next)}
-                    rowsPerPage={rowsPerPage}
-                    onRowsPerPageChange={(e) => {
-                      setRowsPerPage(Number(e.target.value))
-                      setPage(0)
-                    }}
-                    rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
-                    labelRowsPerPage="Qatorlar:"
-                  />
-                </Stack>
+                <TablePagination
+                  component="div"
+                  count={total}
+                  page={page}
+                  onPageChange={(_e, next) => setPage(next)}
+                  rowsPerPage={rowsPerPage}
+                  onRowsPerPageChange={(e) => {
+                    setRowsPerPage(Number(e.target.value))
+                    setPage(0)
+                  }}
+                  rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
+                  labelRowsPerPage="Qatorlar:"
+                />
               </Box>
             </>
           )}
-        </Paper>
+        </Box>
       ) : null}
     </Stack>
   )

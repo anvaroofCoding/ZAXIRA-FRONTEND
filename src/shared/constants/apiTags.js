@@ -16,4 +16,6 @@ export const API_TAGS = {
   NOTIFICATION: 'Notification',
   CHAT: 'Chat',
   PRODUCT: 'Product',
+  WAREHOUSE_IMPORT_SESSION: 'WarehouseImportSession',
+  WAREHOUSE_IMPORT: 'WarehouseImport',
 }

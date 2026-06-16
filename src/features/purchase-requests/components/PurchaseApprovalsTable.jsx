@@ -7,7 +7,7 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
-import { getStatusChipColor } from '@/features/purchase-requests/utils/purchaseRequestStatus'
+import { getPurchaseRequestStatusLabel, getStatusChipColor } from '@/features/purchase-requests/utils/purchaseRequestStatus'
 import { formatDateTime } from '@/shared/utils/formatDate'
 
 const ROLE_LABELS = {
@@ -71,7 +71,7 @@ export const PurchaseApprovalsTable = ({ items, onView }) => {
                 <Chip
                   size="small"
                   color={getStatusChipColor(item.status)}
-                  label={item.statusLabel}
+                  label={getPurchaseRequestStatusLabel(item.status, item.statusLabel)}
                 />
               </TableCell>
             </TableRow>

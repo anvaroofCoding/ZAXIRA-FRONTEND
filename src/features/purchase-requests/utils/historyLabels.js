@@ -8,15 +8,15 @@ export const HISTORY_EVENT_TYPE_OPTIONS = [
   { value: 'BOSS_CONFIRMED', label: 'Boshliq tasdiqladi' },
   { value: 'PURCHASED', label: 'Xarid qilindi' },
   { value: 'ITEMS_UNAVAILABLE', label: 'Xarid qilib bo‘lmaydi deb belgilandi' },
-  { value: 'PURCHASE_REJECTED', label: 'Xarid rad etildi (atkaz)' },
+  { value: 'PURCHASE_REJECTED', label: 'Xarid rad etildi' },
 ]
 
 export const PURCHASE_REQUEST_STATUS_OPTIONS = [
   { value: '', label: 'Barcha holatlar' },
-  { value: 'COMMISSION_REVIEW', label: 'Komissiya tekshiruvida' },
-  { value: 'PARTIAL_REVISION', label: 'Qisman tasdiqlangan — tuzatish kerak' },
+  { value: 'COMMISSION_REVIEW', label: 'Kelishilmoqda' },
+  { value: 'PARTIAL_REVISION', label: 'Rad etildi — tuzatib qayta yuborish' },
   { value: 'REJECTED', label: 'Rad etilgan' },
-  { value: 'BOSS_DECISION_PENDING', label: 'Boshliq qarorini kutmoqda' },
+  { value: 'BOSS_DECISION_PENDING', label: 'Boshliq kelishmoqda' },
   { value: 'PURCHASING', label: 'Sotib olinmoqda' },
   { value: 'PURCHASED', label: 'Xarid qilindi' },
 ]

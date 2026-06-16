@@ -3,6 +3,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import { SuperDocEditor } from '@superdoc-dev/react'
+import { superdocFonts } from '@superdoc-dev/fonts'
 import 'superdoc/style.css'
 import { usePermissions } from '@/shared/hooks/usePermissions'
 
@@ -66,6 +67,7 @@ export const SuperDocEditorPanel = ({ documentFile, loading, error, onReady }) =
         document={documentFile}
         documentMode="editing"
         role="editor"
+        fonts={superdocFonts}
         contained
         user={{
           name: user?.displayName || user?.login || 'Foydalanuvchi',

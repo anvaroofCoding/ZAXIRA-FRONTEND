@@ -1,6 +1,6 @@
 import Chip from '@mui/material/Chip'
 import Paper from '@mui/material/Paper'
-import { getStatusChipColor } from '@/features/purchase-requests/utils/purchaseRequestStatus'
+import { getPurchaseRequestStatusLabel, getStatusChipColor } from '@/features/purchase-requests/utils/purchaseRequestStatus'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -78,7 +78,7 @@ export const PurchaseRequestsTable = ({
                   <Chip
                     size="small"
                     color={getStatusChipColor(item.status)}
-                    label={item.statusLabel}
+                    label={getPurchaseRequestStatusLabel(item.status, item.statusLabel)}
                   />
                 </TableCell>
                 <TableCell align="right" onClick={(event) => event.stopPropagation()}>

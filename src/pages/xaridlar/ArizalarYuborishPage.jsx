@@ -19,7 +19,6 @@ import { ActiveSessionsPanel } from '@/features/purchase-requests/components/Act
 import { PurchaseRequestDetailDialog } from '@/features/purchase-requests/components/PurchaseRequestDetailDialog'
 import { PurchaseRequestDocumentWizardDialog } from '@/features/purchase-requests/components/PurchaseRequestDocumentWizardDialog'
 import { PurchaseRequestFormDialog } from '@/features/purchase-requests/components/PurchaseRequestFormDialog'
-import { ResubmitPurchaseRequestDialog } from '@/features/purchase-requests/components/ResubmitPurchaseRequestDialog'
 import { PurchaseRequestsPageSkeleton } from '@/features/purchase-requests/components/PurchaseRequestsPageSkeleton'
 import { PurchaseRequestsTable } from '@/features/purchase-requests/components/PurchaseRequestsTable'
 import {
@@ -30,14 +29,14 @@ import {
   useDeletePurchaseRequestSessionMutation,
   useGetPurchaseRequestSessionsQuery,
   useGetPurchaseRequestsQuery,
-  useResubmitPurchaseRequestMutation,
+  useResubmitPurchaseRequestWithDocumentsMutation,
   useSavePurchaseRequestSessionMutation,
   useSubmitPurchaseRequestSessionMutation,
 } from '@/features/purchase-requests/api/purchaseRequestsApi'
 import { canDeletePurchaseRequest } from '@/features/purchase-requests/utils/purchaseRequestDelete'
 import {
   canEditPurchaseRequestInReview,
-  canResubmitPurchaseRequest,
+  canResubmitAnyPurchaseRequest,
 } from '@/features/purchase-requests/utils/purchaseRequestEdit'
 import { hasPageAction } from '@/features/permissions/utils/permissions'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
@@ -63,11 +62,26 @@ export const ArizalarYuborishPage = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const [detailTarget, setDetailTarget] = useState(null)
   const [resubmitTarget, setResubmitTarget] = useState(null)
+  const [resubmitPreselectedMemberIds, setResubmitPreselectedMemberIds] = useState([])
+  const [resubmitMode, setResubmitMode] = useState('commission')
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [editTarget, setEditTarget] = useState(null)
   const [documentWizardSessionId, setDocumentWizardSessionId] = useState(null)
   const [documentWizardPayload, setDocumentWizardPayload] = useState(null)
   const [editDocumentWizard, setEditDocumentWizard] = useState(null)
+  const [resubmitDocumentWizard, setResubmitDocumentWizard] = useState(null)
+
+  const openResubmit = useCallback((item, options = {}) => {
+    setResubmitTarget(item)
+    setResubmitPreselectedMemberIds(options.resubmitToMemberIds ?? [])
+    setResubmitMode(options.resubmitTarget === 'boss' ? 'boss' : 'commission')
+  }, [])
+
+  const closeResubmit = useCallback(() => {
+    setResubmitTarget(null)
+    setResubmitPreselectedMemberIds([])
+    setResubmitMode('commission')
+  }, [])
 
   const debouncedSearch = useDebouncedValue(search, 350)
 
@@ -102,7 +116,8 @@ export const ArizalarYuborishPage = () => {
   const [savePurchaseRequestSession] = useSavePurchaseRequestSessionMutation()
   const [deletePurchaseRequestSession, deleteSessionState] =
     useDeletePurchaseRequestSessionMutation()
-  const [resubmitPurchaseRequest, resubmitState] = useResubmitPurchaseRequestMutation()
+  const [resubmitPurchaseRequestWithDocuments, resubmitWithDocumentsState] =
+    useResubmitPurchaseRequestWithDocumentsMutation()
   const [deletePurchaseRequest, deleteState] = useDeletePurchaseRequestMutation()
   const [createEditSession, createEditSessionState] =
     useCreateEditPurchaseRequestSessionMutation()
@@ -131,7 +146,7 @@ export const ArizalarYuborishPage = () => {
   )
 
   const canResubmitItem = useCallback(
-    (item) => canResubmitPurchaseRequest(item, authUser, canUpdatePage),
+    (item) => canResubmitAnyPurchaseRequest(item, authUser, canUpdatePage),
     [authUser, canUpdatePage],
   )
 
@@ -202,6 +217,17 @@ export const ArizalarYuborishPage = () => {
     }
 
     closeFormDialog()
+
+    const session = activeSessions.find((item) => item.id === sessionId)
+    if (session?.editingRequestId) {
+      setEditDocumentWizard({
+        sessionId,
+        requestId: session.editingRequestId,
+        payload,
+      })
+      return
+    }
+
     setDocumentWizardPayload(payload)
     setDocumentWizardSessionId(sessionId)
   }
@@ -257,18 +283,44 @@ export const ArizalarYuborishPage = () => {
     }
   }
 
-  const handleResubmit = async (payload) => {
+  const handleContinueToResubmitDocuments = async (payload) => {
     if (!resubmitTarget?.id) return
 
     try {
-      await resubmitPurchaseRequest({ id: resubmitTarget.id, ...payload }).unwrap()
-      setResubmitTarget(null)
-      setDetailTarget(null)
-      showSnackbar('Ariza qayta yuborildi')
+      const session = await createEditSession(resubmitTarget.id).unwrap()
+
+      await savePurchaseRequestSession({ id: session.id, ...payload }).unwrap()
+
+      setResubmitDocumentWizard({
+        sessionId: session.id,
+        requestId: resubmitTarget.id,
+        payload,
+      })
+      closeResubmit()
     } catch (error) {
-      const message = getApiErrorMessage(error, 'Qayta yuborishda xatolik')
+      const message = getApiErrorMessage(error, 'Qayta yuborish seansini ochib bo‘lmadi')
       throw new Error(message, { cause: error })
     }
+  }
+
+  const handleResubmitWizardCompleted = async (updated) => {
+    const sessionId = resubmitDocumentWizard?.sessionId
+
+    setResubmitDocumentWizard(null)
+
+    if (sessionId) {
+      try {
+        await deletePurchaseRequestSession(sessionId).unwrap()
+      } catch {
+        // seans allaqachon o‘chirilgan bo‘lishi mumkin
+      }
+    }
+
+    if (updated?.id) {
+      setDetailTarget(updated)
+    }
+
+    showSnackbar(`Ariza ${updated?.requestCode ?? ''} qayta yuborildi`)
   }
 
   const handleDeleteRequest = (item) => {
@@ -421,7 +473,7 @@ export const ArizalarYuborishPage = () => {
                 canDeleteItem={canDeleteItem}
                 onEdit={handleEditRequest}
                 canEditItem={canEditItem}
-                onResubmit={(item) => setResubmitTarget(item)}
+                onResubmit={openResubmit}
                 canResubmitItem={canResubmitItem}
               />
 
@@ -496,9 +548,7 @@ export const ArizalarYuborishPage = () => {
         {...downloadHandlers}
         onDelete={canDeletePage(PAGE_PATH) ? handleDeleteRequest : undefined}
         onEdit={handleEditRequest}
-        onResubmit={(item) => {
-          setResubmitTarget(item)
-        }}
+        onResubmit={openResubmit}
       />
 
       <Dialog
@@ -566,12 +616,27 @@ export const ArizalarYuborishPage = () => {
         </DialogActions>
       </Dialog>
 
-      <ResubmitPurchaseRequestDialog
+      <PurchaseRequestDocumentWizardDialog
+        open={Boolean(resubmitDocumentWizard)}
+        mode="resubmit"
+        requestId={resubmitDocumentWizard?.requestId ?? null}
+        sessionId={resubmitDocumentWizard?.sessionId ?? null}
+        sessionPayload={resubmitDocumentWizard?.payload ?? null}
+        onClose={() => setResubmitDocumentWizard(null)}
+        onResubmitted={handleResubmitWizardCompleted}
+      />
+
+      <PurchaseRequestFormDialog
         open={Boolean(resubmitTarget)}
         request={resubmitTarget}
-        loading={resubmitState.isLoading}
-        onClose={() => setResubmitTarget(null)}
-        onSubmit={handleResubmit}
+        loading={createEditSessionState.isLoading || resubmitWithDocumentsState.isLoading}
+        resubmitMode={{
+          target: resubmitMode,
+          preselectedMemberIds: resubmitPreselectedMemberIds,
+        }}
+        onClose={closeResubmit}
+        onSubmit={handleContinueToResubmitDocuments}
+        submitLabel="Davom etish"
       />
 
       <Snackbar

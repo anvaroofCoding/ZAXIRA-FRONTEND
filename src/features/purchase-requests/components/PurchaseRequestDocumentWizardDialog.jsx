@@ -14,6 +14,7 @@ import Typography from '@mui/material/Typography'
 import { ForceLightModeScope } from '@/shared/theme/ForceLightModeScope'
 import {
   usePreparePurchaseRequestDocumentsMutation,
+  useResubmitPurchaseRequestWithDocumentsMutation,
   useSubmitPurchaseRequestSessionMutation,
   useUpdatePurchaseRequestWithDocumentsMutation,
   useUploadSessionDocumentMutation,
@@ -39,6 +40,7 @@ export const PurchaseRequestDocumentWizardDialog = ({
   onClose,
   onSubmitted,
   onUpdated,
+  onResubmitted,
 }) => {
   const [activeStep, setActiveStep] = useState(0)
   const [prepared, setPrepared] = useState(false)
@@ -55,8 +57,11 @@ export const PurchaseRequestDocumentWizardDialog = ({
   const [submitSession, submitState] = useSubmitPurchaseRequestSessionMutation()
   const [updateWithDocuments, updateWithDocumentsState] =
     useUpdatePurchaseRequestWithDocumentsMutation()
+  const [resubmitWithDocuments, resubmitWithDocumentsState] =
+    useResubmitPurchaseRequestWithDocumentsMutation()
 
   const isEditMode = mode === 'edit'
+  const isResubmitMode = mode === 'resubmit'
 
   const resetEditorState = useCallback(() => {
     setDocumentFile(null)
@@ -134,6 +139,7 @@ export const PurchaseRequestDocumentWizardDialog = ({
     uploadState.isLoading ||
     submitSession.isLoading ||
     updateWithDocumentsState.isLoading ||
+    resubmitWithDocumentsState.isLoading ||
     saving
 
   const handleEditorReady = useCallback((instance) => {
@@ -160,6 +166,13 @@ export const PurchaseRequestDocumentWizardDialog = ({
     try {
       const file = await saveCurrentDocument()
       setBildirgiFile(file)
+
+      await prepareDocuments({
+        sessionId,
+        sessionPayload: sessionPayload ?? undefined,
+        regenerateKelishuvOnly: true,
+      }).unwrap()
+
       setActiveStep(1)
     } catch (continueError) {
       setError(getApiErrorMessage(continueError, 'Bildirgini saqlab bo‘lmadi'))
@@ -196,6 +209,23 @@ export const PurchaseRequestDocumentWizardDialog = ({
         return
       }
 
+      if (isResubmitMode) {
+        if (!requestId) {
+          throw new Error('Qayta yuborilayotgan ariza aniqlanmadi')
+        }
+
+        const resubmitted = await resubmitWithDocuments({
+          requestId,
+          sessionPayload: sessionPayload ?? undefined,
+          bildirgiFile,
+          kelishuvFile,
+        }).unwrap()
+
+        onResubmitted?.(resubmitted)
+        onClose?.()
+        return
+      }
+
       const created = await submitSession({
         sessionId,
         bildirgiFile,
@@ -208,7 +238,11 @@ export const PurchaseRequestDocumentWizardDialog = ({
       setError(
         getApiErrorMessage(
           submitError,
-          isEditMode ? 'Arizani yangilab bo‘lmadi' : 'Arizani yuborib bo‘lmadi',
+          isResubmitMode
+            ? 'Arizani qayta yuborib bo‘lmadi'
+            : isEditMode
+              ? 'Arizani yangilab bo‘lmadi'
+              : 'Arizani yuborib bo‘lmadi',
         ),
       )
     } finally {
@@ -237,7 +271,11 @@ export const PurchaseRequestDocumentWizardDialog = ({
     >
       <DialogTitle component="div" sx={{ pb: 1, flexShrink: 0 }}>
         <Typography component="p" variant="h6" fontWeight={600}>
-          {isEditMode ? 'Hujjatlarni tahrirlash (ariza yangilash)' : 'Hujjatlarni tahrirlash'}
+          {isEditMode
+            ? 'Hujjatlarni tahrirlash (ariza yangilash)'
+            : isResubmitMode
+              ? 'Hujjatlarni tahrirlash (ariza qayta yuborish)'
+              : 'Hujjatlarni tahrirlash'}
         </Typography>
         <Typography component="p" variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           {stepInfo.title} — {stepInfo.hint}
@@ -319,7 +357,7 @@ export const PurchaseRequestDocumentWizardDialog = ({
           >
             {saving ? (
               <CircularProgress size={20} color="inherit" />
-            ) : isEditMode ? (
+            ) : isEditMode || isResubmitMode ? (
               'Saqlash'
             ) : (
               'Saqlash va yuborish'

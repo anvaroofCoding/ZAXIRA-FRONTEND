@@ -1,3 +1,14 @@
+export const PURCHASE_REQUEST_STATUS_LABELS = {
+  COMMISSION_REVIEW: 'Kelishilmoqda',
+  PARTIAL_REVISION: 'Kelishilmoqda',
+  REJECTED: 'Rad etilgan',
+  BOSS_DECISION_PENDING: 'Boshliq kelishmoqda',
+  PURCHASING: 'Sotib olinmoqda',
+  PURCHASED: 'Xarid qilindi',
+  WAREHOUSE_IN_TRANSIT: 'Omborga jo‘natilgan',
+  WAREHOUSE_COMPLETED: 'Omborga qabul qilindi',
+}
+
 export const PURCHASE_REQUEST_STATUS_COLORS = {
   COMMISSION_REVIEW: 'warning',
   PARTIAL_REVISION: 'info',
@@ -9,10 +20,34 @@ export const PURCHASE_REQUEST_STATUS_COLORS = {
   WAREHOUSE_COMPLETED: 'success',
 }
 
+export const APPROVAL_DECISION_LABELS = {
+  APPROVED: 'Kelishildi',
+  PARTIAL: 'Qisman kelishildi',
+  REJECTED: 'Rad etildi',
+}
+
+export const MEMBER_DECISION_PENDING_LABEL = 'Kelishilmoqda'
+
 export const APPROVAL_DECISION_COLORS = {
   APPROVED: 'success',
   PARTIAL: 'info',
   REJECTED: 'error',
+}
+
+export const getPurchaseRequestStatusLabel = (status, fallback = '') => {
+  if (status === 'PARTIAL_REVISION') {
+    return PURCHASE_REQUEST_STATUS_LABELS.COMMISSION_REVIEW
+  }
+
+  return (status && PURCHASE_REQUEST_STATUS_LABELS[status]) || fallback || 'Nomaʼlum holat'
+}
+
+export const getApprovalDecisionLabel = (decision, fallback = '') => {
+  if (!decision) {
+    return MEMBER_DECISION_PENDING_LABEL
+  }
+
+  return APPROVAL_DECISION_LABELS[decision] || fallback || decision
 }
 
 export const getStatusChipColor = (status) =>

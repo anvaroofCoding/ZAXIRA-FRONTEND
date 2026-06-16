@@ -16,14 +16,7 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
-import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { ApprovalDecisionDialog } from '@/features/purchase-requests/components/ApprovalDecisionDialog'
@@ -37,10 +30,14 @@ import {
   useGetPurchaseRequestByIdQuery,
   useSubmitApprovalDecisionMutation,
 } from '@/features/purchase-requests/api/purchaseRequestsApi'
-import { formatMemberLabel } from '@/features/purchase-requests/utils/formatMemberLabel'
+import { CommissionMemberDecisionsTable } from '@/features/purchase-requests/components/CommissionMemberDecisionsTable'
 import { formatBossDocumentName } from '@/features/purchase-requests/utils/formatBossDocumentName'
 import {
-  getDecisionChipColor,
+  canBossConfirmPurchaseRequest,
+  isPurchaseRequestBoss,
+} from '@/features/purchase-requests/utils/purchaseRequestBoss'
+import {
+  getPurchaseRequestStatusLabel,
   getStatusChipColor,
 } from '@/features/purchase-requests/utils/purchaseRequestStatus'
 import { usePermissions } from '@/shared/hooks/usePermissions'
@@ -80,10 +77,18 @@ export const PurchaseRequestApprovalDetailDialog = ({
   })
   const [submitDecision, submitState] = useSubmitApprovalDecisionMutation()
   const [confirmBoss, bossState] = useConfirmBossDecisionMutation()
-  const { canCreate } = usePermissions()
+  const { user: authUser, canCreate } = usePermissions()
   const canSubmitApproval = canCreate(APPROVAL_PAGE_PATH)
 
   const request = detailQuery.data
+  const showBossActions = Boolean(
+    request && canBossConfirmPurchaseRequest(request, authUser),
+  )
+  const statusLabel = getPurchaseRequestStatusLabel(
+    request?.status,
+    request?.statusLabel,
+  )
+  const isBossViewer = Boolean(request && isPurchaseRequestBoss(request, authUser))
 
   useEffect(() => {
     if (!open) {
@@ -124,8 +129,7 @@ export const PurchaseRequestApprovalDetailDialog = ({
 
   const handleBossConfirm = async (payload) => {
     const successMessages = {
-      APPROVED: 'Ariza tasdiqlandi — sotib olinmoqda',
-      PARTIAL: 'Qisman tasdiqlangan — ariza beruvchi tuzatishi kerak',
+      APPROVED: 'Ariza kelishildi — sotib olinmoqda',
       REJECTED: 'Ariza rad etildi',
     }
 
@@ -191,8 +195,10 @@ export const PurchaseRequestApprovalDetailDialog = ({
               <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
                 <Chip
                   size="small"
-                  color={getStatusChipColor(request.status)}
-                  label={request.statusLabel}
+                  color={getStatusChipColor(
+                    showBossActions ? 'BOSS_DECISION_PENDING' : request.status,
+                  )}
+                  label={statusLabel}
                 />
                 <Box sx={{ ml: 'auto', textAlign: 'right' }}>
                   <Typography variant="caption" color="text.secondary" display="block">
@@ -227,44 +233,9 @@ export const PurchaseRequestApprovalDetailDialog = ({
 
               <Box>
                 <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
-                  Komissiya a’zolari va qarorlari
+                  Komissiya a’zolari va kelishuv holati
                 </Typography>
-                <TableContainer component={Paper} variant="outlined">
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>F.I.Sh</TableCell>
-                        <TableCell width={160}>Qaror</TableCell>
-                        <TableCell>Izoh</TableCell>
-                        <TableCell width={140}>Sana</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {request.memberDecisions.map((member) => (
-                        <TableRow key={member.userId}>
-                          <TableCell>{formatMemberLabel(member)}</TableCell>
-                          <TableCell>
-                            {member.decision ? (
-                              <Chip
-                                size="small"
-                                color={getDecisionChipColor(member.decision)}
-                                label={member.decisionLabel}
-                              />
-                            ) : (
-                              <Chip size="small" variant="outlined" label="Kutilmoqda" />
-                            )}
-                          </TableCell>
-                          <TableCell sx={{ whiteSpace: 'pre-wrap' }}>
-                            {member.comment?.trim() || '—'}
-                          </TableCell>
-                          <TableCell>
-                            {member.decidedAt ? formatDateTime(member.decidedAt) : '—'}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                <CommissionMemberDecisionsTable memberDecisions={request.memberDecisions} />
               </Box>
 
               <PurchaseRequestItemsTable
@@ -282,6 +253,16 @@ export const PurchaseRequestApprovalDetailDialog = ({
                 deadline={request.purchaseDeadline}
                 mandatory={request.purchaseDeadlineMandatory}
               />
+
+              {request.status === 'BOSS_DECISION_PENDING' &&
+              !showBossActions &&
+              !request.bossDecision ? (
+                <Alert severity="info">
+                  {isBossViewer
+                    ? 'Kelishish tugmalari ko‘rinmayapti. Boshliq hisobidan kirganingizni tekshiring va sahifani yangilang.'
+                    : `Boshliq kelishishini kutmoqda (${request.boss?.displayName ?? '—'}).`}
+                </Alert>
+              ) : null}
 
               <BossDecisionAlert request={request} />
 
@@ -302,7 +283,7 @@ export const PurchaseRequestApprovalDetailDialog = ({
             Yopish
           </Button>
 
-          {request?.canConfirmBossDecision ? (
+          {showBossActions ? (
             <Box
               sx={{
                 display: 'flex',
@@ -318,15 +299,7 @@ export const PurchaseRequestApprovalDetailDialog = ({
                 startIcon={<VerifiedIcon fontSize="small" />}
                 onClick={() => openBossDecision('APPROVED')}
               >
-                Qarorni tasdiqlash
-              </Button>
-              <Button
-                size="small"
-                variant="outlined"
-                color="info"
-                onClick={() => openBossDecision('PARTIAL')}
-              >
-                Qisman tasdiqlash
+                Kelishish
               </Button>
               <Button
                 size="small"
@@ -369,6 +342,7 @@ export const PurchaseRequestApprovalDetailDialog = ({
         loading={submitState.isLoading}
         onClose={() => setDecisionOpen(false)}
         onSubmit={handleSubmitDecision}
+        mode="commission"
       />
 
       <ProductPriceCompareDialog
@@ -382,6 +356,7 @@ export const PurchaseRequestApprovalDetailDialog = ({
         loading={bossState.isLoading}
         title="Boshliq qarori"
         presetDecision={bossPreset}
+        mode="boss"
         onClose={() => {
           setBossOpen(false)
           setBossPreset(null)

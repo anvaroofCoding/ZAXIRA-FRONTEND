@@ -9,7 +9,9 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import {
+  getApprovalDecisionLabel,
   getDecisionChipColor,
+  getPurchaseRequestStatusLabel,
   getStatusChipColor,
 } from '@/features/purchase-requests/utils/purchaseRequestStatus'
 import { formatPurchaseDeadline } from '@/features/purchase-requests/utils/formatPurchaseDeadline'
@@ -135,7 +137,7 @@ export const PurchaseRequestHistoryTable = ({ items, onView }) => {
                     <Chip
                       size="small"
                       color={getDecisionChipColor(item.decision)}
-                      label={item.decisionLabel}
+                      label={getApprovalDecisionLabel(item.decision, item.decisionLabel)}
                     />
                   ) : (
                     '—'
@@ -172,7 +174,7 @@ export const PurchaseRequestHistoryTable = ({ items, onView }) => {
                   <Chip
                     size="small"
                     color={getStatusChipColor(item.requestStatus)}
-                    label={item.requestStatusLabel}
+                    label={getPurchaseRequestStatusLabel(item.requestStatus, item.requestStatusLabel)}
                   />
                 </TableCell>
                 <TableCell>

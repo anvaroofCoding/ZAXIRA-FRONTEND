@@ -55,7 +55,11 @@ export const ActiveSessionsPanel = ({
             }}
           >
             <Box sx={{ flex: 1, minWidth: 200 }}>
-              <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" sx={{ mb: 0.25 }}>
+              <Stack
+                direction="row"
+                spacing={0.75}
+                sx={{ mb: 0.25, alignItems: 'center', flexWrap: 'wrap' }}
+              >
                 <Typography variant="body2" fontWeight={600}>
                   {session.title || 'Nomsiz ariza'}
                 </Typography>

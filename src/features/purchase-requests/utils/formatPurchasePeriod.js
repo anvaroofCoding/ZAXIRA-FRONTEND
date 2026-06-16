@@ -38,7 +38,15 @@ export const buildYearOptions = (count = 5) => {
 }
 
 export const formatPurchasePeriod = (request) => {
-  if (!request?.purchasePeriodType || !request?.purchasePeriodYear) {
+  if (!request?.purchasePeriodType) {
+    return null
+  }
+
+  if (request.purchasePeriodType === 'plain') {
+    return 'Oddiy'
+  }
+
+  if (!request?.purchasePeriodYear) {
     return null
   }
 

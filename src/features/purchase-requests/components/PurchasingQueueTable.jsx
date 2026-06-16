@@ -9,7 +9,7 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
-import { getStatusChipColor } from '@/features/purchase-requests/utils/purchaseRequestStatus'
+import { getPurchaseRequestStatusLabel, getStatusChipColor } from '@/features/purchase-requests/utils/purchaseRequestStatus'
 import { formatDateTime } from '@/shared/utils/formatDate'
 import { formatUzs } from '@/shared/utils/formatUzs'
 
@@ -82,7 +82,7 @@ export const PurchasingQueueTable = ({
                   <Chip
                     size="small"
                     color={getStatusChipColor(item.status)}
-                    label={item.statusLabel}
+                    label={getPurchaseRequestStatusLabel(item.status, item.statusLabel)}
                   />
                 </TableCell>
                 <TableCell>
@@ -135,7 +135,7 @@ export const PurchasingQueueTable = ({
                         color="error"
                         onClick={() => onReject(item)}
                       >
-                        Atkaz qilish
+                        Rad etish
                       </Button>
                     ) : null}
                     {item.canCompletePurchase && onPurchase ? (

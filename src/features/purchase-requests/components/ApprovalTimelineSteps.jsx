@@ -12,7 +12,7 @@ import StepContent from '@mui/material/StepContent'
 import StepLabel from '@mui/material/StepLabel'
 import Stepper from '@mui/material/Stepper'
 import Typography from '@mui/material/Typography'
-import { getDecisionChipColor } from '@/features/purchase-requests/utils/purchaseRequestStatus'
+import { getApprovalDecisionLabel, getDecisionChipColor } from '@/features/purchase-requests/utils/purchaseRequestStatus'
 import { formatPurchaseDeadline } from '@/features/purchase-requests/utils/formatPurchaseDeadline'
 import { formatDateTime } from '@/shared/utils/formatDate'
 
@@ -30,7 +30,7 @@ const STEP_META = {
     icon: BlockIcon,
     color: 'warning',
   },
-  PURCHASE_REJECTED: { label: 'Xarid rad etildi (atkaz)', icon: BlockIcon, color: 'error' },
+  PURCHASE_REJECTED: { label: 'Xarid rad etildi', icon: BlockIcon, color: 'error' },
 }
 
 export const ApprovalTimelineSteps = ({ history = [] }) => {
@@ -83,7 +83,7 @@ export const ApprovalTimelineSteps = ({ history = [] }) => {
                   <Chip
                     size="small"
                     color={getDecisionChipColor(step.decision)}
-                    label={step.decisionLabel}
+                    label={getApprovalDecisionLabel(step.decision, step.decisionLabel)}
                   />
                 ) : null}
               </Box>

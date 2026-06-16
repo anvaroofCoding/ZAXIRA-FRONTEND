@@ -33,7 +33,9 @@ import { useGetPurchaseRequestByIdQuery } from '@/features/purchase-requests/api
 import { formatMemberLabel } from '@/features/purchase-requests/utils/formatMemberLabel'
 import { formatBossDocumentName } from '@/features/purchase-requests/utils/formatBossDocumentName'
 import {
+  getApprovalDecisionLabel,
   getDecisionChipColor,
+  getPurchaseRequestStatusLabel,
   getStatusChipColor,
 } from '@/features/purchase-requests/utils/purchaseRequestStatus'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
@@ -143,7 +145,7 @@ export const PurchaseRequestReadOnlyDetailDialog = ({
               <Chip
                 size="small"
                 color={getStatusChipColor(request.status)}
-                label={request.statusLabel}
+                label={getPurchaseRequestStatusLabel(request.status, request.statusLabel)}
               />
               <Box sx={{ ml: 'auto', textAlign: 'right' }}>
                 <Typography variant="caption" color="text.secondary" display="block">
@@ -195,15 +197,26 @@ export const PurchaseRequestReadOnlyDetailDialog = ({
                       <TableRow key={member.userId}>
                         <TableCell>{formatMemberLabel(member)}</TableCell>
                         <TableCell>
-                          {member.decision ? (
-                            <Chip
-                              size="small"
-                              color={getDecisionChipColor(member.decision)}
-                              label={member.decisionLabel}
-                            />
-                          ) : (
-                            <Chip size="small" variant="outlined" label="Kutilmoqda" />
-                          )}
+                            {member.decision ? (
+                              <Chip
+                                size="small"
+                                color={getDecisionChipColor(member.decision)}
+                                label={getApprovalDecisionLabel(
+                                  member.decision,
+                                  member.decisionLabel,
+                                )}
+                              />
+                            ) : (
+                              <Chip
+                                size="small"
+                                variant="outlined"
+                                color="warning"
+                                label={getApprovalDecisionLabel(
+                                  member.decision,
+                                  member.decisionLabel,
+                                )}
+                              />
+                            )}
                         </TableCell>
                         <TableCell sx={{ whiteSpace: 'pre-wrap' }}>
                           {member.comment?.trim() || '—'}
@@ -268,7 +281,7 @@ export const PurchaseRequestReadOnlyDetailDialog = ({
             color="error"
             onClick={() => onReject(request)}
           >
-            Atkaz qilish
+            Rad etish
           </Button>
         ) : null}
         {request?.canCompletePurchase && onPurchase ? (

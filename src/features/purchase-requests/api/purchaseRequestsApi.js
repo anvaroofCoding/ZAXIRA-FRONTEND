@@ -61,9 +61,15 @@ const submitSessionWithFiles = async (
   formData.append('bildirgi', bildirgiFile, bildirgiFile.name || 'bildirgi.docx')
   formData.append('kelishuv', kelishuvFile, kelishuvFile.name || 'kelishuv.docx')
 
-  if (sessionPayload) {
-    formData.append('payload', JSON.stringify(sanitizeSessionPayload(sessionPayload)))
-  }
+  formData.append(
+    'payload',
+    JSON.stringify(
+      sanitizeSessionPayload({
+        purchasePeriodType: 'plain',
+        ...(sessionPayload ?? {}),
+      }),
+    ),
+  )
 
   const response = await fetch(
     `${env.apiBaseUrl}/purchase-requests/active-sessions/${sessionId}/submit`,
@@ -140,6 +146,61 @@ const updateRequestWithDocuments = async (
   return { data: unwrapApiPayload(responsePayload) }
 }
 
+const resubmitRequestWithDocuments = async (
+  requestId,
+  bildirgiFile,
+  kelishuvFile,
+  token,
+  payload,
+) => {
+  const formData = new FormData()
+  formData.append('bildirgi', bildirgiFile, bildirgiFile.name || 'bildirgi.docx')
+  formData.append('kelishuv', kelishuvFile, kelishuvFile.name || 'kelishuv.docx')
+  formData.append(
+    'payload',
+    JSON.stringify({
+      ...sanitizeSessionPayload(payload),
+      ...(payload?.resubmitTarget ? { resubmitTarget: payload.resubmitTarget } : {}),
+      ...(payload?.resubmitToMemberIds?.length
+        ? { resubmitToMemberIds: payload.resubmitToMemberIds }
+        : {}),
+    }),
+  )
+
+  const response = await fetch(
+    `${env.apiBaseUrl}/purchase-requests/${requestId}/resubmit-with-documents`,
+    {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    },
+  )
+
+  let responsePayload = null
+  try {
+    responsePayload = await response.json()
+  } catch {
+    responsePayload = null
+  }
+
+  if (!response.ok) {
+    const message =
+      responsePayload?.message ?? responsePayload?.error ?? 'Arizani qayta yuborib bo‘lmadi'
+    return {
+      error: {
+        status: response.status,
+        data: {
+          message: Array.isArray(message)
+            ? message[0] ?? 'Arizani qayta yuborib bo‘lmadi'
+            : message,
+        },
+      },
+    }
+  }
+
+  return { data: unwrapApiPayload(responsePayload) }
+}
+
 const resolveActiveSessionsUserId = (api) => selectAuthUser(api.getState())?.id ?? null
 
 const sanitizeSessionPayload = (body, { minimal = false } = {}) => {
@@ -163,19 +224,22 @@ const sanitizeSessionPayload = (body, { minimal = false } = {}) => {
     next.bossId = body.bossId
   }
 
+  const periodType =
+    body.purchasePeriodType === 'quarter' || body.purchasePeriodType === 'month'
+      ? body.purchasePeriodType
+      : 'plain'
+  next.purchasePeriodType = periodType
+
   if (!minimal) {
     next.commissionAgreementText = body.commissionAgreementText ?? ''
 
-    if (body.purchasePeriodType) {
-      next.purchasePeriodType = body.purchasePeriodType
-    }
-    if (body.purchasePeriodYear) {
+    if (periodType !== 'plain' && body.purchasePeriodYear) {
       next.purchasePeriodYear = Number(body.purchasePeriodYear)
     }
-    if (body.purchasePeriodType === 'quarter' && body.purchasePeriodQuarter) {
+    if (periodType === 'quarter' && body.purchasePeriodQuarter) {
       next.purchasePeriodQuarter = Number(body.purchasePeriodQuarter)
     }
-    if (body.purchasePeriodType === 'month' && body.purchasePeriodMonth) {
+    if (periodType === 'month' && body.purchasePeriodMonth) {
       next.purchasePeriodMonth = Number(body.purchasePeriodMonth)
     }
   }
@@ -537,10 +601,13 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
       },
     }),
     preparePurchaseRequestDocuments: builder.mutation({
-      query: ({ sessionId, sessionPayload }) => ({
+      query: ({ sessionId, sessionPayload, regenerateKelishuvOnly = false }) => ({
         url: `/purchase-requests/active-sessions/${sessionId}/documents/prepare`,
         method: 'POST',
-        body: sessionPayload ? sanitizeSessionPayload(sessionPayload) : {},
+        body: {
+          ...(sessionPayload ? sanitizeSessionPayload(sessionPayload) : {}),
+          ...(regenerateKelishuvOnly ? { regenerateKelishuvOnly: true } : {}),
+        },
       }),
     }),
     uploadSessionDocument: builder.mutation({
@@ -764,6 +831,48 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
         API_TAGS.PURCHASE_REQUEST,
       ],
     }),
+    resubmitPurchaseRequestWithDocuments: builder.mutation({
+      queryFn: async (arg, api) => {
+        const requestId = arg?.requestId
+        const bildirgiFile = arg?.bildirgiFile
+        const kelishuvFile = arg?.kelishuvFile
+        const sessionPayload = arg?.sessionPayload
+
+        if (!requestId) {
+          return {
+            error: {
+              status: 400,
+              data: { message: 'Ariza aniqlanmadi' },
+            },
+          }
+        }
+
+        if (!bildirgiFile || !kelishuvFile) {
+          return {
+            error: {
+              status: 400,
+              data: {
+                message: 'Bildirgi va kelishuv Word fayllari yuborilishi shart',
+              },
+            },
+          }
+        }
+
+        const token = selectAccessToken(api.getState())
+        return resubmitRequestWithDocuments(
+          requestId,
+          bildirgiFile,
+          kelishuvFile,
+          token,
+          sessionPayload ?? arg,
+        )
+      },
+      invalidatesTags: (_result, _error, { requestId }) => [
+        { type: API_TAGS.PURCHASE_REQUEST, id: requestId },
+        API_TAGS.PURCHASE_REQUEST,
+        API_TAGS.PURCHASE_REQUEST_SESSION,
+      ],
+    }),
     deletePurchaseRequest: builder.mutation({
       query: (id) => ({
         url: `/purchase-requests/${id}`,
@@ -797,6 +906,7 @@ export const {
   useSubmitApprovalDecisionMutation,
   useConfirmBossDecisionMutation,
   useResubmitPurchaseRequestMutation,
+  useResubmitPurchaseRequestWithDocumentsMutation,
   useGetPurchasingInboxQuery,
   useGetPurchasedInboxQuery,
   useCompletePurchaseMutation,

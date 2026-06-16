@@ -26,6 +26,7 @@ export const PurchasePeriodFields = ({
   error,
 }) => {
   const yearOptions = buildYearOptions(6)
+  const isPlain = periodType === 'plain'
 
   return (
     <Stack spacing={1.5}>
@@ -37,7 +38,13 @@ export const PurchasePeriodFields = ({
         row
         value={periodType}
         onChange={(event) => onPeriodTypeChange(event.target.value)}
+        sx={{ flexWrap: 'wrap', gap: 0.5 }}
       >
+        <FormControlLabel
+          value="plain"
+          control={<Radio size="small" disabled={disabled} />}
+          label="Oddiy"
+        />
         <FormControlLabel
           value="quarter"
           control={<Radio size="small" disabled={disabled} />}
@@ -46,64 +53,66 @@ export const PurchasePeriodFields = ({
         <FormControlLabel
           value="month"
           control={<Radio size="small" disabled={disabled} />}
-          label="Yil va oy bo‘yicha"
+          label="Oy bo‘yicha"
         />
       </RadioGroup>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-        <FormControl fullWidth>
-          <InputLabel id="purchase-period-year-label">Yil</InputLabel>
-          <Select
-            labelId="purchase-period-year-label"
-            label="Yil"
-            value={year}
-            onChange={(event) => onYearChange(event.target.value)}
-            disabled={disabled}
-          >
-            {yearOptions.map((optionYear) => (
-              <MenuItem key={optionYear} value={optionYear}>
-                {optionYear}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+      {isPlain ? null : (
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+          <FormControl fullWidth>
+            <InputLabel id="purchase-period-year-label">Yil</InputLabel>
+            <Select
+              labelId="purchase-period-year-label"
+              label="Yil"
+              value={year}
+              onChange={(event) => onYearChange(event.target.value)}
+              disabled={disabled}
+            >
+              {yearOptions.map((optionYear) => (
+                <MenuItem key={optionYear} value={optionYear}>
+                  {optionYear}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
-        {periodType === 'quarter' ? (
-          <FormControl fullWidth error={Boolean(error)}>
-            <InputLabel id="purchase-period-quarter-label">Chorak</InputLabel>
-            <Select
-              labelId="purchase-period-quarter-label"
-              label="Chorak"
-              value={quarter}
-              onChange={(event) => onQuarterChange(event.target.value)}
-              disabled={disabled}
-            >
-              {QUARTER_OPTIONS.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        ) : (
-          <FormControl fullWidth error={Boolean(error)}>
-            <InputLabel id="purchase-period-month-label">Oy</InputLabel>
-            <Select
-              labelId="purchase-period-month-label"
-              label="Oy"
-              value={month}
-              onChange={(event) => onMonthChange(event.target.value)}
-              disabled={disabled}
-            >
-              {UZ_MONTH_OPTIONS.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
-      </Stack>
+          {periodType === 'quarter' ? (
+            <FormControl fullWidth error={Boolean(error)}>
+              <InputLabel id="purchase-period-quarter-label">Chorak</InputLabel>
+              <Select
+                labelId="purchase-period-quarter-label"
+                label="Chorak"
+                value={quarter}
+                onChange={(event) => onQuarterChange(event.target.value)}
+                disabled={disabled}
+              >
+                {QUARTER_OPTIONS.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          ) : (
+            <FormControl fullWidth error={Boolean(error)}>
+              <InputLabel id="purchase-period-month-label">Oy</InputLabel>
+              <Select
+                labelId="purchase-period-month-label"
+                label="Oy"
+                value={month}
+                onChange={(event) => onMonthChange(event.target.value)}
+                disabled={disabled}
+              >
+                {UZ_MONTH_OPTIONS.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+        </Stack>
+      )}
     </Stack>
   )
 }

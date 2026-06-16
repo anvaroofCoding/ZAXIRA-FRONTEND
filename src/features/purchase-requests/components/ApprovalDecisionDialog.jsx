@@ -15,19 +15,34 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import { getDecisionChipColor } from '@/features/purchase-requests/utils/purchaseRequestStatus'
 
-const DECISION_OPTIONS = [
-  { value: 'APPROVED', label: 'Tasdiqlash', color: 'success' },
-  { value: 'PARTIAL', label: 'Qisman tasdiqlash', color: 'info' },
-  { value: 'REJECTED', label: 'Rad etish', color: 'error' },
+const COMMISSION_DECISION_OPTIONS = [
+  { value: 'APPROVED', label: 'Kelishish', resultLabel: 'Kelishildi', color: 'success' },
+  {
+    value: 'PARTIAL',
+    label: 'Qisman kelishish',
+    resultLabel: 'Qisman kelishildi',
+    color: 'info',
+  },
+  { value: 'REJECTED', label: 'Rad etish', resultLabel: 'Rad etildi', color: 'error' },
 ]
 
-const BOSS_HINTS = {
-  APPROVED:
-    'Ariza to‘liq tasdiqlanadi va holat «Sotib olinmoqda» ga o‘tadi.',
+const BOSS_DECISION_OPTIONS = [
+  { value: 'APPROVED', label: 'Kelishish', resultLabel: 'Kelishildi', color: 'success' },
+  { value: 'REJECTED', label: 'Rad etish', resultLabel: 'Rad etildi', color: 'error' },
+]
+
+const COMMISSION_HINTS = {
+  APPROVED: 'Ariza to‘liq kelishilgan hisoblanadi.',
   PARTIAL:
-    'Ariza beruvchi tovarlarni tuzatib qayta yuboradi. Keyin komissiya qayta ko‘rib chiqadi.',
+    'Qisman kelishish ham kelishilgan deb qabul qilinadi. Jarayon davom etadi.',
   REJECTED:
-    'Ariza yakuniy rad etiladi. Qayta yuborish mumkin emas.',
+    'Ariza beruvchiga xabar boradi. U tuzatib qayta yuborishi va sizga yana kelishish uchun yuborishi mumkin.',
+}
+
+const BOSS_HINTS = {
+  APPROVED: 'Ariza kelishiladi va holat «Sotib olinmoqda» ga o‘tadi.',
+  REJECTED:
+    'Ariza rad etiladi. Ariza beruvchi tuzatib qayta yuborishi mumkin — faqat boshliqqa boradi.',
 }
 
 export const ApprovalDecisionDialog = ({
@@ -38,20 +53,23 @@ export const ApprovalDecisionDialog = ({
   title = 'Qaror',
   presetDecision = null,
   hint,
+  mode = 'commission',
 }) => {
   const [decision, setDecision] = useState('')
   const [comment, setComment] = useState('')
   const [error, setError] = useState('')
 
   const lockedDecision = presetDecision ?? null
+  const isBossMode = mode === 'boss'
+  const decisionOptions = isBossMode ? BOSS_DECISION_OPTIONS : COMMISSION_DECISION_OPTIONS
 
   const selectedOption = useMemo(
-    () => DECISION_OPTIONS.find((option) => option.value === decision),
-    [decision],
+    () => decisionOptions.find((option) => option.value === decision),
+    [decision, decisionOptions],
   )
 
   const resolvedHint =
-    hint ?? (lockedDecision ? BOSS_HINTS[lockedDecision] : null)
+    hint ?? (lockedDecision ? (isBossMode ? BOSS_HINTS : COMMISSION_HINTS)[lockedDecision] : null)
 
   useEffect(() => {
     if (!open) return
@@ -92,7 +110,7 @@ export const ApprovalDecisionDialog = ({
                 Qaror turi
               </Typography>
               <Chip
-                label={selectedOption.label}
+                label={selectedOption.resultLabel}
                 color={getDecisionChipColor(lockedDecision)}
                 sx={{ fontWeight: 600 }}
               />
@@ -109,7 +127,7 @@ export const ApprovalDecisionDialog = ({
                 disabled={loading}
                 sx={{ display: 'flex', width: '100%' }}
               >
-                {DECISION_OPTIONS.map((option) => (
+                {decisionOptions.map((option) => (
                   <ToggleButton
                     key={option.value}
                     value={option.value}

@@ -22,7 +22,7 @@ import Typography from '@mui/material/Typography'
 import { ApprovalTimelineSteps } from '@/features/purchase-requests/components/ApprovalTimelineSteps'
 import { PurchaseDeadlineDetailRow } from '@/features/purchase-requests/components/PurchaseDeadlineDetailRow'
 import { PurchasePeriodDetailRow } from '@/features/purchase-requests/components/PurchasePeriodDetailRow'
-import { formatMemberLabel } from '@/features/purchase-requests/utils/formatMemberLabel'
+import { CommissionMemberDecisionsTable } from '@/features/purchase-requests/components/CommissionMemberDecisionsTable'
 import { formatBossDocumentName } from '@/features/purchase-requests/utils/formatBossDocumentName'
 import { BossDecisionAlert } from '@/features/purchase-requests/components/BossDecisionAlert'
 import { useGetPurchaseRequestByIdQuery } from '@/features/purchase-requests/api/purchaseRequestsApi'
@@ -30,8 +30,12 @@ import { canDeletePurchaseRequest } from '@/features/purchase-requests/utils/pur
 import {
   canEditPurchaseRequestInReview,
   canResubmitPurchaseRequest,
+  canResubmitPurchaseRequestToBoss,
 } from '@/features/purchase-requests/utils/purchaseRequestEdit'
-import { getStatusChipColor } from '@/features/purchase-requests/utils/purchaseRequestStatus'
+import {
+  getPurchaseRequestStatusLabel,
+  getStatusChipColor,
+} from '@/features/purchase-requests/utils/purchaseRequestStatus'
 import { usePermissions } from '@/shared/hooks/usePermissions'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 import { formatDateTime } from '@/shared/utils/formatDate'
@@ -57,6 +61,7 @@ export const PurchaseRequestDetailDialog = ({
   onDownloadKelishuv,
   downloading,
   onResubmit,
+  resubmittingMemberId = null,
   onEdit,
   onDelete,
   deleting = false,
@@ -81,9 +86,13 @@ export const PurchaseRequestDetailDialog = ({
   const showEdit = Boolean(
     onEdit && request && canEditPurchaseRequestInReview(request, authUser, canUpdatePage),
   )
-  const showResubmit = Boolean(
+  const showCommissionResubmit = Boolean(
     onResubmit && request && canResubmitPurchaseRequest(request, authUser, canUpdatePage),
   )
+  const showBossResubmit = Boolean(
+    onResubmit && request && canResubmitPurchaseRequestToBoss(request, authUser, canUpdatePage),
+  )
+  const showResubmit = showCommissionResubmit || showBossResubmit
 
   useEffect(() => {
     if (!open) {
@@ -105,7 +114,7 @@ export const PurchaseRequestDetailDialog = ({
   }
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
       <DialogTitle
         sx={{
           display: 'flex',
@@ -166,7 +175,7 @@ export const PurchaseRequestDetailDialog = ({
               <Chip
                 size="small"
                 color={getStatusChipColor(request.status)}
-                label={request.statusLabel}
+                label={getPurchaseRequestStatusLabel(request.status, request.statusLabel)}
                 sx={{ flexShrink: 0 }}
               />
               <Box sx={{ ml: 'auto', textAlign: 'right', flexShrink: 0 }}>
@@ -204,15 +213,18 @@ export const PurchaseRequestDetailDialog = ({
 
             <Box>
               <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
-                Komissiya a’zolari
+                Komissiya a’zolari va kelishuv holati
               </Typography>
-              <Stack component="ul" spacing={0.5} sx={{ m: 0, pl: 2.5 }}>
-                {request.commissionMembers.map((member) => (
-                  <Typography key={member.userId} component="li" variant="body2">
-                    {formatMemberLabel(member)}
-                  </Typography>
-                ))}
-              </Stack>
+              <CommissionMemberDecisionsTable
+                memberDecisions={request.memberDecisions}
+                showResubmitActions={showCommissionResubmit}
+                resubmittingMemberId={resubmittingMemberId}
+                onResubmitToMember={
+                  showCommissionResubmit
+                    ? (member) => onResubmit?.(request, { resubmitToMemberIds: [member.userId] })
+                    : undefined
+                }
+              />
             </Box>
 
             <Box>
@@ -278,7 +290,16 @@ export const PurchaseRequestDetailDialog = ({
           </Button>
         ) : null}
         {showResubmit ? (
-          <Button variant="contained" color="info" onClick={() => onResubmit(request)}>
+          <Button
+            variant="contained"
+            color="info"
+            onClick={() =>
+              onResubmit(
+                request,
+                showBossResubmit ? { resubmitTarget: 'boss' } : {},
+              )
+            }
+          >
             Qayta yuborish
           </Button>
         ) : null}

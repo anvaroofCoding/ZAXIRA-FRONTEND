@@ -64,7 +64,7 @@ export const RejectPurchaseDialog = ({ open, request, onClose, onSuccess }) => {
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ fontWeight: 600 }}>
-        Atkaz qilish — {request?.requestCode}
+        Rad etish — {request?.requestCode}
       </DialogTitle>
 
       <DialogContent dividers>
@@ -119,7 +119,7 @@ export const RejectPurchaseDialog = ({ open, request, onClose, onSuccess }) => {
           onClick={handleSubmit}
           startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : null}
         >
-          Atkaz qilish
+          Rad etish
         </Button>
       </DialogActions>
     </Dialog>

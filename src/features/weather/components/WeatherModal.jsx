@@ -123,17 +123,22 @@ export const WeatherModal = ({ open, onClose }) => {
       maxWidth="xs"
       fullWidth
       scroll="paper"
-      PaperProps={{
-        sx: {
-          borderRadius: 4,
-          overflow: 'hidden',
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: 4,
+            overflow: 'hidden',
+          },
         },
       }}
     >
       <Box sx={{ px: 3, pt: 3, pb: 2.5 }}>
         <Stack spacing={2.5}>
           <Stack spacing={0.5}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Stack
+              direction="row"
+              sx={{ justifyContent: 'space-between', alignItems: 'center' }}
+            >
               <Typography variant="body2" color="text.secondary">
                 Bugun
               </Typography>
@@ -149,7 +154,7 @@ export const WeatherModal = ({ open, onClose }) => {
             </Typography>
           </Stack>
 
-          <Stack direction="row" spacing={0.75} alignItems="center">
+          <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
             <Typography variant="body1" fontWeight={600}>
               Toshkent, O‘zbekiston
             </Typography>

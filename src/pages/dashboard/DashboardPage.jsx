@@ -29,7 +29,8 @@ import {
   DashboardChartSkeleton,
   DashboardSummaryCardSkeleton,
 } from '@/features/dashboard/components/DashboardPageSkeleton'
-import { TAVAR_IMPORT_PAGE_PATH } from '@/features/permissions/constants'
+import { TAVAR_IMPORT_PAGE_PATH, WAREHOUSES_2D_PAGE_PATH } from '@/features/permissions/constants'
+import { Warehouse2DMap } from '@/features/warehouse/components/Warehouse2DMap'
 import { usePermissions } from '@/shared/hooks/usePermissions'
 import { formatUzs } from '@/shared/utils/formatUzs'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
@@ -214,6 +215,7 @@ export const DashboardPage = () => {
   const canAccessExpense = canAccess('/omborlar/chiqim-qilish')
   const hasDashboardAccess = canAccess('/dashboard')
   const canViewProducts = canAccess('/dashboard/maxsulotlar')
+  const canViewWarehouses2D = canAccess(WAREHOUSES_2D_PAGE_PATH)
   const canImportProducts = canAccess(TAVAR_IMPORT_PAGE_PATH)
   const canExpense = Boolean(isSuperAdmin || hasExpensePermission || canAccessExpense)
 
@@ -545,6 +547,11 @@ export const DashboardPage = () => {
         )}
       </Box>
 
+      {canViewWarehouses2D ? (
+        <Box sx={{ mt: 3, width: '100%' }}>
+          <Warehouse2DMap viewerStructureId={viewerStructureId} embedded />
+        </Box>
+      ) : null}
     </Box>
   )
 }

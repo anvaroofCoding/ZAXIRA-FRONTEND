@@ -14,12 +14,6 @@ import Typography from '@mui/material/Typography'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import { ALL_STRUCTURES_FILTER_VALUE } from '@/shared/hooks/usePurchasingListFilters'
 
-const stickySx = {
-  position: 'sticky',
-  top: { xs: 56, sm: 64 },
-  zIndex: 10,
-}
-
 export const PurchasingPageFilters = ({
   title,
   subtitle,
@@ -41,47 +35,46 @@ export const PurchasingPageFilters = ({
   structureFilterDisabled = false,
   viewerStructureId = '',
 }) => (
-  <Box sx={stickySx}>
-    <Stack spacing={2}>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: 2,
-          flexWrap: 'wrap',
-        }}
-      >
-        <Box>
-          <Typography variant="h6" fontWeight={600}>
-            {title}
+  <Stack spacing={2}>
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: 2,
+        flexWrap: 'wrap',
+      }}
+    >
+      <Box>
+        <Typography variant="h6" fontWeight={600}>
+          {title}
+        </Typography>
+        {subtitle ? (
+          <Typography variant="body2" color="text.secondary">
+            {subtitle}
           </Typography>
-          {subtitle ? (
-            <Typography variant="body2" color="text.secondary">
-              {subtitle}
-            </Typography>
-          ) : null}
-        </Box>
-
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-          {headerAction}
-          {hasActiveFilters ? (
-            <Button
-              size="small"
-              variant="text"
-              startIcon={<FilterAltOffIcon fontSize="small" />}
-              onClick={onClearFilters}
-              sx={{ flexShrink: 0 }}
-            >
-              Filtrlarni tozalash
-            </Button>
-          ) : null}
-        </Stack>
+        ) : null}
       </Box>
 
-      <Grid container spacing={1.5} sx={{ alignItems: 'center' }}>
-        <Grid size={{ xs: 12, md: onStructureFilterChange ? 4 : 5 }}>
-          <TextField
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+        {headerAction}
+        {hasActiveFilters ? (
+          <Button
+            size="small"
+            variant="text"
+            startIcon={<FilterAltOffIcon fontSize="small" />}
+            onClick={onClearFilters}
+            sx={{ flexShrink: 0 }}
+          >
+            Filtrlarni tozalash
+          </Button>
+        ) : null}
+      </Stack>
+    </Box>
+
+    <Grid container spacing={1.5} sx={{ alignItems: 'center' }}>
+      <Grid size={{ xs: 12, md: onStructureFilterChange ? 4 : 5 }}>
+        <TextField
             size="small"
             placeholder={searchPlaceholder}
             value={search}
@@ -95,11 +88,11 @@ export const PurchasingPageFilters = ({
                   </InputAdornment>
                 ),
               },
-            }}
-          />
-        </Grid>
-        {onStructureFilterChange ? (
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          }}
+        />
+      </Grid>
+      {onStructureFilterChange ? (
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <FormControl
               size="small"
               fullWidth
@@ -123,10 +116,10 @@ export const PurchasingPageFilters = ({
                   </MenuItem>
                 ))}
               </Select>
-            </FormControl>
-          </Grid>
-        ) : null}
-        <Grid size={{ xs: 12, sm: 6, md: onStructureFilterChange ? 2.5 : 3.5 }}>
+          </FormControl>
+        </Grid>
+      ) : null}
+      <Grid size={{ xs: 12, sm: 6, md: onStructureFilterChange ? 2.5 : 3.5 }}>
           <DatePicker
             label={dateFromLabel}
             value={dateFrom}
@@ -137,9 +130,9 @@ export const PurchasingPageFilters = ({
               textField: { size: 'small', fullWidth: true },
               field: { clearable: true },
             }}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: onStructureFilterChange ? 2.5 : 3.5 }}>
+        />
+      </Grid>
+      <Grid size={{ xs: 12, sm: 6, md: onStructureFilterChange ? 2.5 : 3.5 }}>
           <DatePicker
             label={dateToLabel}
             value={dateTo}
@@ -150,9 +143,8 @@ export const PurchasingPageFilters = ({
               textField: { size: 'small', fullWidth: true },
               field: { clearable: true },
             }}
-          />
-        </Grid>
+        />
       </Grid>
-    </Stack>
-  </Box>
+    </Grid>
+  </Stack>
 )

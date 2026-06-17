@@ -1,6 +1,8 @@
 import {
   DISABLED_PAGE_ACTIONS,
   RECEIPT_PAGE_PATHS,
+  WAREHOUSES_2D_LEGACY_PAGE_PATH,
+  WAREHOUSES_2D_PAGE_PATH,
   WAREHOUSE_PERMISSION_PATHS,
 } from '@/features/permissions/constants'
 import { NAV_ITEMS } from '@/shared/config/navigation'
@@ -143,6 +145,11 @@ export const createFullPermissions = (catalog) => {
 export const normalizePermissions = (catalog, input) => {
   const base = createEmptyPermissions(catalog)
   const paths = getAllPathsFromCatalog(catalog)
+  const source = { ...input }
+
+  if (source[WAREHOUSES_2D_LEGACY_PAGE_PATH]?.access && !source[WAREHOUSES_2D_PAGE_PATH]?.access) {
+    source[WAREHOUSES_2D_PAGE_PATH] = source[WAREHOUSES_2D_LEGACY_PAGE_PATH]
+  }
 
   paths.forEach((path) => {
     const current = input?.[path]
@@ -296,6 +303,9 @@ const resolvePermissionLookupPaths = (path) => {
   }
   if (path === DASHBOARD_CALENDAR_PATH) {
     return ['/dashboard']
+  }
+  if (path === WAREHOUSES_2D_PAGE_PATH || path === WAREHOUSES_2D_LEGACY_PAGE_PATH) {
+    return [WAREHOUSES_2D_PAGE_PATH, WAREHOUSES_2D_LEGACY_PAGE_PATH]
   }
   if (!INVERTARIZATSIYA_PATHS.has(path)) {
     return [path]

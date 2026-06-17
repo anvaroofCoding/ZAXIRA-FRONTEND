@@ -13,12 +13,6 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 
-const stickySx = {
-  position: 'sticky',
-  top: { xs: 56, sm: 64 },
-  zIndex: 10,
-}
-
 export const TransferPageFilters = ({
   title,
   subtitle,
@@ -39,8 +33,7 @@ export const TransferPageFilters = ({
   onClearFilters,
   hasActiveFilters = false,
 }) => (
-  <Box sx={stickySx}>
-    <Stack spacing={2}>
+  <Stack spacing={2}>
       <Box
         sx={{
           display: 'flex',
@@ -145,5 +138,4 @@ export const TransferPageFilters = ({
         </Grid>
       </Grid>
     </Stack>
-  </Box>
 )

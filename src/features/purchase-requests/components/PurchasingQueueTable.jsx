@@ -18,6 +18,8 @@ import { getPurchaseRequestStatusLabel, getStatusChipColor } from '@/features/pu
 import { formatDateTime } from '@/shared/utils/formatDate'
 import { formatUzs } from '@/shared/utils/formatUzs'
 
+const TABLE_MIN_WIDTH = 1080
+
 const stopRowClick = (event) => {
   event.stopPropagation()
 }
@@ -50,23 +52,26 @@ export const PurchasingQueueTable = ({
   }
 
   return (
-    <TableContainer component={Paper} variant="outlined">
-      <Table size="small" stickyHeader>
+    <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto' }}>
+      <Table
+        size="small"
+        sx={{ tableLayout: 'fixed', minWidth: TABLE_MIN_WIDTH, width: '100%' }}
+      >
         <TableHead>
           <TableRow>
-            <TableCell width={120}>Ariza ID</TableCell>
-            <TableCell width={130}>Holat</TableCell>
-            <TableCell>Ariza beruvchi</TableCell>
-            <TableCell width={100}>Tuzilma</TableCell>
-            <TableCell width={80} align="right">
+            <TableCell width="10%">Ariza ID</TableCell>
+            <TableCell width="11%">Holat</TableCell>
+            <TableCell width="16%">Ariza beruvchi</TableCell>
+            <TableCell width="8%">Tuzilma</TableCell>
+            <TableCell width="9%" align="right">
               Tovarlar
             </TableCell>
-            <TableCell width={150}>Sana</TableCell>
-            <TableCell width={160}>Yetkazuvchi</TableCell>
-            <TableCell width={130} align="right">
+            <TableCell width="13%">Sana</TableCell>
+            <TableCell width="13%">Yetkazuvchi</TableCell>
+            <TableCell width="11%" align="right">
               Jami summa
             </TableCell>
-            <TableCell width={128} align="right">
+            <TableCell width="9%" align="right">
               Amallar
             </TableCell>
           </TableRow>

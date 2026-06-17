@@ -1,7 +1,6 @@
 export { MeningOmborimPage } from './MeningOmborimPage'
 export { TavarImportQilishPage } from './TavarImportQilishPage'
 export { BoshqaOmborlarPage } from './BoshqaOmborlarPage'
-export { Omborlar2DPage } from './Omborlar2DPage'
 export { ChiqimQilishPage } from './ChiqimQilishPage'
 export { ChiqimTarixiPage } from './ChiqimTarixiPage'
 export { AsosiyVositalarPage } from './AsosiyVositalarPage'

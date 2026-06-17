@@ -59,10 +59,6 @@ const { BoshqaOmborlarPage } = lazyImport(
   () => import('@/pages/omborlar'),
   'BoshqaOmborlarPage',
 )
-const { Omborlar2DPage } = lazyImport(
-  () => import('@/pages/omborlar'),
-  'Omborlar2DPage',
-)
 const { ChiqimQilishPage } = lazyImport(
   () => import('@/pages/omborlar'),
   'ChiqimQilishPage',
@@ -230,7 +226,7 @@ export const routes = [
           },
           {
             path: 'omborlar/2d-omborlar',
-            Component: Omborlar2DPage,
+            element: <Navigate to="/dashboard" replace />,
           },
           {
             path: 'omborlar/chiqim-qilish',

@@ -263,7 +263,7 @@ const WarehouseNode = ({
   )
 }
 
-export const Warehouse2DMap = ({ viewerStructureId = '' }) => {
+export const Warehouse2DMap = ({ viewerStructureId = '', embedded = false }) => {
   const theme = useTheme()
   const canvasRef = useRef(null)
   const dragRef = useRef(null)
@@ -287,7 +287,11 @@ export const Warehouse2DMap = ({ viewerStructureId = '' }) => {
   const [positions, setPositions] = useState({})
   const [selectedTransferId, setSelectedTransferId] = useState('')
 
-  const canvasHeight = isFullscreen ? '100%' : { xs: 'calc(100vh - 220px)', md: 'calc(100vh - 200px)' }
+  const canvasHeight = isFullscreen
+    ? '100%'
+    : embedded
+      ? { xs: 460, sm: 540, md: 620 }
+      : { xs: 'calc(100vh - 220px)', md: 'calc(100vh - 200px)' }
 
   useLayoutEffect(() => {
     const element = canvasRef.current
@@ -609,7 +613,13 @@ export const Warehouse2DMap = ({ viewerStructureId = '' }) => {
           ) : null}
         </Box>
       ) : (
-        <Stack spacing={2} sx={{ width: '100%', minHeight: 'calc(100vh - 160px)' }}>
+        <Stack
+          spacing={2}
+          sx={{
+            width: '100%',
+            minHeight: embedded ? { xs: 500, sm: 580, md: 660 } : 'calc(100vh - 160px)',
+          }}
+        >
           {toolbar}
           {mapContent}
           {transferQuery.isError ? (

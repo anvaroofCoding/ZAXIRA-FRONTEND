@@ -29,7 +29,6 @@ export const NAV_ITEMS = [
       { label: 'Tavar import qilish', path: '/omborlar/tavar-import-qilish' },
       { label: 'Mening omborim', path: '/omborlar/mening-omborim' },
       { label: 'Boshqa omborlar', path: '/omborlar/boshqa-omborlar' },
-      { label: '2D Omborlar', path: '/omborlar/2d-omborlar' },
     ],
   },
   {

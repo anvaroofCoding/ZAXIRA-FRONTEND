@@ -13,6 +13,7 @@ import { NotificationsDrawer } from '@/features/notifications/components/Notific
 import { ThemeToggle } from '@/shared/components/ThemeToggle'
 import { AppContainer } from '@/shared/components/layout/AppContainer'
 import { AppLogo } from '@/shared/components/layout/AppLogo'
+import { APP_SIDE_RAIL_WIDTH, appMobileSafePaddingSx } from '@/shared/constants/layout'
 import { selectAuthUser } from '@/features/auth/model/authSlice'
 import { NAV_ITEMS } from '@/shared/config/navigation'
 import { useAppSelector } from '@/shared/hooks/useAppSelector'
@@ -49,22 +50,56 @@ export const AppNavbar = () => {
   }
 
   return (
-    <AppBar position="sticky" elevation={0}>
-      <AppContainer>
-        <Toolbar
-          disableGutters
+    <AppBar
+      position="sticky"
+      elevation={0}
+      color="primary"
+      sx={
+        isCompact
+          ? {
+              pt: 'env(safe-area-inset-top, 0px)',
+            }
+          : undefined
+      }
+    >
+      <Box sx={{ display: 'flex', width: '100%' }}>
+        {!isCompact ? (
+          <Box
+            aria-hidden
+            sx={{
+              flexShrink: 0,
+              width: APP_SIDE_RAIL_WIDTH,
+              bgcolor: 'primary.main',
+            }}
+          />
+        ) : null}
+
+        <AppContainer
           sx={{
-            minHeight: { xs: 56, sm: 64 },
-            width: '100%',
-            gap: 1,
+            flex: 1,
+            minWidth: 0,
+            ...(isCompact
+              ? {
+                  px: 0,
+                  ...appMobileSafePaddingSx,
+                }
+              : {}),
           }}
         >
+          <Toolbar
+            disableGutters
+            sx={{
+              minHeight: { xs: 56, sm: 64 },
+              width: '100%',
+              gap: { xs: 0.5, sm: 1 },
+            }}
+          >
           {isCompact ? (
             <IconButton
               color="inherit"
               aria-label="Navigatsiya menyusi"
               onClick={() => setMobileNavOpen(true)}
-              sx={{ flexShrink: 0, ml: -0.5 }}
+              sx={{ flexShrink: 0 }}
             >
               <MenuIcon />
             </IconButton>
@@ -74,7 +109,7 @@ export const AppNavbar = () => {
             component={NavLink}
             to="/dashboard"
             tone="onPrimary"
-            sx={isCompact ? { flex: 1 } : undefined}
+            sx={isCompact ? { flexShrink: 0 } : undefined}
           />
 
           {!isCompact ? (
@@ -118,7 +153,7 @@ export const AppNavbar = () => {
               justifyContent: 'flex-end',
               gap: 0.25,
               flexShrink: 0,
-              ml: isCompact ? 0 : 'auto',
+              ml: 'auto',
             }}
           >
             <NotificationsDrawer />
@@ -126,7 +161,8 @@ export const AppNavbar = () => {
             <ProfileMenu />
           </Box>
         </Toolbar>
-      </AppContainer>
+        </AppContainer>
+      </Box>
 
       {isCompact ? (
         <MobileNavDrawer

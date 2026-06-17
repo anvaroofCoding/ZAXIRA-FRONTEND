@@ -34,9 +34,11 @@ import { CommissionMemberDecisionsTable } from '@/features/purchase-requests/com
 import { formatBossDocumentName } from '@/features/purchase-requests/utils/formatBossDocumentName'
 import {
   canBossConfirmPurchaseRequest,
+  isPurchaseRequestApprovalClosed,
   isPurchaseRequestBoss,
 } from '@/features/purchase-requests/utils/purchaseRequestBoss'
 import {
+  BOSS_APPROVED_STATUS_LABEL,
   getPurchaseRequestStatusLabel,
   getStatusChipColor,
 } from '@/features/purchase-requests/utils/purchaseRequestStatus'
@@ -81,13 +83,21 @@ export const PurchaseRequestApprovalDetailDialog = ({
   const canSubmitApproval = canCreate(APPROVAL_PAGE_PATH)
 
   const request = detailQuery.data
+  const approvalClosed = Boolean(
+    request && isPurchaseRequestApprovalClosed(request),
+  )
   const showBossActions = Boolean(
-    request && canBossConfirmPurchaseRequest(request, authUser),
+    request && !approvalClosed && canBossConfirmPurchaseRequest(request, authUser),
   )
   const statusLabel = getPurchaseRequestStatusLabel(
     request?.status,
     request?.statusLabel,
+    request,
   )
+  const statusChipColor =
+    request?.bossDecision === 'APPROVED' || statusLabel === BOSS_APPROVED_STATUS_LABEL
+      ? 'success'
+      : getStatusChipColor(showBossActions ? 'BOSS_DECISION_PENDING' : request?.status)
   const isBossViewer = Boolean(request && isPurchaseRequestBoss(request, authUser))
 
   useEffect(() => {
@@ -129,7 +139,7 @@ export const PurchaseRequestApprovalDetailDialog = ({
 
   const handleBossConfirm = async (payload) => {
     const successMessages = {
-      APPROVED: 'Ariza kelishildi — sotib olinmoqda',
+      APPROVED: 'Ariza tasdiqlandi',
       REJECTED: 'Ariza rad etildi',
     }
 
@@ -195,9 +205,7 @@ export const PurchaseRequestApprovalDetailDialog = ({
               <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
                 <Chip
                   size="small"
-                  color={getStatusChipColor(
-                    showBossActions ? 'BOSS_DECISION_PENDING' : request.status,
-                  )}
+                  color={statusChipColor}
                   label={statusLabel}
                 />
                 <Box sx={{ ml: 'auto', textAlign: 'right' }}>
@@ -322,7 +330,7 @@ export const PurchaseRequestApprovalDetailDialog = ({
                 onDownloadKelishuv={onDownloadKelishuv}
               />
 
-              {request.canSubmitDecision && canSubmitApproval ? (
+              {request.canSubmitDecision && canSubmitApproval && !approvalClosed ? (
                 <Button
                   size="small"
                   variant="contained"

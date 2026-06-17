@@ -24,11 +24,11 @@ import {
   resolveTransferDirection,
 } from '@/features/warehouse-dispatches/utils/dispatchStatusDisplay'
 import { dispatchCodeSx } from '@/features/warehouse-dispatches/utils/dispatchCodeDisplay'
-import {
-  getItemNomenclatureCode,
+import { getItemNomenclatureCode,
   NOMENCLATURE_COLUMN_LABEL,
   nomenclatureTableCellSx,
 } from '@/features/warehouse/utils/itemNomenclature'
+import { PurchaseRequestItemCharacteristicsCell } from '@/features/purchase-requests/components/PurchaseRequestItemCharacteristicsCell'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
 const directionIcons = {
@@ -125,9 +125,12 @@ export const Transfer2DDetailDialog = ({ transferId, viewerStructureId, onClose 
                         <Typography variant="body2" fontWeight={600}>
                           {row.name}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {row.characteristics}
-                        </Typography>
+                        {row.characteristics?.trim() ? (
+                          <PurchaseRequestItemCharacteristicsCell
+                            value={row.characteristics}
+                            modalOnly
+                          />
+                        ) : null}
                       </TableCell>
                       <TableCell sx={nomenclatureTableCellSx}>
                         {getItemNomenclatureCode(row)}

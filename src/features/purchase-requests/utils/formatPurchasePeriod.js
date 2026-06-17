@@ -50,6 +50,10 @@ export const formatPurchasePeriod = (request) => {
     return null
   }
 
+  if (request.purchasePeriodType === 'year') {
+    return `${request.purchasePeriodYear} yil`
+  }
+
   if (request.purchasePeriodType === 'quarter') {
     if (!request.purchasePeriodQuarter) return null
     const months = QUARTER_MONTHS[request.purchasePeriodQuarter]

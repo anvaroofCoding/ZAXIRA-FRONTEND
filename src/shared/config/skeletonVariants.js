@@ -12,6 +12,7 @@ export const SKELETON_VARIANTS = {
   users: 'users',
   structures: 'structures',
   commissions: 'commissions',
+  purchaseRequestsSubmit: 'purchaseRequestsSubmit',
   purchasingQueue: 'purchasingQueue',
   purchasingPurchased: 'purchasingPurchased',
   purchasingReceipt: 'purchasingReceipt',
@@ -34,6 +35,10 @@ export const resolveSkeletonVariant = (pathname) => {
 
   if (pathname.includes('/royxatga-olish/komissiya-azolari')) {
     return SKELETON_VARIANTS.commissions
+  }
+
+  if (pathname.includes('/xaridlar/arizalar-yuborish')) {
+    return SKELETON_VARIANTS.purchaseRequestsSubmit
   }
 
   if (pathname.includes('/xarid-qilish/sotib-olinadigan-tavarlar')) {

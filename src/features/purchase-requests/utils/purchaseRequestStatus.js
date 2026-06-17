@@ -1,3 +1,5 @@
+export const BOSS_APPROVED_STATUS_LABEL = 'Tasdiqlangan'
+
 export const PURCHASE_REQUEST_STATUS_LABELS = {
   COMMISSION_REVIEW: 'Kelishilmoqda',
   PARTIAL_REVISION: 'Kelishilmoqda',
@@ -34,12 +36,20 @@ export const APPROVAL_DECISION_COLORS = {
   REJECTED: 'error',
 }
 
-export const getPurchaseRequestStatusLabel = (status, fallback = '') => {
+export const getPurchaseRequestStatusLabel = (status, fallback = '', request) => {
+  if (request?.bossDecision === 'APPROVED') {
+    return BOSS_APPROVED_STATUS_LABEL
+  }
+
+  if (fallback?.trim()) {
+    return fallback.trim()
+  }
+
   if (status === 'PARTIAL_REVISION') {
     return PURCHASE_REQUEST_STATUS_LABELS.COMMISSION_REVIEW
   }
 
-  return (status && PURCHASE_REQUEST_STATUS_LABELS[status]) || fallback || 'Nomaʼlum holat'
+  return (status && PURCHASE_REQUEST_STATUS_LABELS[status]) || 'Nomaʼlum holat'
 }
 
 export const getApprovalDecisionLabel = (decision, fallback = '') => {

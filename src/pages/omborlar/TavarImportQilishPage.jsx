@@ -125,17 +125,21 @@ export const TavarImportQilishPage = () => {
         throw new Error('Import seansi topilmadi')
       }
 
-      const result = await submitImportSession({
-        sessionId,
-        ...payload,
-      }).unwrap()
+      try {
+        const result = await submitImportSession({
+          sessionId,
+          ...payload,
+        }).unwrap()
 
-      closeFormDialog()
-      showSnackbar(
-        `${result.code} — ${result.itemCount} ta tovar omborga qo‘shildi (${result.totalQuantity} dona)`,
-      )
+        closeFormDialog()
+        showSnackbar(
+          `${result.code} — ${result.itemCount} ta tovar omborga qo‘shildi (${result.totalQuantity} dona)`,
+        )
+      } catch (error) {
+        throw error
+      }
     },
-    [],
+    [submitImportSession],
   )
 
   return (

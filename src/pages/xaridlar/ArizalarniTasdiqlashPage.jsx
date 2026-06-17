@@ -80,7 +80,7 @@ export const ArizalarniTasdiqlashPage = () => {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <PurchasingPageFilters
             title="Arizalarni tasdiqlash"
-            subtitle="Tuzilma va sana bo‘yicha filtrlang"
+            subtitle="Barcha holatdagi arizalar — kelishilmoqda, tasdiqlangan, rad etilgan va boshqalar"
             search={search}
             onSearchChange={setSearch}
             dateFrom={dateFrom}

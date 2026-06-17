@@ -34,6 +34,7 @@ import {
   useGetWarehouseInventoryByLocationQuery,
   useGetWarehouseInventoryItemHistoryQuery,
   useGetWarehouseLocationsQuery,
+  useUpdateWarehouseInventoryNomenclatureMutation,
   useUpdateWarehouseLocationMutation,
 } from '@/features/warehouse/api/warehouseApi'
 import { WarehouseItemHistoryTimeline } from '@/features/warehouse/components/WarehouseItemHistoryTimeline'
@@ -42,9 +43,14 @@ import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { SkeletonBlock } from '@/shared/components/skeleton'
 import { formatDateTime } from '@/shared/utils/formatDate'
 import { formatUzs } from '@/shared/utils/formatUzs'
+import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 import {
   getItemNomenclatureCode,
+  getItemNomenclatureDisplay,
+  isItemNomenclatureMissing,
   NOMENCLATURE_COLUMN_LABEL,
+  nomenclatureManualInputSx,
+  nomenclatureMissingTableCellSx,
   nomenclatureTableCellSx,
 } from '@/features/warehouse/utils/itemNomenclature'
 import { printBarcodeLabels } from '@/shared/utils/printBarcodeLabels'
@@ -75,11 +81,14 @@ export const MeningOmborimPage = () => {
   const canAddLocation = canCreate(MY_WAREHOUSE_PAGE_PATH)
   const canEditLocation = canUpdate(MY_WAREHOUSE_PAGE_PATH)
   const canDeleteLocation = canDelete(MY_WAREHOUSE_PAGE_PATH)
+  const canEditNomenclature = canUpdate(MY_WAREHOUSE_PAGE_PATH)
 
   const locationsQuery = useGetWarehouseLocationsQuery()
   const [createLocation, createLocationState] = useCreateWarehouseLocationMutation()
   const [updateLocation, updateLocationState] = useUpdateWarehouseLocationMutation()
   const [deleteLocation, deleteLocationState] = useDeleteWarehouseLocationMutation()
+  const [updateInventoryNomenclature, updateNomenclatureState] =
+    useUpdateWarehouseInventoryNomenclatureMutation()
 
   const locations = locationsQuery.data ?? []
   const [selectedLocationId, setSelectedLocationId] = useState(null)
@@ -125,6 +134,8 @@ export const MeningOmborimPage = () => {
   const inventoryTotal = inventoryQuery.data?.total ?? 0
 
   const [detailItem, setDetailItem] = useState(null)
+  const [nomenclatureInput, setNomenclatureInput] = useState('')
+  const [nomenclatureError, setNomenclatureError] = useState('')
   const [printOpen, setPrintOpen] = useState(false)
   const [printName, setPrintName] = useState('')
   const [printCount, setPrintCount] = useState(1)
@@ -159,6 +170,11 @@ export const MeningOmborimPage = () => {
     return { unitPrice, lineTotal }
   }, [detailForModal])
 
+  const detailNomenclatureMissing = useMemo(
+    () => (detailForModal ? isItemNomenclatureMissing(detailForModal) : false),
+    [detailForModal],
+  )
+
   const barcodeForItem = (item) => {
     const raw = `${item.name ?? ''}|${item.characteristics ?? ''}`
     let hash = 0
@@ -172,10 +188,14 @@ export const MeningOmborimPage = () => {
   useEffect(() => {
     if (!detailItem) {
       setPrintOpen(false)
+      setNomenclatureInput('')
+      setNomenclatureError('')
       return
     }
     setPrintName(detailItem.name ?? '')
     setPrintCount(Math.max(1, Number(detailItem.quantity) || 1))
+    setNomenclatureInput('')
+    setNomenclatureError('')
   }, [detailItem])
 
   const handleCreateLocation = async () => {
@@ -232,6 +252,51 @@ export const MeningOmborimPage = () => {
     editLocationName.trim().length >= 2 &&
     editLocationName.trim() !== selectedLocation?.name &&
     !updateLocationState.isLoading
+
+  const canSaveNomenclature =
+    detailNomenclatureMissing &&
+    nomenclatureInput.trim().length > 0 &&
+    !updateNomenclatureState.isLoading
+
+  const handleSaveNomenclature = async () => {
+    if (!selectedLocationId || !detailItem?.id) return
+
+    const nomenclatureCode = nomenclatureInput.trim()
+    if (!nomenclatureCode) {
+      setNomenclatureError('Nomeklatura raqamini kiriting')
+      return
+    }
+
+    setNomenclatureError('')
+
+    try {
+      const updated = await updateInventoryNomenclature({
+        locationId: selectedLocationId,
+        inventoryId: detailItem.id,
+        nomenclatureCode,
+      }).unwrap()
+
+      setDetailItem((prev) =>
+        prev
+          ? {
+              ...prev,
+              nomenclatureCode: updated.nomenclatureCode,
+              barcode: updated.barcode,
+            }
+          : prev,
+      )
+      setNomenclatureInput('')
+    } catch (e) {
+      if (e?.status === 404) {
+        setNomenclatureError(
+          'Serverda nomeklatura saqlash yo‘q. Backend ni yangilab, qayta ishga tushiring.',
+        )
+        return
+      }
+
+      setNomenclatureError(getApiErrorMessage(e, 'Nomeklatura saqlashda xatolik'))
+    }
+  }
 
   return (
     <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -385,8 +450,14 @@ export const MeningOmborimPage = () => {
                                     {item.name}
                                   </Typography>
                                 </TableCell>
-                                <TableCell sx={nomenclatureTableCellSx}>
-                                  {getItemNomenclatureCode(item)}
+                                <TableCell
+                                  sx={
+                                    isItemNomenclatureMissing(item)
+                                      ? nomenclatureMissingTableCellSx
+                                      : nomenclatureTableCellSx
+                                  }
+                                >
+                                  {getItemNomenclatureDisplay(item)}
                                 </TableCell>
                                 <TableCell>{item.barcode || barcodeForItem(item)}</TableCell>
                                 <TableCell align="right">{item.quantity} ta</TableCell>
@@ -509,9 +580,51 @@ export const MeningOmborimPage = () => {
                 <Typography variant="caption" color="text.secondary" display="block">
                   {NOMENCLATURE_COLUMN_LABEL}
                 </Typography>
-                <Typography variant="body2" sx={nomenclatureTableCellSx}>
-                  {getItemNomenclatureCode(detailForModal)}
-                </Typography>
+                {detailNomenclatureMissing ? (
+                  <Stack spacing={1.5} sx={{ mt: 0.5 }}>
+                    <Alert severity="warning" sx={{ py: 0.5 }}>
+                      Nomeklatura yozilmagan. Quyidagi maydonga raqamni kiriting.
+                    </Alert>
+                    {canEditNomenclature ? (
+                      <>
+                        <TextField
+                          autoFocus
+                          size="small"
+                          label="Nomeklatura yozish"
+                          placeholder="Nomeklatura raqami"
+                          value={nomenclatureInput}
+                          onChange={(e) => {
+                            setNomenclatureInput(e.target.value)
+                            if (nomenclatureError) setNomenclatureError('')
+                          }}
+                          fullWidth
+                          slotProps={{ htmlInput: { maxLength: 64 } }}
+                          sx={nomenclatureManualInputSx}
+                          error={Boolean(nomenclatureError)}
+                          helperText={nomenclatureError || ' '}
+                        />
+                        <Box>
+                          <Button
+                            variant="contained"
+                            size="small"
+                            onClick={handleSaveNomenclature}
+                            disabled={!canSaveNomenclature}
+                          >
+                            Saqlash
+                          </Button>
+                        </Box>
+                      </>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        Nomeklatura yozish uchun tahrirlash ruxsati kerak.
+                      </Typography>
+                    )}
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" sx={nomenclatureTableCellSx}>
+                    {getItemNomenclatureCode(detailForModal)}
+                  </Typography>
+                )}
               </Box>
               <Box>
                 <Typography variant="caption" color="text.secondary" display="block">

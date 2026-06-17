@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined'
-import MenuIcon from '@mui/icons-material/Menu'
+import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined'
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import WbSunnyOutlinedIcon from '@mui/icons-material/WbSunnyOutlined'
@@ -55,7 +55,7 @@ export const ProfileMenu = () => {
         aria-expanded={open ? 'true' : undefined}
         onClick={(event) => setAnchorEl(event.currentTarget)}
       >
-        <MenuIcon />
+        <AccountCircleOutlinedIcon />
       </IconButton>
 
       <Menu

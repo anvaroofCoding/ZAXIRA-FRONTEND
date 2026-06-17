@@ -3,6 +3,7 @@ import { CommissionsPageSkeleton } from '@/features/commissions/components/Commi
 import { StructuresPageSkeleton } from '@/features/structures/components/StructuresPageSkeleton'
 import { UsersPageSkeleton } from '@/features/users/components/UsersPageSkeleton'
 import { PurchasingInboxSkeleton } from '@/features/purchase-requests/components/PurchasingInboxSkeletons'
+import { PurchaseRequestsPageSkeleton } from '@/features/purchase-requests/components/PurchaseRequestsPageSkeleton'
 import {
   DashboardSkeleton,
   PageContentSkeleton,
@@ -15,6 +16,13 @@ const skeletonByVariant = {
   [SKELETON_VARIANTS.users]: UsersPageSkeleton,
   [SKELETON_VARIANTS.structures]: StructuresPageSkeleton,
   [SKELETON_VARIANTS.commissions]: CommissionsPageSkeleton,
+  [SKELETON_VARIANTS.purchaseRequestsSubmit]: () => (
+    <PurchaseRequestsPageSkeleton
+      variant="submit"
+      showAddButton
+      ariaLabel="Arizalar yuborish yuklanmoqda"
+    />
+  ),
   [SKELETON_VARIANTS.purchasingQueue]: () => (
     <PurchasingInboxSkeleton
       variant="queue"

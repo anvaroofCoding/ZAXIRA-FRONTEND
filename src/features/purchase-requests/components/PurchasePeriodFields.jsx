@@ -46,6 +46,11 @@ export const PurchasePeriodFields = ({
           label="Oddiy"
         />
         <FormControlLabel
+          value="year"
+          control={<Radio size="small" disabled={disabled} />}
+          label="Yil bo‘yicha"
+        />
+        <FormControlLabel
           value="quarter"
           control={<Radio size="small" disabled={disabled} />}
           label="Chorak bo‘yicha"
@@ -93,7 +98,9 @@ export const PurchasePeriodFields = ({
                 ))}
               </Select>
             </FormControl>
-          ) : (
+          ) : null}
+
+          {periodType === 'month' ? (
             <FormControl fullWidth error={Boolean(error)}>
               <InputLabel id="purchase-period-month-label">Oy</InputLabel>
               <Select
@@ -110,7 +117,7 @@ export const PurchasePeriodFields = ({
                 ))}
               </Select>
             </FormControl>
-          )}
+          ) : null}
         </Stack>
       )}
     </Stack>

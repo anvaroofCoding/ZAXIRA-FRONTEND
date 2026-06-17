@@ -2,6 +2,21 @@ export const DISPATCH_STATUS = {
   PENDING_RECEIPT: 'PENDING_RECEIPT',
   PARTIALLY_RECEIVED: 'PARTIALLY_RECEIVED',
   COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
+}
+
+export const getTransfer2DMarkerColor = (status) => {
+  switch (status) {
+    case DISPATCH_STATUS.COMPLETED:
+      return 'success'
+    case DISPATCH_STATUS.CANCELLED:
+      return 'error'
+    case DISPATCH_STATUS.PENDING_RECEIPT:
+    case DISPATCH_STATUS.PARTIALLY_RECEIVED:
+      return 'warning'
+    default:
+      return 'info'
+  }
 }
 
 export const getDispatchStatusChipProps = (status, statusLabel) => {
@@ -12,6 +27,8 @@ export const getDispatchStatusChipProps = (status, statusLabel) => {
       return { color: 'info', label: statusLabel || 'Qisman qabul qilindi' }
     case DISPATCH_STATUS.PENDING_RECEIPT:
       return { color: 'warning', label: statusLabel || 'Qabul kutilmoqda' }
+    case DISPATCH_STATUS.CANCELLED:
+      return { color: 'error', label: statusLabel || 'Bekor qilindi' }
     default:
       return { color: 'default', label: statusLabel || '—' }
   }

@@ -7,6 +7,7 @@ import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
+import { SubmittedRequestsPageFiltersSkeleton } from '@/features/purchase-requests/components/SubmittedRequestsPageFiltersSkeleton'
 import { SkeletonBlock } from '@/shared/components/skeleton'
 
 const DEFAULT_ROW_COUNT = 10
@@ -32,8 +33,25 @@ const SearchFieldSkeleton = ({ sx }) => (
 )
 
 const PaginationSkeleton = () => (
-  <Box sx={{ display: 'flex', justifyContent: 'flex-end', py: 1 }}>
-    <SkeletonBlock variant="rounded" width={320} height={36} />
+  <Box
+    sx={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      flexWrap: 'wrap',
+      gap: 2,
+      py: 1,
+    }}
+  >
+    <Stack direction="row" spacing={1.5} alignItems="center">
+      <SkeletonBlock variant="text" width={64} height={18} />
+      <SkeletonBlock variant="rounded" width={56} height={32} />
+    </Stack>
+    <SkeletonBlock variant="text" width={88} height={18} />
+    <Stack direction="row" spacing={0.5}>
+      <SkeletonBlock variant="circular" width={32} height={32} />
+      <SkeletonBlock variant="circular" width={32} height={32} />
+    </Stack>
   </Box>
 )
 
@@ -196,14 +214,14 @@ const SubmitPageSkeleton = ({ showAddButton }) => (
         flexWrap: 'wrap',
       }}
     >
-      <SkeletonBlock variant="text" width={190} height={32} />
+      <SkeletonBlock variant="text" width={196} height={32} />
 
       {showAddButton ? (
-        <SkeletonBlock variant="rounded" width={108} height={36} sx={{ flexShrink: 0 }} />
+        <SkeletonBlock variant="rounded" width={132} height={36} sx={{ flexShrink: 0 }} />
       ) : null}
     </Box>
 
-    <SearchFieldSkeleton sx={{ minWidth: { xs: '100%', sm: 280 }, maxWidth: 400 }} />
+    <SubmittedRequestsPageFiltersSkeleton />
 
     <SubmitTableSkeleton />
     <PaginationSkeleton />

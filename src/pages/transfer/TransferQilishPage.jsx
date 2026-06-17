@@ -24,8 +24,11 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useGetWarehouseInventoryByLocationQuery, useGetWarehouseLocationsQuery } from '@/features/warehouse/api/warehouseApi'
 import { CreateTransferDialog } from '@/features/transfer/components/CreateTransferDialog'
+import { CancelTransferDialog } from '@/features/transfer/components/CancelTransferDialog'
+import { PendingOutgoingTransfersPanel } from '@/features/transfer/components/PendingOutgoingTransfersPanel'
 import { TransferPageFilters } from '@/features/transfer/components/TransferPageFilters'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
+import { usePermissions } from '@/shared/hooks/usePermissions'
 import { useTransferListFilters } from '@/shared/hooks/useTransferListFilters'
 import {
   getItemNomenclatureCode,
@@ -43,6 +46,9 @@ const clampInt = (value, min, max) => {
 }
 
 export const TransferQilishPage = () => {
+  const { user } = usePermissions()
+  const viewerStructureId = user?.structureId ?? user?.structure?.id ?? ''
+
   const {
     search,
     setSearch,
@@ -62,6 +68,7 @@ export const TransferQilishPage = () => {
   const [selectedLocationId, setSelectedLocationId] = useState('')
   const [selectedItems, setSelectedItems] = useState([])
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [cancelTarget, setCancelTarget] = useState(null)
 
   const locationsQuery = useGetWarehouseLocationsQuery()
   const locations = locationsQuery.data ?? []
@@ -78,6 +85,7 @@ export const TransferQilishPage = () => {
       page: queryParams.page,
       limit: queryParams.limit,
       search: queryParams.search,
+      minQuantity: 1,
     }),
     [queryParams.limit, queryParams.page, queryParams.search, selectedLocationId],
   )
@@ -86,7 +94,10 @@ export const TransferQilishPage = () => {
     skip: !selectedLocationId,
     refetchOnMountOrArgChange: true,
   })
-  const items = inventoryQuery.data?.items ?? []
+  const items = useMemo(
+    () => (inventoryQuery.data?.items ?? []).filter((item) => (item.quantity ?? 0) > 0),
+    [inventoryQuery.data?.items],
+  )
   const total = inventoryQuery.data?.total ?? 0
 
   const locationsReady =
@@ -250,6 +261,11 @@ export const TransferQilishPage = () => {
             hasActiveFilters={hasActiveFilters}
           />
 
+          <PendingOutgoingTransfersPanel
+            viewerStructureId={viewerStructureId}
+            onCancel={setCancelTarget}
+          />
+
           {locations.length ? (
             <FormControl size="small" sx={{ minWidth: 260 }}>
               <InputLabel id="transfer-location">Manba ombor joyi</InputLabel>
@@ -386,6 +402,13 @@ export const TransferQilishPage = () => {
         request={transferDraft}
         onClose={() => setDialogOpen(false)}
         onSuccess={() => {}}
+      />
+
+      <CancelTransferDialog
+        open={Boolean(cancelTarget)}
+        dispatch={cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onSuccess={() => setCancelTarget(null)}
       />
     </Box>
   )

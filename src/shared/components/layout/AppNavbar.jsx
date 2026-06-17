@@ -1,20 +1,25 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
+import MenuIcon from '@mui/icons-material/Menu'
 import AppBar from '@mui/material/AppBar'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import IconButton from '@mui/material/IconButton'
 import Toolbar from '@mui/material/Toolbar'
-import Typography from '@mui/material/Typography'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
 import { ProfileMenu } from '@/features/profile/components/ProfileMenu'
 import { NotificationsDrawer } from '@/features/notifications/components/NotificationsDrawer'
 import { ThemeToggle } from '@/shared/components/ThemeToggle'
 import { AppContainer } from '@/shared/components/layout/AppContainer'
+import { AppLogo } from '@/shared/components/layout/AppLogo'
 import { selectAuthUser } from '@/features/auth/model/authSlice'
 import { NAV_ITEMS } from '@/shared/config/navigation'
-import { env } from '@/shared/config/env'
 import { useAppSelector } from '@/shared/hooks/useAppSelector'
 import { useGetWarehouseReceiptPendingCountQuery } from '@/features/warehouse-dispatches/api/warehouseDispatchesApi'
 import { hasPageAccess } from '@/features/permissions/utils/permissions'
 import { filterNavByPermissions } from '@/shared/utils/filterNavByPermissions'
+import { MobileNavDrawer } from './MobileNavDrawer'
 import { NavDropdown } from './NavDropdown'
 
 const navLinkSx = {
@@ -26,6 +31,10 @@ const navLinkSx = {
 }
 
 export const AppNavbar = () => {
+  const theme = useTheme()
+  const isCompact = useMediaQuery(theme.breakpoints.down('lg'))
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+
   const user = useAppSelector(selectAuthUser)
   const visibleNavItems = filterNavByPermissions(NAV_ITEMS, user)
   const canSeeReceipt = hasPageAccess(user, '/xarid-qilish/xaridni-qabul-qilish')
@@ -47,62 +56,69 @@ export const AppNavbar = () => {
           sx={{
             minHeight: { xs: 56, sm: 64 },
             width: '100%',
+            gap: 1,
           }}
         >
-          <Typography
-            variant="h6"
+          {isCompact ? (
+            <IconButton
+              color="inherit"
+              aria-label="Navigatsiya menyusi"
+              onClick={() => setMobileNavOpen(true)}
+              sx={{ flexShrink: 0, ml: -0.5 }}
+            >
+              <MenuIcon />
+            </IconButton>
+          ) : null}
+
+          <AppLogo
             component={NavLink}
             to="/dashboard"
-            sx={{
-              fontWeight: 700,
-              color: 'inherit',
-              textDecoration: 'none',
-              minWidth: { xs: 80, sm: 110 },
-              flexShrink: 0,
-            }}
-          >
-            {env.appName}
-          </Typography>
+            tone="onPrimary"
+            sx={isCompact ? { flex: 1 } : undefined}
+          />
+
+          {!isCompact ? (
+            <Box
+              sx={{
+                flex: 1,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 0.25,
+              }}
+            >
+              {visibleNavItems.map((item) =>
+                item.type === 'link' ? (
+                  <Button
+                    key={item.path}
+                    color="inherit"
+                    component={NavLink}
+                    to={item.path}
+                    sx={navLinkSx}
+                  >
+                    {item.label}
+                  </Button>
+                ) : (
+                  <NavDropdown
+                    key={item.label}
+                    label={item.label}
+                    items={item.children}
+                    badgeCounts={badgeCounts}
+                  />
+                ),
+              )}
+            </Box>
+          ) : null}
 
           <Box
             sx={{
-              flex: 1,
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 0.25,
-            }}
-          >
-            {visibleNavItems.map((item) =>
-              item.type === 'link' ? (
-                <Button
-                  key={item.path}
-                  color="inherit"
-                  component={NavLink}
-                  to={item.path}
-                  sx={navLinkSx}
-                >
-                  {item.label}
-                </Button>
-              ) : (
-                <NavDropdown
-                  key={item.label}
-                  label={item.label}
-                  items={item.children}
-                  badgeCounts={badgeCounts}
-                />
-              ),
-            )}
-          </Box>
-
-          <Box
-            sx={{
-              minWidth: { xs: 80, sm: 96 },
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'flex-end',
               gap: 0.25,
+              flexShrink: 0,
+              ml: isCompact ? 0 : 'auto',
             }}
           >
             <NotificationsDrawer />
@@ -111,6 +127,15 @@ export const AppNavbar = () => {
           </Box>
         </Toolbar>
       </AppContainer>
+
+      {isCompact ? (
+        <MobileNavDrawer
+          open={mobileNavOpen}
+          onClose={() => setMobileNavOpen(false)}
+          navItems={visibleNavItems}
+          badgeCounts={badgeCounts}
+        />
+      ) : null}
     </AppBar>
   )
 }

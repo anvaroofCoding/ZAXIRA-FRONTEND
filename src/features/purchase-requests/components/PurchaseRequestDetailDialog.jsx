@@ -29,8 +29,6 @@ import { useGetPurchaseRequestByIdQuery } from '@/features/purchase-requests/api
 import { canDeletePurchaseRequest } from '@/features/purchase-requests/utils/purchaseRequestDelete'
 import {
   canEditPurchaseRequestInReview,
-  canResubmitPurchaseRequest,
-  canResubmitPurchaseRequestToBoss,
 } from '@/features/purchase-requests/utils/purchaseRequestEdit'
 import {
   getPurchaseRequestStatusLabel,
@@ -60,13 +58,11 @@ export const PurchaseRequestDetailDialog = ({
   onDownloadBildirgi,
   onDownloadKelishuv,
   downloading,
-  onResubmit,
-  resubmittingMemberId = null,
   onEdit,
   onDelete,
   deleting = false,
 }) => {
-  const { user: authUser, canDelete: canDeletePage, canUpdate: canUpdatePage } =
+  const { user: authUser, canDelete: canDeletePage, canUpdate: canUpdatePage, canCreate: canCreatePage } =
     usePermissions()
   const isSuperAdmin =
     authUser?.isSuperAdmin || authUser?.role === 'SUPER_ADMIN'
@@ -84,15 +80,10 @@ export const PurchaseRequestDetailDialog = ({
     canDeletePurchaseRequest(request, { isSuperAdmin })
 
   const showEdit = Boolean(
-    onEdit && request && canEditPurchaseRequestInReview(request, authUser, canUpdatePage),
+    onEdit &&
+      request &&
+      canEditPurchaseRequestInReview(request, authUser, canUpdatePage, canCreatePage),
   )
-  const showCommissionResubmit = Boolean(
-    onResubmit && request && canResubmitPurchaseRequest(request, authUser, canUpdatePage),
-  )
-  const showBossResubmit = Boolean(
-    onResubmit && request && canResubmitPurchaseRequestToBoss(request, authUser, canUpdatePage),
-  )
-  const showResubmit = showCommissionResubmit || showBossResubmit
 
   useEffect(() => {
     if (!open) {
@@ -175,7 +166,7 @@ export const PurchaseRequestDetailDialog = ({
               <Chip
                 size="small"
                 color={getStatusChipColor(request.status)}
-                label={getPurchaseRequestStatusLabel(request.status, request.statusLabel)}
+                label={getPurchaseRequestStatusLabel(request.status, request.statusLabel, request)}
                 sx={{ flexShrink: 0 }}
               />
               <Box sx={{ ml: 'auto', textAlign: 'right', flexShrink: 0 }}>
@@ -217,13 +208,6 @@ export const PurchaseRequestDetailDialog = ({
               </Typography>
               <CommissionMemberDecisionsTable
                 memberDecisions={request.memberDecisions}
-                showResubmitActions={showCommissionResubmit}
-                resubmittingMemberId={resubmittingMemberId}
-                onResubmitToMember={
-                  showCommissionResubmit
-                    ? (member) => onResubmit?.(request, { resubmitToMemberIds: [member.userId] })
-                    : undefined
-                }
               />
             </Box>
 
@@ -287,20 +271,6 @@ export const PurchaseRequestDetailDialog = ({
             onClick={() => onDelete(request)}
           >
             O‘chirish
-          </Button>
-        ) : null}
-        {showResubmit ? (
-          <Button
-            variant="contained"
-            color="info"
-            onClick={() =>
-              onResubmit(
-                request,
-                showBossResubmit ? { resubmitTarget: 'boss' } : {},
-              )
-            }
-          >
-            Qayta yuborish
           </Button>
         ) : null}
         {request ? (

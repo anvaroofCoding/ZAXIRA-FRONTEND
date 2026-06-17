@@ -10,6 +10,7 @@ import {
   listLocalImportSessions,
   markImportSessionPendingServerSync,
   markImportSessionServerSynced,
+  mergeImportSessionSources,
   mergeServerImportSessionsWithLocalCache,
   persistImportSessionLocally,
 } from '@/features/product-import/utils/activeSessionsStorage'
@@ -42,6 +43,8 @@ const sanitizeSessionPayload = (body = {}) => ({
     quantity: Number.parseInt(String(item.quantity ?? 1), 10) || 1,
     unit: item.unit?.trim() || 'dona',
     manufacturingCountry: item.manufacturingCountry?.trim() ?? '',
+    nomenclatureCode: item.nomenclatureCode?.trim() ?? '',
+    unitPrice: Math.max(0, Math.round(Number(item.unitPrice) || 0)),
   })),
 })
 
@@ -199,7 +202,14 @@ export const productImportApi = baseApi.injectEndpoints({
 
         if (!result.error) {
           markImportSessionServerSynced(userId, id)
-          return { data: { ...result.data, serverSaved: true, pendingServerSync: false } }
+          const mergedSession = mergeImportSessionSources(result.data, localSnapshot)
+          return {
+            data: {
+              ...mergedSession,
+              serverSaved: true,
+              pendingServerSync: false,
+            },
+          }
         }
 
         if (syncServer) {
@@ -226,10 +236,12 @@ export const productImportApi = baseApi.injectEndpoints({
           },
         }
       },
-      async onQueryStarted({ id }, { dispatch, queryFulfilled }) {
+      async onQueryStarted({ id }, { dispatch, queryFulfilled, getState }) {
         try {
           const { data } = await queryFulfilled
           if (!data?.id) return
+
+          const userId = selectAuthUser(getState())?.id ?? null
 
           dispatch(
             productImportApi.util.updateQueryData(
@@ -239,12 +251,16 @@ export const productImportApi = baseApi.injectEndpoints({
                 if (!draft?.items) return
 
                 const index = draft.items.findIndex((item) => item.id === id)
+                const nextSession = userId
+                  ? mergeImportSessionSources(data, draft.items[index])
+                  : data
+
                 if (index >= 0) {
-                  draft.items[index] = { ...draft.items[index], ...data }
+                  draft.items[index] = { ...draft.items[index], ...nextSession }
                   return
                 }
 
-                draft.items.unshift(data)
+                draft.items.unshift(nextSession)
                 draft.total = draft.items.length
               },
             ),

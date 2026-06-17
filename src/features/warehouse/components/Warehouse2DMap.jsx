@@ -14,15 +14,14 @@ import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { alpha, useTheme } from '@mui/material/styles'
+import { getTransfer2DMarkerColor } from '@/features/warehouse-dispatches/utils/dispatchStatusDisplay'
 import { useGetTransferHistoryQuery } from '@/features/transfer/api/transferApi'
 import { useGetAllWarehousesOverviewQuery } from '@/features/warehouse/api/warehouseApi'
 import { Transfer2DDetailDialog } from '@/features/warehouse/components/Transfer2DDetailDialog'
 import {
   buildCircularLayout,
-  buildRopePath,
   buildTransferLinkPairs,
   getConnectionGeometry,
-  getNodeCenter,
   getPathBounds,
   getTransferEndpointIds,
   isActiveTransfer,
@@ -98,7 +97,7 @@ const ConnectionRope = ({ pathD }) => {
   )
 }
 
-const TransferMarker = ({ pathD, transfer, delay, active, onSelect }) => {
+const TransferMarker = ({ pathD, transfer, delay, active, reversed, onSelect }) => {
   const theme = useTheme()
   const markerRef = useRef(null)
   const [hovered, setHovered] = useState(false)
@@ -115,7 +114,8 @@ const TransferMarker = ({ pathD, transfer, delay, active, onSelect }) => {
     let raf = 0
     const tick = (timestamp) => {
       const elapsedSec = timestamp / 1000
-      const progress = ((elapsedSec + delay) % duration) / duration
+      let progress = ((elapsedSec + delay) % duration) / duration
+      if (reversed) progress = 1 - progress
       const point = pathEl.getPointAtLength(progress * totalLength)
 
       if (markerRef.current) {
@@ -127,9 +127,10 @@ const TransferMarker = ({ pathD, transfer, delay, active, onSelect }) => {
 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [pathD, delay, duration])
+  }, [pathD, delay, duration, reversed])
 
-  const iconColor = active ? theme.palette.warning.dark : theme.palette.info.dark
+  const markerColor = getTransfer2DMarkerColor(transfer.status)
+  const iconColor = theme.palette[markerColor].dark
 
   return (
     <Tooltip title={`${transfer.dispatchCode} — bosing`} placement="top">
@@ -166,7 +167,7 @@ const TransferMarker = ({ pathD, transfer, delay, active, onSelect }) => {
             borderRadius: '50%',
             bgcolor: 'background.paper',
             border: '2px solid',
-            borderColor: active ? 'warning.main' : 'info.main',
+            borderColor: `${markerColor}.main`,
             boxShadow: hovered ? 6 : 3,
             display: 'flex',
             alignItems: 'center',
@@ -429,17 +430,12 @@ export const Warehouse2DMap = ({ viewerStructureId = '' }) => {
         const markers = pair.transfers
           .map((transfer, index) => {
             const { fromId, toId } = getTransferEndpointIds(transfer)
-            const sourcePos = positions[fromId]
-            const targetPos = positions[toId]
-            if (!sourcePos || !targetPos) return null
-
-            const sourceCenter = getNodeCenter(sourcePos)
-            const targetCenter = getNodeCenter(targetPos)
-            const pathD = buildRopePath(sourceCenter, targetCenter).d
+            const reversed = fromId !== pair.fromId || toId !== pair.toId
 
             return {
               transfer,
-              pathD,
+              pathD: geometry.pathD,
+              reversed,
               delay: index * 4,
             }
           })
@@ -556,12 +552,13 @@ export const Warehouse2DMap = ({ viewerStructureId = '' }) => {
               <ConnectionRope key={key} pathD={geometry.pathD} />
             ))}
 
-            {transferMarkers.map(({ transfer, pathD, delay }) => (
+            {transferMarkers.map(({ transfer, pathD, delay, reversed }) => (
               <TransferMarker
                 key={transfer.id}
                 pathD={pathD}
                 transfer={transfer}
                 delay={delay}
+                reversed={reversed}
                 active={isActiveTransfer(transfer)}
                 onSelect={setSelectedTransferId}
               />

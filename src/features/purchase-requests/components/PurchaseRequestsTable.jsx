@@ -21,8 +21,6 @@ export const PurchaseRequestsTable = ({
   canDeleteItem,
   onEdit,
   canEditItem,
-  onResubmit,
-  canResubmitItem,
   downloadingId,
 }) => {
   if (!items.length) {
@@ -78,7 +76,7 @@ export const PurchaseRequestsTable = ({
                   <Chip
                     size="small"
                     color={getStatusChipColor(item.status)}
-                    label={getPurchaseRequestStatusLabel(item.status, item.statusLabel)}
+                    label={getPurchaseRequestStatusLabel(item.status, item.statusLabel, item)}
                   />
                 </TableCell>
                 <TableCell align="right" onClick={(event) => event.stopPropagation()}>
@@ -92,8 +90,6 @@ export const PurchaseRequestsTable = ({
                     canDelete={canDeleteItem?.(item) ?? false}
                     onEdit={onEdit}
                     canEdit={canEditItem?.(item) ?? false}
-                    onResubmit={onResubmit}
-                    canResubmit={canResubmitItem?.(item) ?? false}
                   />
                 </TableCell>
               </TableRow>

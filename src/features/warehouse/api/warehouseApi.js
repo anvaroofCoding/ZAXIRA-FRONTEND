@@ -44,12 +44,13 @@ export const warehouseApi = baseApi.injectEndpoints({
       ],
     }),
     getWarehouseInventoryByLocation: builder.query({
-      query: ({ locationId, page = 1, limit = 10, search = '' }) => ({
+      query: ({ locationId, page = 1, limit = 10, search = '', minQuantity } = {}) => ({
         url: `/warehouse/locations/${locationId}/inventory`,
         params: {
           page,
           limit,
           ...(search?.trim() ? { search: search.trim() } : {}),
+          ...(minQuantity != null ? { minQuantity } : {}),
         },
       }),
       providesTags: (result, _error, arg) => [
@@ -60,6 +61,24 @@ export const warehouseApi = baseApi.injectEndpoints({
     getWarehouseInventoryItemHistory: builder.query({
       query: ({ locationId, inventoryId }) =>
         `/warehouse/locations/${locationId}/inventory/${inventoryId}/history`,
+      providesTags: (_result, _error, { locationId, inventoryId }) => [
+        API_TAGS.WAREHOUSE_INVENTORY,
+        {
+          type: API_TAGS.WAREHOUSE_INVENTORY,
+          id: `history-${locationId}-${inventoryId}`,
+        },
+      ],
+    }),
+    updateWarehouseInventoryNomenclature: builder.mutation({
+      query: ({ locationId, inventoryId, nomenclatureCode }) => ({
+        url: `/warehouse/locations/${locationId}/inventory/${inventoryId}/nomenclature`,
+        method: 'PATCH',
+        body: { nomenclatureCode },
+      }),
+      invalidatesTags: (_result, _error, arg) => [
+        { type: API_TAGS.WAREHOUSE_INVENTORY, id: arg.locationId },
+        API_TAGS.WAREHOUSE_INVENTORY,
+      ],
     }),
     getAllWarehousesOverview: builder.query({
       query: () => '/warehouse/all/overview',
@@ -183,6 +202,7 @@ export const {
   useDeleteWarehouseLocationMutation,
   useGetWarehouseInventoryByLocationQuery,
   useGetWarehouseInventoryItemHistoryQuery,
+  useUpdateWarehouseInventoryNomenclatureMutation,
   useGetAllWarehousesOverviewQuery,
   useGetWarehouseInventoryByAnyLocationQuery,
   useLazyGetWarehouseInventoryItemByBarcodeQuery,

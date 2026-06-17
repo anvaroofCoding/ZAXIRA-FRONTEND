@@ -7,7 +7,11 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
-import { getPurchaseRequestStatusLabel, getStatusChipColor } from '@/features/purchase-requests/utils/purchaseRequestStatus'
+import {
+  BOSS_APPROVED_STATUS_LABEL,
+  getPurchaseRequestStatusLabel,
+  getStatusChipColor,
+} from '@/features/purchase-requests/utils/purchaseRequestStatus'
 import { formatDateTime } from '@/shared/utils/formatDate'
 
 const ROLE_LABELS = {
@@ -20,7 +24,7 @@ export const PurchaseApprovalsTable = ({ items, onView }) => {
     return (
       <Paper variant="outlined" sx={{ py: 6, textAlign: 'center' }}>
         <Typography color="text.secondary">
-          Sizga tayinlangan tasdiqlash arizalari topilmadi
+          Siz ishtirok etgan tasdiqlash arizalari topilmadi
         </Typography>
       </Paper>
     )
@@ -41,7 +45,18 @@ export const PurchaseApprovalsTable = ({ items, onView }) => {
         </TableHead>
 
         <TableBody>
-          {items.map((item) => (
+          {items.map((item) => {
+            const statusLabel = getPurchaseRequestStatusLabel(
+              item.status,
+              item.statusLabel,
+              item,
+            )
+            const statusChipColor =
+              item.bossDecision === 'APPROVED' || statusLabel === BOSS_APPROVED_STATUS_LABEL
+                ? 'success'
+                : getStatusChipColor(item.status)
+
+            return (
             <TableRow
               key={item.id}
               hover
@@ -70,12 +85,13 @@ export const PurchaseApprovalsTable = ({ items, onView }) => {
               <TableCell>
                 <Chip
                   size="small"
-                  color={getStatusChipColor(item.status)}
-                  label={getPurchaseRequestStatusLabel(item.status, item.statusLabel)}
+                  color={statusChipColor}
+                  label={statusLabel}
                 />
               </TableCell>
             </TableRow>
-          ))}
+            )
+          })}
         </TableBody>
       </Table>
     </TableContainer>

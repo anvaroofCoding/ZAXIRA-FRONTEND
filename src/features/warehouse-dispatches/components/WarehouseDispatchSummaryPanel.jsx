@@ -86,7 +86,7 @@ export const NomenclatureTextField = ({
       sx={{
         width: stacked ? '100%' : 220,
         '& .MuiOutlinedInput-root': {
-          bgcolor: '#fff',
+          bgcolor: 'background.paper',
         },
       }}
     />

@@ -70,14 +70,11 @@ export const PurchaseRequestFormDialog = ({
   request,
   session,
   sessionId,
-  resubmitMode = null,
   onClose,
   onSubmit,
   submitLabel,
 }) => {
-  const isResubmit = Boolean(resubmitMode && request?.id)
-  const isBossResubmit = isResubmit && resubmitMode?.target === 'boss'
-  const isEdit = Boolean(request?.id) && !isResubmit
+  const isEdit = Boolean(request?.id)
   const usesSession = !isEdit && Boolean(sessionId)
   const { user: authUser } = usePermissions()
   const currentUserId = authUser?.id
@@ -112,7 +109,6 @@ export const PurchaseRequestFormDialog = ({
   const [error, setError] = useState('')
   const [sessionNotice, setSessionNotice] = useState('')
   const [aiLoadingByIndex, setAiLoadingByIndex] = useState({})
-  const [resubmitSelectedMemberIds, setResubmitSelectedMemberIds] = useState([])
   const [polishItemText] = usePolishPurchaseRequestItemTextMutation()
   const [saveSession, saveSessionState] = useSavePurchaseRequestSessionMutation()
   const skipNextAutosaveRef = useRef(true)
@@ -124,34 +120,6 @@ export const PurchaseRequestFormDialog = ({
     () => users.filter((user) => !commissionMembers.some((member) => member.id === user.id)),
     [users, commissionMembers],
   )
-
-  const resubmitRejectedMembers = useMemo(() => {
-    if (!isResubmit || isBossResubmit || !request?.memberDecisions?.length) return []
-
-    const rejectedIds = new Set(request.rejectedMemberIds ?? [])
-
-    return request.memberDecisions.filter(
-      (member) => member.decision === 'REJECTED' || rejectedIds.has(member.userId),
-    )
-  }, [isResubmit, isBossResubmit, request])
-
-  useEffect(() => {
-    if (!open || !isResubmit || isBossResubmit) return
-
-    const rejectedIds = resubmitRejectedMembers.map((member) => member.userId)
-    const preset = (resubmitMode?.preselectedMemberIds ?? []).filter((id) =>
-      rejectedIds.includes(id),
-    )
-    setResubmitSelectedMemberIds(preset.length ? preset : rejectedIds)
-  }, [open, isResubmit, isBossResubmit, resubmitRejectedMembers, resubmitMode?.preselectedMemberIds])
-
-  const toggleResubmitMember = (memberId) => {
-    setResubmitSelectedMemberIds((prev) =>
-      prev.includes(memberId)
-        ? prev.filter((id) => id !== memberId)
-        : [...prev, memberId],
-    )
-  }
 
   const buildSessionPayload = useCallback(
     () => ({
@@ -445,11 +413,6 @@ export const PurchaseRequestFormDialog = ({
       return
     }
 
-    if (isResubmit && !isBossResubmit && !resubmitSelectedMemberIds.length) {
-      setError('Qayta kelishish uchun kamida bitta rad etgan a’zoni tanlang')
-      return
-    }
-
     const payload = {
       commissionMemberIds: commissionMembers.map((member) => member.id),
       bossId,
@@ -460,11 +423,6 @@ export const PurchaseRequestFormDialog = ({
       purchasePeriodYear: periodType === 'plain' ? undefined : periodYear,
       purchasePeriodQuarter: periodType === 'quarter' ? periodQuarter : undefined,
       purchasePeriodMonth: periodType === 'month' ? periodMonth : undefined,
-      ...(isResubmit
-        ? isBossResubmit
-          ? { resubmitTarget: 'boss' }
-          : { resubmitToMemberIds: resubmitSelectedMemberIds }
-        : {}),
     }
 
     try {
@@ -516,87 +474,21 @@ export const PurchaseRequestFormDialog = ({
     <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
       <form onSubmit={handleSubmit} noValidate>
         <DialogTitle>
-          {isResubmit
-            ? `${isBossResubmit ? 'Boshliqqa qayta yuborish' : 'Arizani qayta yuborish'} — ${request.requestCode}`
-            : isEdit
-              ? `Arizani tahrirlash — ${request.requestCode}`
-              : session?.reservedRequestCode
-                ? `Yangi ariza — ${session.reservedRequestCode}`
-                : 'Yangi ariza'}
+          {isEdit
+            ? `Arizani tahrirlash — ${request.requestCode}`
+            : session?.reservedRequestCode
+              ? `Yangi ariza — ${session.reservedRequestCode}`
+              : 'Yangi ariza'}
         </DialogTitle>
         <DialogContent sx={{ pb: 1 }}>
           <Stack spacing={2.5} sx={{ mt: 0.5 }}>
             {error ? <Alert severity="error">{error}</Alert> : null}
 
-            {isResubmit ? (
-              <>
-                <Alert severity="info">
-                  {isBossResubmit
-                    ? 'Boshliq rad etgan. Ma’lumotlarni tuzating va hujjatlarni tahrirlab qayta yuboring. Komissiya a’zolari qarori o‘zgarmaydi — faqat boshliq qayta ko‘radi.'
-                    : 'Komissiya a’zosi rad etgan. Ma’lumotlarni tuzating va qaysi a’zolarga qayta kelishish yuborishni tanlang. Kelishgan a’zolar qarori saqlanadi.'}
-                </Alert>
-
-                {!isBossResubmit && resubmitRejectedMembers.length ? (
-                  <Box>
-                    <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
-                      {(resubmitMode?.preselectedMemberIds ?? []).length === 1
-                        ? 'Qayta kelishish uchun a’zo'
-                        : 'Qayta kelishish uchun a’zolar'}
-                    </Typography>
-                    {(resubmitMode?.preselectedMemberIds ?? []).length === 1 ? (
-                      <Paper variant="outlined" sx={{ p: 1.5 }}>
-                        <Typography variant="body2">
-                          {formatUserLabel(
-                            resubmitRejectedMembers.find(
-                              (member) =>
-                                member.userId === resubmitMode.preselectedMemberIds[0],
-                            ) ?? resubmitRejectedMembers[0],
-                          )}
-                        </Typography>
-                      </Paper>
-                    ) : (
-                      <Paper variant="outlined" sx={{ p: 1.5 }}>
-                        <Stack spacing={0.5}>
-                          {resubmitRejectedMembers.map((member) => (
-                            <FormControlLabel
-                              key={member.userId}
-                              control={
-                                <Checkbox
-                                  checked={resubmitSelectedMemberIds.includes(member.userId)}
-                                  onChange={() => toggleResubmitMember(member.userId)}
-                                />
-                              }
-                              label={
-                                <Box>
-                                  <Typography variant="body2">
-                                    {formatUserLabel(member)}
-                                  </Typography>
-                                  {member.comment?.trim() ? (
-                                    <Typography
-                                      variant="caption"
-                                      color="text.secondary"
-                                      display="block"
-                                    >
-                                      Izoh: {member.comment}
-                                    </Typography>
-                                  ) : null}
-                                </Box>
-                              }
-                            />
-                          ))}
-                        </Stack>
-                      </Paper>
-                    )}
-                  </Box>
-                ) : null}
-
-                {isBossResubmit ? (
-                  <Alert severity="warning" variant="outlined">
-                    Komissiya kelishuvlari saqlanadi. Qayta yuborilgandan keyin holat «Boshliq
-                    kelishmoqda» bo‘ladi.
-                  </Alert>
-                ) : null}
-              </>
+            {isEdit ? (
+              <Alert severity="info">
+                O‘zgartirishlar saqlangach faqat rad etgan yoki qisman kelishgan komissiya
+                a’zolari qayta qaror beradi. To‘liq kelishgan a’zolar qarori o‘zgarmaydi.
+              </Alert>
             ) : null}
 
             {usesSession && sessionNotice ? (
@@ -658,7 +550,7 @@ export const PurchaseRequestFormDialog = ({
               disabled={loading}
             />
 
-            {!isEdit && !isResubmit ? (
+            {!isEdit ? (
               <Autocomplete
                 options={commissionOptions}
                 value={selectedCommission}
@@ -961,7 +853,7 @@ export const PurchaseRequestFormDialog = ({
             {loading ? (
               <CircularProgress size={22} color="inherit" />
             ) : (
-              submitLabel || (isResubmit ? 'Davom etish' : isEdit ? 'Saqlash' : 'Yuborish')
+              submitLabel || (isEdit ? 'Davom etish' : 'Yuborish')
             )}
           </Button>
         </DialogActions>

@@ -5,6 +5,7 @@ import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined'
 import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined'
 import ShoppingCartCheckoutOutlinedIcon from '@mui/icons-material/ShoppingCartCheckoutOutlined'
 import UndoOutlinedIcon from '@mui/icons-material/UndoOutlined'
+import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -30,6 +31,10 @@ const EVENT_META = {
   transfer_out: {
     color: 'warning.main',
     icon: ArrowUpwardIcon,
+  },
+  transfer_cancelled: {
+    color: 'error.main',
+    icon: BlockOutlinedIcon,
   },
   expense: {
     color: 'error.main',

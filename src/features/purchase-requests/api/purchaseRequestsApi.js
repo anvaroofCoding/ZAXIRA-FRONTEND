@@ -227,7 +227,9 @@ const sanitizeSessionPayload = (body, { minimal = false } = {}) => {
   }
 
   const periodType =
-    body.purchasePeriodType === 'quarter' || body.purchasePeriodType === 'month'
+    body.purchasePeriodType === 'year' ||
+    body.purchasePeriodType === 'quarter' ||
+    body.purchasePeriodType === 'month'
       ? body.purchasePeriodType
       : 'plain'
   next.purchasePeriodType = periodType

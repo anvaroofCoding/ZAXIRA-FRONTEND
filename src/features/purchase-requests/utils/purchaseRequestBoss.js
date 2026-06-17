@@ -58,8 +58,20 @@ const isTerminalAfterBoss = (status) =>
   status === 'WAREHOUSE_IN_TRANSIT' ||
   status === 'WAREHOUSE_COMPLETED'
 
+export const isPurchaseRequestApprovalClosed = (request) => {
+  if (!request) return false
+
+  if (request.bossDecision === 'APPROVED' || request.bossDecision === 'REJECTED') {
+    return true
+  }
+
+  return isTerminalAfterBoss(request.status)
+}
+
 export const canBossConfirmPurchaseRequest = (request, authUser) => {
   if (!request) return false
+
+  if (isPurchaseRequestApprovalClosed(request)) return false
 
   if (request.canConfirmBossDecision === true) return true
   if (request.canConfirmBossDecision === false) return false

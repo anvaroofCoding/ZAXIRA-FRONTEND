@@ -29,9 +29,91 @@ import {
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { formatDateTime } from '@/shared/utils/formatDate'
+import { formatUzs } from '@/shared/utils/formatUzs'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
+const COMMENT_PREVIEW_MAX = 72
+
+const truncateComment = (value, max = COMMENT_PREVIEW_MAX) => {
+  const trimmed = value?.trim() ?? ''
+  if (!trimmed) {
+    return { preview: '—', isTruncated: false, full: '' }
+  }
+
+  if (trimmed.length <= max) {
+    return { preview: trimmed, isTruncated: false, full: trimmed }
+  }
+
+  return {
+    preview: `${trimmed.slice(0, max).trimEnd()}…`,
+    isTruncated: true,
+    full: trimmed,
+  }
+}
+
+const CommentViewDialog = ({ open, code, comment, onClose }) => (
+  <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <DialogTitle>{code ? `${code} — izoh` : 'Izoh'}</DialogTitle>
+    <DialogContent dividers>
+      <Typography
+        variant="body2"
+        sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+      >
+        {comment}
+      </Typography>
+    </DialogContent>
+    <DialogActions>
+      <Button onClick={onClose}>Yopish</Button>
+    </DialogActions>
+  </Dialog>
+)
+
+const ImportCommentCell = ({ row, onViewComment }) => {
+  const { preview, isTruncated, full } = truncateComment(row.comment)
+
+  if (!full) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        —
+      </Typography>
+    )
+  }
+
+  return (
+    <Stack spacing={0.25} sx={{ minWidth: 0 }}>
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        title={isTruncated ? full : undefined}
+        sx={{
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          wordBreak: 'break-word',
+        }}
+      >
+        {preview}
+      </Typography>
+      {isTruncated ? (
+        <Button
+          type="button"
+          size="small"
+          variant="text"
+          sx={{ alignSelf: 'flex-start', minWidth: 0, px: 0.5, py: 0 }}
+          onClick={(event) => {
+            event.stopPropagation()
+            onViewComment({ code: row.code, comment: full })
+          }}
+        >
+          Ko‘rish
+        </Button>
+      ) : null}
+    </Stack>
+  )
+}
 
 const ImportDetailDialog = ({ importId, open, onClose }) => {
   const detailQuery = useGetProductImportByIdQuery(importId, {
@@ -68,7 +150,11 @@ const ImportDetailDialog = ({ importId, open, onClose }) => {
             </Stack>
 
             {record.comment?.trim() ? (
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+              >
                 Izoh: {record.comment.trim()}
               </Typography>
             ) : null}
@@ -81,6 +167,8 @@ const ImportDetailDialog = ({ importId, open, onClose }) => {
                     <TableCell>Xususiyati</TableCell>
                     <TableCell align="right">Soni</TableCell>
                     <TableCell>Birlik</TableCell>
+                    <TableCell>Nomeklatura</TableCell>
+                    <TableCell align="right">Narxi</TableCell>
                     <TableCell>Davlati</TableCell>
                     <TableCell>Ombor joyi</TableCell>
                   </TableRow>
@@ -92,6 +180,12 @@ const ImportDetailDialog = ({ importId, open, onClose }) => {
                       <TableCell sx={{ maxWidth: 220 }}>{item.characteristics}</TableCell>
                       <TableCell align="right">{item.quantity}</TableCell>
                       <TableCell>{item.unit}</TableCell>
+                      <TableCell sx={{ fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                        {item.nomenclatureCode?.trim() || '—'}
+                      </TableCell>
+                      <TableCell align="right">
+                        {item.unitPrice > 0 ? `${formatUzs(item.unitPrice)} so‘m` : '—'}
+                      </TableCell>
                       <TableCell>{item.manufacturingCountry}</TableCell>
                       <TableCell>{item.locationName}</TableCell>
                     </TableRow>
@@ -117,6 +211,7 @@ export const ProductImportsHistoryTable = () => {
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const [detailId, setDetailId] = useState(null)
+  const [commentPreview, setCommentPreview] = useState(null)
 
   const debouncedSearch = useDebouncedValue(search, 350)
   const dateFromParam = useMemo(
@@ -246,8 +341,11 @@ export const ProductImportsHistoryTable = () => {
                         <TableCell align="right">{row.itemCount}</TableCell>
                         <TableCell align="right">{row.totalQuantity}</TableCell>
                         <TableCell>{row.createdBy?.displayName ?? '—'}</TableCell>
-                        <TableCell sx={{ maxWidth: 200 }}>
-                          {row.comment?.trim() || '—'}
+                        <TableCell sx={{ maxWidth: 180, width: 180 }}>
+                          <ImportCommentCell
+                            row={row}
+                            onViewComment={setCommentPreview}
+                          />
                         </TableCell>
                       </TableRow>
                     ))
@@ -280,6 +378,13 @@ export const ProductImportsHistoryTable = () => {
         importId={detailId}
         open={Boolean(detailId)}
         onClose={() => setDetailId(null)}
+      />
+
+      <CommentViewDialog
+        open={Boolean(commentPreview)}
+        code={commentPreview?.code ?? ''}
+        comment={commentPreview?.comment ?? ''}
+        onClose={() => setCommentPreview(null)}
       />
     </Box>
   )

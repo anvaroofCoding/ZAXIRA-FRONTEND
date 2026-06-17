@@ -8,6 +8,7 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
+import { PurchaseRequestItemCharacteristicsCell } from '@/features/purchase-requests/components/PurchaseRequestItemCharacteristicsCell'
 import { dispatchCodeSx } from '@/features/warehouse-dispatches/utils/dispatchCodeDisplay'
 import {
   getItemNomenclatureCode,
@@ -27,7 +28,17 @@ const MetaItem = ({ label, value }) => (
   </Stack>
 )
 
-export const DispatchNakladnoyTable = ({ dispatch }) => {
+const formatStructureDisplay = (structure, mode = 'full') => {
+  if (!structure) return '—'
+  if (mode === 'short') {
+    return structure.shortName || structure.fullName || '—'
+  }
+  const shortName = structure.shortName || '—'
+  const fullName = structure.fullName || '—'
+  return `${shortName} — ${fullName}`
+}
+
+export const DispatchNakladnoyTable = ({ dispatch, structureNameMode = 'full' }) => {
   if (!dispatch) {
     return null
   }
@@ -36,7 +47,7 @@ export const DispatchNakladnoyTable = ({ dispatch }) => {
 
   return (
     <Paper variant="outlined" sx={{ overflow: 'hidden' }}>
-      <BoxHeader dispatch={dispatch} />
+      <BoxHeader dispatch={dispatch} structureNameMode={structureNameMode} />
 
       <TableContainer>
         <Table size="small">
@@ -61,7 +72,12 @@ export const DispatchNakladnoyTable = ({ dispatch }) => {
                       {item.name}
                     </Typography>
                   </TableCell>
-                  <TableCell>{item.characteristics?.trim() || '—'}</TableCell>
+                  <TableCell>
+                    <PurchaseRequestItemCharacteristicsCell
+                      value={item.characteristics}
+                      modalOnly
+                    />
+                  </TableCell>
                   <TableCell sx={nomenclatureTableCellSx}>
                     {getItemNomenclatureCode(item)}
                   </TableCell>
@@ -84,7 +100,7 @@ export const DispatchNakladnoyTable = ({ dispatch }) => {
   )
 }
 
-const BoxHeader = ({ dispatch }) => (
+const BoxHeader = ({ dispatch, structureNameMode = 'full' }) => (
   <Stack
     spacing={2}
     sx={{
@@ -92,7 +108,7 @@ const BoxHeader = ({ dispatch }) => (
       py: 1.5,
       borderBottom: 1,
       borderColor: 'divider',
-      bgcolor: 'grey.50',
+      bgcolor: 'action.hover',
     }}
   >
     <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
@@ -111,14 +127,14 @@ const BoxHeader = ({ dispatch }) => (
       <Grid size={{ xs: 12, sm: 6, md: 3 }}>
         <MetaItem
           label="Qabul qiluvchi"
-          value={`${dispatch.targetStructure?.shortName || '—'} — ${dispatch.targetStructure?.fullName || '—'}`}
+          value={formatStructureDisplay(dispatch.targetStructure, structureNameMode)}
         />
       </Grid>
       {dispatch.sourceStructure ? (
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetaItem
             label="Jo‘natuvchi"
-            value={`${dispatch.sourceStructure.shortName} — ${dispatch.sourceStructure.fullName}`}
+            value={formatStructureDisplay(dispatch.sourceStructure, structureNameMode)}
           />
         </Grid>
       ) : null}

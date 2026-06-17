@@ -24,8 +24,6 @@ export const PurchaseRequestRowActionsMenu = ({
   canDelete = false,
   onEdit,
   canEdit = false,
-  onResubmit,
-  canResubmit = false,
 }) => {
   const [anchorEl, setAnchorEl] = useState(null)
   const open = Boolean(anchorEl)
@@ -80,14 +78,6 @@ export const PurchaseRequestRowActionsMenu = ({
               <EditOutlinedIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>Tahrirlash</ListItemText>
-          </MenuItem>
-        ) : null}
-        {canResubmit && onResubmit ? (
-          <MenuItem onClick={() => runAction(() => onResubmit(item))}>
-            <ListItemIcon>
-              <EditOutlinedIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>Qayta yuborish</ListItemText>
           </MenuItem>
         ) : null}
         {canDelete && onDelete ? (

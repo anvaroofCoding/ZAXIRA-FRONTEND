@@ -20,14 +20,20 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { ProductNameAutocomplete } from '@/features/products/components/ProductNameAutocomplete'
 import { useSaveProductImportSessionMutation } from '@/features/product-import/api/productImportApi'
-import { getLocalImportSessionById } from '@/features/product-import/utils/activeSessionsStorage'
+import {
+  getLocalImportSessionById,
+  mergeImportSessionSources,
+} from '@/features/product-import/utils/activeSessionsStorage'
 import { useGetWarehouseLocationsQuery } from '@/features/warehouse/api/warehouseApi'
 import { COUNTRIES } from '@/features/purchase-requests/constants/countries'
 import { MEASUREMENT_UNITS } from '@/features/purchase-requests/constants/measurementUnits'
 import { usePermissions } from '@/shared/hooks/usePermissions'
+import { parseUzsInput } from '@/shared/utils/formatUzs'
+import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 import { splitAutocompleteOptionProps } from '@/shared/utils/autocompleteOptionProps'
+import { nomenclatureManualInputSx } from '@/features/warehouse/utils/itemNomenclature'
 
-const SESSION_AUTOSAVE_DEBOUNCE_MS = 2000
+const SESSION_AUTOSAVE_DEBOUNCE_MS = 1000
 const BULK_ADD_OPTIONS = [3, 5, 10]
 
 const emptyItem = () => ({
@@ -36,6 +42,8 @@ const emptyItem = () => ({
   quantity: '1',
   unit: 'dona',
   manufacturingCountry: '',
+  nomenclatureCode: '',
+  unitPrice: '',
 })
 
 const mapItemFromSource = (item) => ({
@@ -44,7 +52,55 @@ const mapItemFromSource = (item) => ({
   quantity: String(item.quantity ?? 1),
   unit: item.unit ?? 'dona',
   manufacturingCountry: item.manufacturingCountry ?? '',
+  nomenclatureCode: item.nomenclatureCode ?? item.receiptNomenclatureCode ?? '',
+  unitPrice:
+    item.unitPrice && Number(item.unitPrice) > 0
+      ? new Intl.NumberFormat('uz-UZ').format(Math.round(Number(item.unitPrice)))
+      : '',
 })
+
+const collectItemValidationErrors = (normalizedItems) => {
+  const invalidFields = {}
+
+  normalizedItems.forEach((item, index) => {
+    const fields = []
+
+    if (!item.name) fields.push('name')
+    if (!item.characteristics) fields.push('characteristics')
+    if (!Number.isFinite(item.quantity) || item.quantity < 1) fields.push('quantity')
+    if (!item.unit) fields.push('unit')
+    if (!item.manufacturingCountry) fields.push('manufacturingCountry')
+    if (!item.nomenclatureCode) fields.push('nomenclatureCode')
+    if (!Number.isFinite(item.unitPrice) || item.unitPrice < 1) fields.push('unitPrice')
+
+    if (fields.length) {
+      invalidFields[index] = fields
+    }
+  })
+
+  return invalidFields
+}
+
+const firstValidationMessage = (invalidFields, normalizedItems) => {
+  const firstIndex = Number(Object.keys(invalidFields)[0])
+  const firstField = invalidFields[firstIndex]?.[0]
+
+  if (firstField === 'name') return 'Har bir tovar uchun nom kiriting'
+  if (firstField === 'characteristics') return 'Har bir tovar uchun xususiyat kiriting'
+  if (firstField === 'quantity') return 'Tovar soni kamida 1 bo‘lishi kerak'
+  if (firstField === 'unit') return 'Har bir tovar uchun birlikni tanlang'
+  if (firstField === 'manufacturingCountry') {
+    return 'Har bir tovar uchun ishlab chiqarilgan davlatni tanlang'
+  }
+  if (firstField === 'nomenclatureCode') {
+    return `Tovar ${firstIndex + 1} uchun nomeklatura raqamini kiriting`
+  }
+  if (firstField === 'unitPrice') return 'Har bir tovar uchun narx kiriting'
+
+  return normalizedItems.length
+    ? 'Ma’lumotlarni to‘ldiring'
+    : 'Kamida bitta tovar kiriting'
+}
 
 export const ProductImportFormDialog = ({
   open,
@@ -65,6 +121,7 @@ export const ProductImportFormDialog = ({
   const [items, setItems] = useState([emptyItem()])
   const [comment, setComment] = useState('')
   const [error, setError] = useState('')
+  const [invalidItemFields, setInvalidItemFields] = useState({})
   const [sessionNotice, setSessionNotice] = useState('')
   const [bulkAddCount, setBulkAddCount] = useState(5)
   const [saveSession, saveSessionState] = useSaveProductImportSessionMutation()
@@ -73,11 +130,14 @@ export const ProductImportFormDialog = ({
   const initializedForRef = useRef(null)
 
   const resolvedSession = useMemo(() => {
-    if (session) return session
-    if (sessionId && userId) {
-      return getLocalImportSessionById(userId, sessionId)
+    const localSession =
+      sessionId && userId ? getLocalImportSessionById(userId, sessionId) : null
+
+    if (session && localSession) {
+      return mergeImportSessionSources(session, localSession)
     }
-    return null
+
+    return localSession ?? session ?? null
   }, [session, sessionId, userId])
 
   useEffect(() => {
@@ -100,18 +160,30 @@ export const ProductImportFormDialog = ({
     )
     setComment(source?.comment ?? '')
     setError('')
+    setInvalidItemFields({})
     setSessionNotice('')
     skipNextAutosaveRef.current = true
   }, [open, sessionId, resolvedSession, locations])
 
   useEffect(() => {
-    if (!open || !locations.length || locationId) return
-    setLocationId(locations[0].id)
+    if (!open || !locations.length) return
+
+    if (!locationId || !locations.some((location) => location.id === locationId)) {
+      setLocationId(locations[0].id)
+    }
   }, [open, locations, locationId])
+
+  const selectedLocationId = useMemo(() => {
+    if (!locations.length) return ''
+    if (locationId && locations.some((location) => location.id === locationId)) {
+      return locationId
+    }
+    return locations[0]?.id ?? ''
+  }, [locationId, locations])
 
   const buildPayload = useCallback(
     () => ({
-      locationId,
+      locationId: selectedLocationId,
       comment: comment.trim(),
       items: items.map((item) => ({
         name: item.name.trim(),
@@ -119,9 +191,11 @@ export const ProductImportFormDialog = ({
         quantity: Number.parseInt(item.quantity, 10) || 1,
         unit: item.unit.trim(),
         manufacturingCountry: item.manufacturingCountry.trim(),
+        nomenclatureCode: item.nomenclatureCode.trim(),
+        unitPrice: parseUzsInput(item.unitPrice) ?? 0,
       })),
     }),
-    [comment, items, locationId],
+    [comment, items, selectedLocationId],
   )
 
   const persistSession = useCallback(async () => {
@@ -174,11 +248,32 @@ export const ProductImportFormDialog = ({
         itemIndex === index ? { ...item, [field]: value } : item,
       ),
     )
+
+    setInvalidItemFields((prev) => {
+      if (!prev[index]?.includes(field)) return prev
+
+      const nextFields = prev[index].filter((entry) => entry !== field)
+      if (!nextFields.length) {
+        const next = { ...prev }
+        delete next[index]
+        return next
+      }
+
+      return { ...prev, [index]: nextFields }
+    })
   }
 
   const handleQuantityChange = (index, rawValue) => {
     const digitsOnly = rawValue.replace(/\D/g, '')
     handleItemChange(index, 'quantity', digitsOnly)
+  }
+
+  const handleUnitPriceChange = (index, rawValue) => {
+    const digits = rawValue.replace(/\D/g, '')
+    const formatted = digits
+      ? new Intl.NumberFormat('uz-UZ').format(Number(digits))
+      : ''
+    handleItemChange(index, 'unitPrice', formatted)
   }
 
   const handleAddItem = () => {
@@ -194,11 +289,38 @@ export const ProductImportFormDialog = ({
     setItems((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== index)))
   }
 
+  const flushSessionSave = useCallback(async () => {
+    if (!usesSession || !sessionId) return
+
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current)
+      autosaveTimerRef.current = null
+    }
+
+    await saveSession({
+      id: sessionId,
+      ...buildPayload(),
+    }).unwrap()
+  }, [buildPayload, saveSession, sessionId, usesSession])
+
+  const handleDialogClose = async () => {
+    if (loading) return
+
+    try {
+      await flushSessionSave()
+    } catch {
+      // saveSession avval local cache ga yozadi
+    }
+
+    onClose()
+  }
+
   const handleSubmit = async (event) => {
     event.preventDefault()
     setError('')
+    setInvalidItemFields({})
 
-    if (!locationId) {
+    if (!selectedLocationId) {
       setError('Ombor joyini tanlang')
       return
     }
@@ -209,35 +331,19 @@ export const ProductImportFormDialog = ({
       quantity: Number.parseInt(item.quantity, 10),
       unit: item.unit.trim(),
       manufacturingCountry: item.manufacturingCountry.trim(),
+      nomenclatureCode: item.nomenclatureCode.trim(),
+      unitPrice: parseUzsInput(item.unitPrice) ?? 0,
     }))
 
-    if (normalizedItems.some((item) => !item.name)) {
-      setError('Har bir tovar uchun nom kiriting')
-      return
-    }
-
-    if (normalizedItems.some((item) => !item.characteristics)) {
-      setError('Har bir tovar uchun xususiyat kiriting')
-      return
-    }
-
-    if (normalizedItems.some((item) => !Number.isFinite(item.quantity) || item.quantity < 1)) {
-      setError('Tovar soni kamida 1 bo‘lishi kerak')
-      return
-    }
-
-    if (normalizedItems.some((item) => !item.unit)) {
-      setError('Har bir tovar uchun birlikni tanlang')
-      return
-    }
-
-    if (normalizedItems.some((item) => !item.manufacturingCountry)) {
-      setError('Har bir tovar uchun ishlab chiqarilgan davlatni tanlang')
+    const validationErrors = collectItemValidationErrors(normalizedItems)
+    if (Object.keys(validationErrors).length) {
+      setInvalidItemFields(validationErrors)
+      setError(firstValidationMessage(validationErrors, normalizedItems))
       return
     }
 
     const payload = {
-      locationId,
+      locationId: selectedLocationId,
       comment: comment.trim(),
       items: normalizedItems,
     }
@@ -245,8 +351,8 @@ export const ProductImportFormDialog = ({
     if (usesSession && sessionId) {
       try {
         await saveSession({ id: sessionId, syncServer: true, ...payload }).unwrap()
-      } catch {
-        setError('Seansni saqlab bo‘lmadi')
+      } catch (saveError) {
+        setError(getApiErrorMessage(saveError, 'Seansni saqlab bo‘lmadi'))
         return
       }
     }
@@ -254,12 +360,23 @@ export const ProductImportFormDialog = ({
     try {
       await onSubmit(payload, { sessionId })
     } catch (submitError) {
-      setError(submitError?.message || 'Saqlashda xatolik')
+      const message = getApiErrorMessage(submitError, 'Saqlashda xatolik')
+      setError(message)
+
+      if (message.includes('nomeklatura')) {
+        const nextInvalidFields = {}
+        normalizedItems.forEach((item, index) => {
+          if (!item.nomenclatureCode) {
+            nextInvalidFields[index] = ['nomenclatureCode']
+          }
+        })
+        setInvalidItemFields(nextInvalidFields)
+      }
     }
   }
 
   return (
-    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={loading ? undefined : handleDialogClose} maxWidth="md" fullWidth>
       <Box component="form" onSubmit={handleSubmit}>
         <DialogTitle>Tovar import qilish</DialogTitle>
 
@@ -281,9 +398,9 @@ export const ProductImportFormDialog = ({
               <Select
                 labelId="import-location-label"
                 label="Ombor joyi"
-                value={locationId}
+                value={selectedLocationId}
                 onChange={(event) => setLocationId(event.target.value)}
-                disabled={loading || locationsQuery.isLoading}
+                disabled={loading || locationsQuery.isLoading || !locations.length}
               >
                 {locations.map((location) => (
                   <MenuItem key={location.id} value={location.id}>
@@ -412,12 +529,52 @@ export const ProductImportFormDialog = ({
 
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                     <TextField
+                      label="Nomeklatura raqami"
+                      value={item.nomenclatureCode}
+                      onChange={(event) =>
+                        handleItemChange(index, 'nomenclatureCode', event.target.value)
+                      }
+                      disabled={loading}
+                      required
+                      placeholder="Qo‘lda kiriting"
+                      fullWidth
+                      error={invalidItemFields[index]?.includes('nomenclatureCode')}
+                      helperText={
+                        invalidItemFields[index]?.includes('nomenclatureCode')
+                          ? 'Nomeklatura raqamini kiriting'
+                          : ' '
+                      }
+                      slotProps={{ htmlInput: { maxLength: 64 } }}
+                      sx={nomenclatureManualInputSx}
+                    />
+
+                    <TextField
+                      label="Narxi (so‘m)"
+                      value={item.unitPrice}
+                      onChange={(event) =>
+                        handleUnitPriceChange(index, event.target.value)
+                      }
+                      disabled={loading}
+                      required
+                      placeholder="0"
+                      fullWidth
+                      slotProps={{
+                        htmlInput: {
+                          inputMode: 'numeric',
+                        },
+                      }}
+                    />
+                  </Stack>
+
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                    <TextField
                       label="Soni"
                       value={item.quantity}
                       onChange={(event) =>
                         handleQuantityChange(index, event.target.value)
                       }
                       disabled={loading}
+                      required
                       placeholder="1"
                       fullWidth
                       slotProps={{
@@ -438,6 +595,7 @@ export const ProductImportFormDialog = ({
                         handleItemChange(index, 'unit', event.target.value)
                       }
                       disabled={loading}
+                      required
                       fullWidth
                       sx={{ flex: 1, minWidth: 0 }}
                     >
@@ -476,7 +634,7 @@ export const ProductImportFormDialog = ({
         </DialogContent>
 
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={onClose} disabled={loading}>
+          <Button onClick={handleDialogClose} disabled={loading}>
             Bekor qilish
           </Button>
           <Button type="submit" variant="contained" disabled={loading}>

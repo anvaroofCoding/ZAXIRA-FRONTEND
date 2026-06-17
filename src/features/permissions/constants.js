@@ -59,7 +59,7 @@ export const DISABLED_PAGE_ACTIONS = {
   [PRODUCTS_PAGE_PATH]: ['create', 'update'],
   [TRANSFER_PAGE_PATH]: ['create', 'update', 'delete'],
   [TRANSFER_RECEIPT_PAGE_PATH]: ['update', 'delete'],
-  [TRANSFER_HISTORY_PAGE_PATH]: ['create', 'update', 'delete'],
+  [TRANSFER_HISTORY_PAGE_PATH]: ['create', 'delete'],
 }
 
 export const DISABLED_PAGE_ACTION_TICKETS = {
@@ -88,5 +88,5 @@ export const DISABLED_PAGE_ACTION_TICKETS = {
   [TRANSFER_RECEIPT_PAGE_PATH]:
     "Ticket: Transferni qabul qilish sahifasida Tahrirlash va O'chirish vaqtincha o'chirilgan",
   [TRANSFER_HISTORY_PAGE_PATH]:
-    "Ticket: Transferlar tarixi sahifasida Jo'natish, Tahrirlash va O'chirish vaqtincha o'chirilgan",
+    "Ticket: Transferlar tarixi sahifasida Jo'natish va O'chirish vaqtincha o'chirilgan. Bekor qilish — Tahrirlash ruxsati orqali",
 }

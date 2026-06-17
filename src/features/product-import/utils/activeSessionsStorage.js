@@ -64,6 +64,8 @@ const normalizeSession = (session, index = 1, userId = null) => {
       quantity: item.quantity ?? 1,
       unit: item.unit ?? 'dona',
       manufacturingCountry: item.manufacturingCountry ?? '',
+      nomenclatureCode: item.nomenclatureCode ?? '',
+      unitPrice: item.unitPrice ?? 0,
     })),
     comment: session.comment ?? '',
     createdAt: session.createdAt ?? updatedAt,
@@ -75,6 +77,47 @@ const normalizeSession = (session, index = 1, userId = null) => {
 
 const sortSessions = (sessions) =>
   [...sessions].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+
+export const mergeImportSessionItemSources = (left = {}, right = {}) => ({
+  name: left.name?.trim() || right.name?.trim() || '',
+  characteristics: left.characteristics?.trim() || right.characteristics?.trim() || '',
+  quantity: left.quantity ?? right.quantity ?? 1,
+  unit: left.unit?.trim() || right.unit?.trim() || 'dona',
+  manufacturingCountry:
+    left.manufacturingCountry?.trim() || right.manufacturingCountry?.trim() || '',
+  nomenclatureCode:
+    left.nomenclatureCode?.trim() || right.nomenclatureCode?.trim() || '',
+  unitPrice:
+    Number(left.unitPrice) > 0
+      ? Number(left.unitPrice)
+      : Math.max(0, Number(right.unitPrice) || 0),
+})
+
+export const mergeImportSessionItems = (left = [], right = []) => {
+  const maxLength = Math.max(left.length, right.length)
+
+  return Array.from({ length: maxLength }, (_, index) =>
+    mergeImportSessionItemSources(left[index], right[index]),
+  )
+}
+
+export const mergeImportSessionSources = (serverSession, localSession) => {
+  if (!serverSession) return localSession ?? null
+  if (!localSession) return serverSession
+
+  const serverAt = new Date(serverSession.updatedAt ?? 0).getTime()
+  const localAt = new Date(localSession.updatedAt ?? 0).getTime()
+  const newest = localAt >= serverAt ? localSession : serverSession
+  const oldest = localAt >= serverAt ? serverSession : localSession
+
+  return {
+    ...oldest,
+    ...newest,
+    locationId: newest.locationId || oldest.locationId || '',
+    comment: newest.comment?.trim() ? newest.comment : oldest.comment ?? '',
+    items: mergeImportSessionItems(newest.items, oldest.items),
+  }
+}
 
 export const listLocalImportSessions = (userId) => {
   if (!userId) {
@@ -119,16 +162,14 @@ export const mergeServerImportSessionsWithLocalCache = (serverData, userId) => {
     const cachedAt = new Date(cached.updatedAt ?? 0).getTime()
     const serverAt = new Date(serverSession.updatedAt ?? 0).getTime()
 
-    if (cachedAt >= serverAt) {
-      return {
-        ...serverSession,
-        ...cached,
-        ownerUserId: userId,
-        isLocal: cached.isLocal ?? Boolean(cachedAt > serverAt),
-      }
-    }
+    const merged = mergeImportSessionSources(serverSession, cached)
 
-    return serverSession
+    return {
+      ...merged,
+      ownerUserId: userId,
+      isLocal: cached.isLocal ?? Boolean(cachedAt > serverAt),
+      pendingServerSync: cached.pendingServerSync,
+    }
   })
 
   const mergedIds = new Set(merged.map((session) => session.id))
@@ -171,6 +212,8 @@ export const createLocalImportSession = (userId) => {
           quantity: 1,
           unit: 'dona',
           manufacturingCountry: '',
+          nomenclatureCode: '',
+          unitPrice: 0,
         },
       ],
       comment: '',

@@ -1,5 +1,11 @@
 export const NOMENCLATURE_COLUMN_LABEL = 'Nomeklatura'
 
+export const isItemNomenclatureMissing = (item) =>
+  !(
+    item?.nomenclatureCode?.trim() ||
+    item?.receiptNomenclatureCode?.trim()
+  )
+
 export const getItemNomenclatureCode = (item) => {
   const value =
     item?.nomenclatureCode?.trim() ||
@@ -7,6 +13,21 @@ export const getItemNomenclatureCode = (item) => {
     ''
 
   return value || '—'
+}
+
+export const getItemNomenclatureDisplay = (item) => {
+  if (isItemNomenclatureMissing(item)) {
+    return 'Yozilmagan'
+  }
+
+  return getItemNomenclatureCode(item)
+}
+
+export const nomenclatureMissingTableCellSx = {
+  color: 'warning.main',
+  fontStyle: 'italic',
+  fontWeight: 500,
+  fontSize: 13,
 }
 
 export const nomenclatureTableCellSx = {

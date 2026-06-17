@@ -1,11 +1,15 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import ArrowDownwardOutlinedIcon from '@mui/icons-material/ArrowDownwardOutlined'
 import ArrowUpwardOutlinedIcon from '@mui/icons-material/ArrowUpwardOutlined'
+import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined'
 import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
@@ -19,7 +23,12 @@ import TableHead from '@mui/material/TableHead'
 import TablePagination from '@mui/material/TablePagination'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
-import { useGetTransferByIdQuery, useGetTransferHistoryQuery } from '@/features/transfer/api/transferApi'
+import {
+  useGetTransferByIdQuery,
+  useGetTransferHistoryQuery,
+} from '@/features/transfer/api/transferApi'
+import { CancelTransferDialog } from '@/features/transfer/components/CancelTransferDialog'
+import { PurchaseRequestItemCharacteristicsCell } from '@/features/purchase-requests/components/PurchaseRequestItemCharacteristicsCell'
 import { TransferPageFilters } from '@/features/transfer/components/TransferPageFilters'
 import {
   getDispatchStatusChipProps,
@@ -32,12 +41,15 @@ import {
   nomenclatureTableCellSx,
 } from '@/features/warehouse/utils/itemNomenclature'
 import { dispatchCodeSx } from '@/features/warehouse-dispatches/utils/dispatchCodeDisplay'
+import { useGetStructuresQuery } from '@/features/structures/api/structuresApi'
+import { filterStructuresWithWarehouse } from '@/features/structures/utils/structureFilters'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { usePermissions } from '@/shared/hooks/usePermissions'
 import { useTransferListFilters } from '@/shared/hooks/useTransferListFilters'
 import { formatDateTime } from '@/shared/utils/formatDate'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 import { useQueryParamOpen } from '@/shared/hooks/useQueryParamOpen'
+import { canCancelDispatchForUser, isDispatchCancelableState } from '@/features/transfer/utils/transferCancel'
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
 
@@ -47,9 +59,16 @@ const directionIcons = {
   default: <SwapHorizOutlinedIcon fontSize="small" />,
 }
 
+const resolveCancelReasonText = (dispatch) => {
+  const label = dispatch?.cancelReasonLabel?.trim()
+  const other = dispatch?.cancelReasonOther?.trim()
+  if (!label) return ''
+  return other ? `${label}: ${other}` : label
+}
+
 export const TransferlarTarixiPage = () => {
   const { user } = usePermissions()
-  const viewerStructureId = user?.structureId ?? ''
+  const viewerStructureId = user?.structureId ?? user?.structure?.id ?? ''
 
   const {
     search,
@@ -58,6 +77,8 @@ export const TransferlarTarixiPage = () => {
     setDateFrom,
     dateTo,
     setDateTo,
+    structureFilter,
+    setStructureFilter,
     page,
     setPage,
     rowsPerPage,
@@ -65,9 +86,20 @@ export const TransferlarTarixiPage = () => {
     queryParams,
     clearFilters,
     hasActiveFilters,
-  } = useTransferListFilters()
+  } = useTransferListFilters({
+    withStructureFilter: true,
+    viewerStructureId,
+  })
+
   const [detailId, setDetailId] = useState('')
+  const [cancelTarget, setCancelTarget] = useState(null)
   useQueryParamOpen('dispatch', setDetailId)
+
+  const structuresQuery = useGetStructuresQuery()
+  const structuresForFilter = useMemo(() => {
+    const list = filterStructuresWithWarehouse(structuresQuery.data)
+    return [...list].sort((a, b) => a.shortName.localeCompare(b.shortName, 'uz'))
+  }, [structuresQuery.data])
 
   const inboxQuery = useGetTransferHistoryQuery(queryParams)
   const detailQuery = useGetTransferByIdQuery(
@@ -85,6 +117,16 @@ export const TransferlarTarixiPage = () => {
       icon: directionIcons[direction.color] ?? directionIcons.default,
     }
   }
+
+  const canCancelDispatch = (dispatch) => {
+    if (canCancelDispatchForUser(dispatch, user)) return true
+    if (!isDispatchCancelableState(dispatch)) return false
+    const direction = resolveTransferDirection(dispatch, viewerStructureId)
+    return direction.label === 'Ketgan'
+  }
+
+  const detailDispatch = detailQuery.data
+  const showDetailCancel = Boolean(detailDispatch && canCancelDispatch(detailDispatch))
 
   return (
     <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -110,6 +152,10 @@ export const TransferlarTarixiPage = () => {
           onDateToChange={setDateTo}
           dateFromLabel="Sana (dan)"
           dateToLabel="Sana (gacha)"
+          structureFilter={structureFilter}
+          onStructureFilterChange={setStructureFilter}
+          structures={structuresForFilter}
+          viewerStructureId={viewerStructureId}
           onClearFilters={clearFilters}
           hasActiveFilters={hasActiveFilters}
         />
@@ -135,12 +181,16 @@ export const TransferlarTarixiPage = () => {
                   <TableCell width={80} align="right">
                     Tovar
                   </TableCell>
+                  <TableCell width={56} align="center">
+                    Amal
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {items.map((item) => {
                   const movement = resolveMovement(item)
                   const statusChip = getDispatchStatusChipProps(item.status, item.statusLabel)
+                  const showCancel = canCancelDispatch(item)
 
                   return (
                     <TableRow
@@ -182,6 +232,22 @@ export const TransferlarTarixiPage = () => {
                         {item.pendingTotal > 0 ? `${item.pendingTotal} ta` : '—'}
                       </TableCell>
                       <TableCell align="right">{item.items?.length ?? 0}</TableCell>
+                      <TableCell align="center" onClick={(event) => event.stopPropagation()}>
+                        {showCancel ? (
+                          <Tooltip title="Bekor qilish">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => setCancelTarget(item)}
+                              aria-label="Bekor qilish"
+                            >
+                              <BlockOutlinedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        ) : (
+                          '—'
+                        )}
+                      </TableCell>
                     </TableRow>
                   )
                 })}
@@ -214,19 +280,19 @@ export const TransferlarTarixiPage = () => {
             <Alert severity="error">
               {getApiErrorMessage(detailQuery.error, 'Transfer tafsilotini yuklab bo‘lmadi')}
             </Alert>
-          ) : detailQuery.data ? (
+          ) : detailDispatch ? (
             <Stack spacing={2}>
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                <Chip size="small" label={detailQuery.data.dispatchCode} sx={dispatchCodeSx} />
+                <Chip size="small" label={detailDispatch.dispatchCode} sx={dispatchCodeSx} />
                 <Chip
                   size="small"
                   {...getDispatchStatusChipProps(
-                    detailQuery.data.status,
-                    detailQuery.data.statusLabel,
+                    detailDispatch.status,
+                    detailDispatch.statusLabel,
                   )}
                 />
                 {(() => {
-                  const movement = resolveMovement(detailQuery.data)
+                  const movement = resolveMovement(detailDispatch)
                   return (
                     <Tooltip title={movement.tooltip}>
                       <Box
@@ -247,7 +313,22 @@ export const TransferlarTarixiPage = () => {
                 })()}
               </Stack>
 
-              <WarehouseDispatchSummaryPanel dispatch={detailQuery.data} />
+              <WarehouseDispatchSummaryPanel dispatch={detailDispatch} />
+
+              {detailDispatch.status === 'CANCELLED' ? (
+                <Alert severity="warning">
+                  Transfer bekor qilingan
+                  {resolveCancelReasonText(detailDispatch)
+                    ? ` · Sabab: ${resolveCancelReasonText(detailDispatch)}`
+                    : ''}
+                  {detailDispatch.cancelledAt
+                    ? ` · ${formatDateTime(detailDispatch.cancelledAt)}`
+                    : ''}
+                  {detailDispatch.cancelledBy?.displayName
+                    ? ` · ${detailDispatch.cancelledBy.displayName}`
+                    : ''}
+                </Alert>
+              ) : null}
 
               <TableContainer component={Paper} variant="outlined">
                 <Table size="small">
@@ -271,15 +352,18 @@ export const TransferlarTarixiPage = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {detailQuery.data.items?.map((row) => (
+                    {detailDispatch.items?.map((row) => (
                       <TableRow key={row.itemIndex}>
                         <TableCell>
                           <Typography variant="body2" fontWeight={600}>
                             {row.name}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {row.characteristics}
-                          </Typography>
+                          {row.characteristics?.trim() ? (
+                            <PurchaseRequestItemCharacteristicsCell
+                              value={row.characteristics}
+                              modalOnly
+                            />
+                          ) : null}
                         </TableCell>
                         <TableCell sx={nomenclatureTableCellSx}>
                           {getItemNomenclatureCode(row)}
@@ -297,7 +381,34 @@ export const TransferlarTarixiPage = () => {
             </Stack>
           ) : null}
         </DialogContent>
+        {detailDispatch || detailQuery.isLoading ? (
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            {showDetailCancel ? (
+              <Button
+                color="error"
+                variant="contained"
+                startIcon={<BlockOutlinedIcon />}
+                onClick={() => setCancelTarget(detailDispatch)}
+              >
+                Transferni bekor qilish
+              </Button>
+            ) : null}
+            <Button onClick={() => setDetailId('')}>Yopish</Button>
+          </DialogActions>
+        ) : null}
       </Dialog>
+
+      <CancelTransferDialog
+        open={Boolean(cancelTarget)}
+        dispatch={cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onSuccess={() => {
+          inboxQuery.refetch()
+          if (cancelTarget?.id === detailId) {
+            detailQuery.refetch()
+          }
+        }}
+      />
     </Box>
   )
 }

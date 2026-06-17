@@ -12,6 +12,7 @@ import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
+import DialogContentText from '@mui/material/DialogContentText'
 import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
 import InputLabel from '@mui/material/InputLabel'
@@ -103,6 +104,7 @@ export const ReceiveWarehouseDispatchDialog = ({
   const [actionLoadingByItem, setActionLoadingByItem] = useState({})
   const [draftByItem, setDraftByItem] = useState({})
   const [nomenclatureByItem, setNomenclatureByItem] = useState({})
+  const [confirmItem, setConfirmItem] = useState(null)
 
   const detailQuery = useGetWarehouseDispatchByIdQuery(
     { id: dispatchId, markSeen: true },
@@ -113,6 +115,8 @@ export const ReceiveWarehouseDispatchDialog = ({
   const locations = locationsQuery.data ?? []
   const hasLocations = locations.length > 0
   const selectedLocationId = locationId || locations[0]?.id || ''
+  const selectedLocationName =
+    locations.find((loc) => loc.id === selectedLocationId)?.name ?? 'tanlangan joy'
 
   const [receiveDispatch, { isLoading }] = useReceiveWarehouseDispatchMutation()
   const dispatch = detailQuery.data
@@ -129,6 +133,7 @@ export const ReceiveWarehouseDispatchDialog = ({
     if (!open) {
       setDraftByItem({})
       setNomenclatureByItem({})
+      setConfirmItem(null)
       return
     }
 
@@ -211,6 +216,25 @@ export const ReceiveWarehouseDispatchDialog = ({
         [field]: value.replace(/[^\d]/g, ''),
       },
     }))
+  }
+
+  const handleRequestSaveItem = (item) => {
+    setError('')
+    if (!ensureLocationSelected()) return
+
+    const draft = draftByItem[item.itemIndex] ?? emptyDraft()
+    if (!canSubmitItemDraft(item, draft)) {
+      return
+    }
+
+    setConfirmItem(item)
+  }
+
+  const handleConfirmSaveItem = async () => {
+    if (!confirmItem) return
+    const item = confirmItem
+    setConfirmItem(null)
+    await handleSaveItem(item)
   }
 
   const handleSaveItem = async (item) => {
@@ -540,7 +564,7 @@ export const ReceiveWarehouseDispatchDialog = ({
                                             type="button"
                                             color="primary"
                                             disabled={itemLoading || !canSubmit}
-                                            onClick={() => handleSaveItem(item)}
+                                            onClick={() => handleRequestSaveItem(item)}
                                             sx={{
                                               bgcolor: canSubmit ? 'primary.main' : undefined,
                                               color: canSubmit ? 'primary.contrastText' : undefined,
@@ -677,6 +701,39 @@ export const ReceiveWarehouseDispatchDialog = ({
         </DialogActions>
 
       </Box>
+
+      <Dialog
+        open={Boolean(confirmItem)}
+        onClose={() => setConfirmItem(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Tasdiqlash</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {confirmItem
+              ? (() => {
+                  const draft = draftByItem[confirmItem.itemIndex] ?? emptyDraft()
+                  const { receivedFilled, receivedQty, rejectedQty } = getItemDraftState(draft)
+                  if (receivedFilled) {
+                    return `«${confirmItem.name}» tovarini «${selectedLocationName}» joyiga ${receivedQty} ta qo‘shmoqchimisiz?`
+                  }
+                  return `«${confirmItem.name}» uchun ${rejectedQty} ta kelmagan deb belgilansinmi?`
+                })()
+              : ''}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmItem(null)}>Bekor qilish</Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmSaveItem}
+            disabled={Boolean(confirmItem && actionLoadingByItem[confirmItem.itemIndex])}
+          >
+            Ha, tasdiqlayman
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={snackbar.open}

@@ -9,10 +9,10 @@ import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
-import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
+import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import Button from '@mui/material/Button'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
@@ -25,6 +25,10 @@ import dayjs from 'dayjs'
 import { useNavigate } from 'react-router-dom'
 import { useGetStructuresQuery } from '@/features/structures/api/structuresApi'
 import { useGetDashboardDailyMaxQuery, useGetDashboardSummaryQuery } from '@/features/dashboard/api/dashboardApi'
+import {
+  DashboardChartSkeleton,
+  DashboardSummaryCardSkeleton,
+} from '@/features/dashboard/components/DashboardPageSkeleton'
 import { TAVAR_IMPORT_PAGE_PATH } from '@/features/permissions/constants'
 import { usePermissions } from '@/shared/hooks/usePermissions'
 import { formatUzs } from '@/shared/utils/formatUzs'
@@ -74,13 +78,30 @@ const SummaryCard = ({ label, value, rawValue, series, chartColor }) => {
             <Typography variant="body2" color="text.secondary">
               {label}
             </Typography>
-            <Typography variant="h5" fontWeight={700} sx={{ mt: 0.25, whiteSpace: 'nowrap' }}>
+            <Typography
+              variant="h5"
+              fontWeight={700}
+              sx={{
+                mt: 0.25,
+                fontSize: { xs: '1.15rem', sm: '1.35rem', md: '1.5rem' },
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
               {Number.isFinite(rawValue) ? formatUzs(displayValue) : value}
             </Typography>
           </Box>
 
           {Array.isArray(series) && series.length ? (
-            <Box sx={{ width: 120, height: 44, mt: 0.25, ml: 2, flexShrink: 0 }}>
+            <Box
+              sx={{
+                width: { xs: 88, sm: 120 },
+                height: { xs: 40, sm: 44 },
+                mt: 0.25,
+                ml: { xs: 1, sm: 2 },
+                flexShrink: 0,
+              }}
+            >
               <SparkLineChart
                 key={chartColor}
                 data={series}
@@ -117,12 +138,20 @@ const ChartCard = ({ title, subtitle, children, sx }) => (
         >
           <Box sx={{ minWidth: 0 }}>
             {title ? (
-              <Typography variant="subtitle2" fontWeight={700} noWrap>
+              <Typography
+                variant="subtitle2"
+                fontWeight={700}
+                sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
+              >
                 {title}
               </Typography>
             ) : null}
             {subtitle ? (
-              <Typography variant="caption" color="text.secondary" noWrap>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
+              >
                 {subtitle}
               </Typography>
             ) : null}
@@ -130,33 +159,6 @@ const ChartCard = ({ title, subtitle, children, sx }) => (
         </Stack>
       ) : null}
       {children}
-    </CardContent>
-  </Card>
-)
-
-const SummaryCardSkeleton = () => (
-  <Card variant="outlined" sx={{ height: '100%' }}>
-    <CardContent sx={{ py: 2.25 }}>
-      <Stack
-        direction="row"
-        gap={1.5}
-        sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}
-      >
-        <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Skeleton variant="text" width="42%" height={24} />
-          <Skeleton variant="text" width="55%" height={42} />
-        </Box>
-        <Skeleton variant="rounded" width={120} height={44} />
-      </Stack>
-    </CardContent>
-  </Card>
-)
-
-const ChartSkeleton = () => (
-  <Card variant="outlined">
-    <CardContent sx={{ py: 2 }}>
-      <Skeleton variant="text" width={220} height={24} sx={{ mb: 1 }} />
-      <Skeleton variant="rounded" width="100%" height={440} />
     </CardContent>
   </Card>
 )
@@ -194,6 +196,15 @@ const formatDateRangeToken = (value) => {
 
 export const DashboardPage = () => {
   const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'))
+  const chartHeight = isMobile ? 280 : isTablet ? 360 : 440
+  const chartMargin = {
+    top: 20,
+    left: isMobile ? 48 : 72,
+    right: isMobile ? 8 : 20,
+    bottom: isMobile ? 24 : 30,
+  }
   const chartColor = theme.palette.primary.main
   const { user, canAccess, canCreate } = usePermissions()
   const navigate = useNavigate()
@@ -280,64 +291,83 @@ export const DashboardPage = () => {
   const sparkSeries = useMemo(() => maxSeries.slice(-18), [maxSeries])
 
   return (
-    <Box sx={{ mx: { xs: -1.5, sm: -2 } }}>
-      <Stack direction="row" gap={2} sx={{ mb: 2, alignItems: 'center' }}>
+    <Box>
+      <Stack spacing={2} sx={{ mb: 2 }}>
         <Typography variant="h5" component="h1" fontWeight={700}>
           Dashboard
         </Typography>
 
-        <Stack direction="row" spacing={1.25} sx={{ ml: 'auto', alignItems: 'center' }}>
-          {canImportProducts ? (
-            <Button
-              variant="outlined"
-              startIcon={<FileUploadOutlinedIcon />}
-              onClick={() => navigate(TAVAR_IMPORT_PAGE_PATH)}
-              sx={{ textTransform: 'none' }}
-            >
-              Tavar import
-            </Button>
-          ) : null}
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.25}
+          sx={{
+            alignItems: { xs: 'stretch', sm: 'center' },
+            flexWrap: 'wrap',
+            gap: 1,
+          }}
+        >
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              flexWrap: 'wrap',
+              gap: 1,
+              flex: { sm: 1 },
+              minWidth: 0,
+            }}
+          >
+            {canImportProducts ? (
+              <Button
+                variant="outlined"
+                size={isMobile ? 'small' : 'medium'}
+                startIcon={<FileUploadOutlinedIcon />}
+                onClick={() => navigate(TAVAR_IMPORT_PAGE_PATH)}
+                sx={{ textTransform: 'none' }}
+              >
+                Tavar import
+              </Button>
+            ) : null}
 
-          {hasDashboardAccess ? (
-            <Button
-              variant="outlined"
-              startIcon={<CalendarMonthIcon />}
-              onClick={() => navigate('/dashboard/kalendar')}
-              sx={{ textTransform: 'none' }}
-            >
-              Kalendar
-            </Button>
-          ) : null}
+            {hasDashboardAccess ? (
+              <Button
+                variant="outlined"
+                size={isMobile ? 'small' : 'medium'}
+                startIcon={<CalendarMonthIcon />}
+                onClick={() => navigate('/dashboard/kalendar')}
+                sx={{ textTransform: 'none' }}
+              >
+                Kalendar
+              </Button>
+            ) : null}
 
-          {canViewProducts ? (
-            <Button
-              variant="outlined"
-              onClick={() => navigate('/dashboard/maxsulotlar')}
-              sx={{ textTransform: 'none' }}
-            >
-              Maxsulotlar
-            </Button>
-          ) : null}
+            {canViewProducts ? (
+              <Button
+                variant="outlined"
+                size={isMobile ? 'small' : 'medium'}
+                onClick={() => navigate('/dashboard/maxsulotlar')}
+                sx={{ textTransform: 'none' }}
+              >
+                Maxsulotlar
+              </Button>
+            ) : null}
 
-          {canExpense ? (
-            <Button
-              variant="contained"
-              onClick={() => navigate('/omborlar/chiqim-qilish')}
-              sx={{ textTransform: 'none' }}
-            >
-              Chiqim
-            </Button>
-          ) : null}
+            {canExpense ? (
+              <Button
+                variant="contained"
+                size={isMobile ? 'small' : 'medium'}
+                onClick={() => navigate('/omborlar/chiqim-qilish')}
+                sx={{ textTransform: 'none' }}
+              >
+                Chiqim
+              </Button>
+            ) : null}
+          </Stack>
 
           <FormControl
             size="small"
             sx={{
-              minWidth: 260,
-              position: 'sticky',
-              top: 12,
-              right: 12,
-              alignSelf: 'flex-start',
-              zIndex: 2,
+              minWidth: { xs: '100%', sm: 220, md: 260 },
+              flexShrink: 0,
             }}
           >
             <InputLabel id="dashboard-structure-label">Analitika</InputLabel>
@@ -355,7 +385,7 @@ export const DashboardPage = () => {
               <MenuItem value="all">Barchasi</MenuItem>
               {structureOptions.map((s) => (
                 <MenuItem key={s.id} value={s.id}>
-                {s.shortName}
+                  {s.shortName}
                 </MenuItem>
               ))}
               {!isSuperAdmin && !structureOptions.length ? (
@@ -382,10 +412,10 @@ export const DashboardPage = () => {
       ) : null}
 
       {/* Summary row */}
- <Grid container spacing={2} sx={{ mb: 2, width: '100%', alignItems: 'stretch' }}>
-        <Grid size={4}>
+      <Grid container spacing={2} sx={{ mb: 2, width: '100%', alignItems: 'stretch' }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           {isSummaryBootLoading ? (
-            <SummaryCardSkeleton />
+            <DashboardSummaryCardSkeleton />
           ) : (
             <SummaryCard
               label="Tovar turi"
@@ -396,9 +426,9 @@ export const DashboardPage = () => {
             />
           )}
         </Grid>
-        <Grid size={4}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           {isSummaryBootLoading ? (
-            <SummaryCardSkeleton />
+            <DashboardSummaryCardSkeleton />
           ) : (
             <SummaryCard
               label="Jami miqdor"
@@ -409,9 +439,9 @@ export const DashboardPage = () => {
             />
           )}
         </Grid>
-        <Grid size={4}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           {isSummaryBootLoading ? (
-            <SummaryCardSkeleton />
+            <DashboardSummaryCardSkeleton />
           ) : (
             <SummaryCard
               label="Jami joriy summa"
@@ -428,12 +458,12 @@ export const DashboardPage = () => {
       <Box sx={{ width: '100%' }}>
         <Stack
           direction="row"
-          spacing={0.5}
+          spacing={0.25}
           sx={{
             mb: 1,
-            minHeight: 40,
-            justifyContent: 'flex-start',
             alignItems: 'center',
+            width: 'fit-content',
+            maxWidth: '100%',
           }}
         >
           <Tooltip title="Oldingi kunlar">
@@ -442,6 +472,7 @@ export const DashboardPage = () => {
                 size="small"
                 onClick={() => setOffsetDays((prev) => prev - DAILY_WINDOW_DAYS)}
                 disabled={dailyQuery.isFetching}
+                sx={{ p: 0.5 }}
               >
                 <ChevronLeftIcon fontSize="small" />
               </IconButton>
@@ -451,13 +482,10 @@ export const DashboardPage = () => {
             variant="body2"
             color="text.secondary"
             sx={{
-              minWidth: 210,
-              textAlign: 'center',
               fontWeight: 400,
-              height: 40,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              fontSize: { xs: '0.8rem', sm: '0.875rem' },
+              whiteSpace: 'nowrap',
+              lineHeight: 1,
             }}
           >
             {formatDateRangeToken(days[0])}-{formatDateRangeToken(days[days.length - 1])}
@@ -468,6 +496,7 @@ export const DashboardPage = () => {
                 size="small"
                 onClick={() => setOffsetDays((prev) => prev + DAILY_WINDOW_DAYS)}
                 disabled={dailyQuery.isFetching}
+                sx={{ p: 0.5 }}
               >
                 <ChevronRightIcon fontSize="small" />
               </IconButton>
@@ -475,10 +504,10 @@ export const DashboardPage = () => {
           </Tooltip>
         </Stack>
         {isChartBootLoading ? (
-          <ChartSkeleton />
+          <DashboardChartSkeleton />
         ) : (
           <ChartCard sx={{ width: '100%' }}>
-            <Box sx={{ height: 440, width: '100%', minWidth: 0 }}>
+            <Box sx={{ height: chartHeight, width: '100%', minWidth: 0 }}>
               <LineChart
                 xAxis={[
                   {
@@ -500,8 +529,8 @@ export const DashboardPage = () => {
                     color: chartColor,
                   },
                 ]}
-                height={440}
-                margin={{ top: 20, left: 72, right: 20, bottom: 30 }}
+                height={chartHeight}
+                margin={chartMargin}
                 slotProps={{
                   legend: { hidden: true },
                 }}

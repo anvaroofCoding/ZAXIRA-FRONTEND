@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import dayjs from 'dayjs'
 import Alert from '@mui/material/Alert'
@@ -9,6 +9,7 @@ import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
+import DialogContentText from '@mui/material/DialogContentText'
 import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
@@ -39,16 +40,27 @@ export const CreateTransferDialog = ({ open, request, onClose, onSuccess }) => {
   const [plannedArrivalAt, setPlannedArrivalAt] = useState(null)
   const [error, setError] = useState('')
   const [createdTransfer, setCreatedTransfer] = useState(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const structuresQuery = useGetStructuresQuery(undefined, { skip: !open })
   const [createTransfer, { isLoading }] = useCreateTransferMutation()
+
+  useEffect(() => {
+    if (!open) {
+      setConfirmOpen(false)
+      setError('')
+      setCreatedTransfer(null)
+      setStructure(null)
+      setPlannedArrivalAt(null)
+    }
+  }, [open])
 
   const activeStructures = useMemo(
     () => filterStructuresWithWarehouse(structuresQuery.data),
     [structuresQuery.data],
   )
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = (event) => {
     event.preventDefault()
     setError('')
 
@@ -56,6 +68,14 @@ export const CreateTransferDialog = ({ open, request, onClose, onSuccess }) => {
       setError('Qabul qiluvchi tuzilmani tanlang')
       return
     }
+
+    setConfirmOpen(true)
+  }
+
+  const handleConfirmSubmit = async () => {
+    if (!structure?.id) return
+
+    setError('')
 
     try {
       const result = await createTransfer({
@@ -71,9 +91,11 @@ export const CreateTransferDialog = ({ open, request, onClose, onSuccess }) => {
         })),
       }).unwrap()
 
+      setConfirmOpen(false)
       setCreatedTransfer(result)
       onSuccess?.()
     } catch (submitError) {
+      setConfirmOpen(false)
       setError(getApiErrorMessage(submitError, 'Transfer saqlashda xatolik'))
     }
   }
@@ -139,7 +161,11 @@ export const CreateTransferDialog = ({ open, request, onClose, onSuccess }) => {
               options={activeStructures}
               value={structure}
               onChange={(_event, value) => setStructure(value)}
-              getOptionLabel={(option) => formatStructureOption(option)}
+              getOptionLabel={(option) =>
+                createdTransfer
+                  ? option.shortName || option.fullName || '—'
+                  : formatStructureOption(option)
+              }
               isOptionEqualToValue={(option, value) => option.id === value?.id}
               disabled={Boolean(createdTransfer)}
               renderInput={(params) => (
@@ -176,7 +202,7 @@ export const CreateTransferDialog = ({ open, request, onClose, onSuccess }) => {
                     Nakladnoy Word
                   </Button>
                 </Stack>
-                <DispatchNakladnoyTable dispatch={createdTransfer} />
+                <DispatchNakladnoyTable dispatch={createdTransfer} structureNameMode="short" />
               </Stack>
             ) : null}
           </Stack>
@@ -192,6 +218,28 @@ export const CreateTransferDialog = ({ open, request, onClose, onSuccess }) => {
           ) : null}
         </DialogActions>
       </Box>
+
+      <Dialog
+        open={confirmOpen}
+        onClose={isLoading ? undefined : () => setConfirmOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Tasdiqlash</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Rostdan ham <strong>{structure?.shortName}</strong>ga transfer qilasizmi?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmOpen(false)} disabled={isLoading}>
+            Bekor qilish
+          </Button>
+          <Button variant="contained" onClick={handleConfirmSubmit} disabled={isLoading}>
+            Ha, transfer qilaman
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Dialog>
   )
 }

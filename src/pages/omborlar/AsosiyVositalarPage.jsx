@@ -16,7 +16,6 @@ import FormControl from '@mui/material/FormControl'
 import InputAdornment from '@mui/material/InputAdornment'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
-import Paper from '@mui/material/Paper'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
@@ -188,46 +187,45 @@ export const AsosiyVositalarPage = () => {
           yaroqsiz bo‘lsa hisobdan chiqarish mumkin.
         </Typography>
 
-        <Paper variant="outlined" sx={{ p: 2 }}>
-          <Stack
-            direction={{ xs: 'column', md: 'row' }}
-            spacing={2}
-            alignItems={{ xs: 'stretch', md: 'center' }}
-          >
-            <TextField
-              size="small"
-              label="Qidirish"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              fullWidth
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <FormControl size="small" sx={{ minWidth: { md: 260 } }}>
-              <InputLabel id="service-filter-label">Xizmat</InputLabel>
-              <Select
-                labelId="service-filter-label"
-                label="Xizmat"
-                value={serviceFilter}
-                onChange={(e) => setServiceFilter(e.target.value)}
-              >
-                <MenuItem value={ALL_SERVICES_VALUE}>
-                  <em>Barcha xizmatlar</em>
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          spacing={1.5}
+          alignItems={{ xs: 'stretch', md: 'center' }}
+        >
+          <TextField
+            size="small"
+            label="Qidirish"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            fullWidth
+            sx={{ flex: { md: '1 1 280px' } }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" color="action" />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 260 } }}>
+            <InputLabel id="service-filter-label">Xizmat</InputLabel>
+            <Select
+              labelId="service-filter-label"
+              label="Xizmat"
+              value={serviceFilter}
+              onChange={(e) => setServiceFilter(e.target.value)}
+            >
+              <MenuItem value={ALL_SERVICES_VALUE}>
+                <em>Barcha xizmatlar</em>
+              </MenuItem>
+              {serviceStructures.map((structure) => (
+                <MenuItem key={structure.id} value={structure.id}>
+                  {structure.shortName || structure.fullName}
                 </MenuItem>
-                {serviceStructures.map((structure) => (
-                  <MenuItem key={structure.id} value={structure.id}>
-                    {structure.shortName || structure.fullName}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Stack>
-        </Paper>
+              ))}
+            </Select>
+          </FormControl>
+        </Stack>
 
         {fixedAssetsQuery.error ? (
           <Alert severity="error">
@@ -236,7 +234,7 @@ export const AsosiyVositalarPage = () => {
         ) : null}
 
         <QuerySkeleton loading={!isReady} rows={6}>
-          <TableContainer component={Paper} variant="outlined">
+          <TableContainer>
             <Table size="small">
               <TableHead>
                 <TableRow>

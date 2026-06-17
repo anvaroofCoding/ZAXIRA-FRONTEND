@@ -129,7 +129,7 @@ export const PurchaseRequestDocumentWizardDialog = ({
 
     return {
       title: 'Kelishuv varaqasi',
-      hint: 'Kelishuv matnini tekshiring va kerak bo‘lsa tahrirlang.',
+      hint: 'Word ko‘rinishida tahrirlang. QR kod buyurtmachi (tuzilma nomi) ostida avtomatik qo‘yiladi.',
     }
   }, [activeStep])
 

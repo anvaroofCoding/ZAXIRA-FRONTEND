@@ -139,7 +139,7 @@ export const DashboardChartSkeleton = () => (
   <Card variant="outlined" sx={{ width: '100%' }}>
     <CardContent sx={{ py: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           <SkeletonBlock variant="rounded" width={28} height={3} />
           <SkeletonBlock variant="text" width={128} height={18} />
         </Stack>

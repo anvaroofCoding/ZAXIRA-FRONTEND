@@ -15,6 +15,7 @@ export const PURCHASE_HISTORY_PAGE_PATH = '/xaridlar/arizalar-tarixi'
 export const PURCHASED_ITEMS_PAGE_PATH = '/xarid-qilish/xarid-qilingan-tavarlar'
 export const PURCHASING_QUEUE_PAGE_PATH = '/xarid-qilish/sotib-olinadigan-tavarlar'
 export const WAREHOUSE_RECEIPT_PAGE_PATH = '/xarid-qilish/xaridni-qabul-qilish'
+export const ISHONCHNOMA_PAGE_PATH = '/xarid-qilish/ishonchnoma'
 export const OTHER_WAREHOUSES_PAGE_PATH = '/omborlar/boshqa-omborlar'
 export const WAREHOUSES_2D_PAGE_PATH = '/dashboard/2d-omborlar'
 export const WAREHOUSES_2D_LEGACY_PAGE_PATH = '/omborlar/2d-omborlar'
@@ -53,6 +54,7 @@ export const DISABLED_PAGE_ACTIONS = {
   [PURCHASED_ITEMS_PAGE_PATH]: ['create', 'update', 'delete'],
   [PURCHASING_QUEUE_PAGE_PATH]: ['update', 'delete'],
   [WAREHOUSE_RECEIPT_PAGE_PATH]: ['update', 'delete'],
+  [ISHONCHNOMA_PAGE_PATH]: ['delete'],
   [OTHER_WAREHOUSES_PAGE_PATH]: ['create', 'update', 'delete'],
   [WAREHOUSES_2D_PAGE_PATH]: ['create', 'update', 'delete'],
   [WAREHOUSE_EXPENSE_PAGE_PATH]: ['update'],

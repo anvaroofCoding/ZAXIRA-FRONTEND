@@ -47,6 +47,11 @@ export const SIDE_RAIL_ITEMS = [
     icon: LocalShippingOutlinedIcon,
     badgeKey: 'warehouse-receipt',
   },
+  {
+    label: 'Ishonchnoma',
+    path: '/xarid-qilish/ishonchnoma',
+    icon: FileUploadOutlinedIcon,
+  },
 
   { label: 'Tavar import qilish', path: '/omborlar/tavar-import-qilish', icon: FileUploadOutlinedIcon, dividerBefore: true },
   { label: 'Mening omborim', path: '/omborlar/mening-omborim', icon: StoreOutlinedIcon },

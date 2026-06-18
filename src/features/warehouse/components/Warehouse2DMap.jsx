@@ -221,9 +221,9 @@ const WarehouseNode = ({
       <Typography
         variant="caption"
         fontWeight={700}
-        textAlign="center"
         color={selected ? 'primary.contrastText' : 'text.primary'}
         sx={{
+          textAlign: 'center',
           lineHeight: 1.2,
           display: '-webkit-box',
           WebkitLineClamp: 2,

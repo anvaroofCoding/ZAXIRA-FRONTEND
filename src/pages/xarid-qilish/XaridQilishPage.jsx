@@ -14,23 +14,12 @@ export const XaridQilishPage = () => {
   }
 
   const handleSuccess = (message) => {
-    if (message) {
-      dispatch(
-        showNotification({
-          message,
-          severity: 'success',
-        }),
-      )
-      return
-    }
-
     dispatch(
       showNotification({
-        message: 'Xarid muvaffaqiyatli yakunlandi',
+        message: message || 'Xarid muvaffaqiyatli yakunlandi',
         severity: 'success',
       }),
     )
-    navigate(PURCHASING_QUEUE_PAGE_PATH)
   }
 
   return (

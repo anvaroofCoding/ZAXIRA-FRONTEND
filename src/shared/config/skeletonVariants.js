@@ -57,6 +57,10 @@ export const resolveSkeletonVariant = (pathname) => {
     return SKELETON_VARIANTS.purchasingReceipt
   }
 
+  if (pathname.includes('/xarid-qilish/ishonchnoma')) {
+    return SKELETON_VARIANTS.purchasingPurchased
+  }
+
   if (TABLE_ROUTE_PATTERNS.some((pattern) => pathname.includes(pattern))) {
     return SKELETON_VARIANTS.table
   }

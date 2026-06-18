@@ -38,7 +38,7 @@ const formatStructureDisplay = (structure, mode = 'full') => {
   return `${shortName} — ${fullName}`
 }
 
-export const DispatchNakladnoyTable = ({ dispatch, structureNameMode = 'full' }) => {
+export const DispatchNakladnoyTable = ({ dispatch, structureNameMode = 'short' }) => {
   if (!dispatch) {
     return null
   }
@@ -103,7 +103,7 @@ export const DispatchNakladnoyTable = ({ dispatch, structureNameMode = 'full' })
   )
 }
 
-const BoxHeader = ({ dispatch, structureNameMode = 'full' }) => (
+const BoxHeader = ({ dispatch, structureNameMode = 'short' }) => (
   <Stack
     spacing={2}
     sx={{

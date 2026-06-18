@@ -14,6 +14,46 @@ export const TAX_ID_TYPE_OPTIONS = [
   { value: 'pinfl', label: 'PINFL' },
 ]
 
+export const validatePurchaseContractFields = ({
+  contractNumber = '',
+  organizationName = '',
+  taxIdType = '',
+  taxIdNumber = '',
+}) => {
+  const trimmedContractNumber = contractNumber.trim()
+  const trimmedOrganizationName = organizationName.trim()
+  const trimmedTaxIdNumber = taxIdNumber.trim()
+
+  if (!trimmedContractNumber) {
+    return 'Shartnoma raqamini kiriting'
+  }
+
+  if (!trimmedOrganizationName) {
+    return 'Tashkilot nomini kiriting'
+  }
+
+  if (!taxIdType) {
+    return 'Identifikator turini tanlang (INN yoki PINFL)'
+  }
+
+  if (!trimmedTaxIdNumber) {
+    return 'INN yoki PINFL raqamini kiriting'
+  }
+
+  const expectedLength = TAX_ID_LENGTH[taxIdType]
+
+  if (trimmedTaxIdNumber.length !== expectedLength) {
+    return taxIdType === 'inn'
+      ? 'INN 9 ta raqamdan iborat bo‘lishi kerak'
+      : 'PINFL 14 ta raqamdan iborat bo‘lishi kerak'
+  }
+
+  return ''
+}
+
+export const isPurchaseContractComplete = (fields) =>
+  !validatePurchaseContractFields(fields)
+
 export const VAT_RATE_OPTIONS = [
   { value: '0', label: 'INDS siz' },
   { value: '6', label: '6%' },

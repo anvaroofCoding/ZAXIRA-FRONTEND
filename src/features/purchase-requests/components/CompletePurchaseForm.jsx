@@ -30,10 +30,16 @@ import {
 import { PurchaseBatchCard } from '@/features/purchase-requests/components/PurchaseBatchCard'
 import { PurchaseRequestItemCharacteristicsField } from '@/features/purchase-requests/components/PurchaseRequestItemCharacteristicsField'
 import { PurchaseUnavailableBatchCard } from '@/features/purchase-requests/components/PurchaseUnavailableBatchCard'
+import { RequestIshonchnomaSection } from '@/features/purchase-requests/components/RequestIshonchnomaSection'
 import { DispatchToWarehouseDialog } from '@/features/warehouse-dispatches/components/DispatchToWarehouseDialog'
+import { ISHONCHNOMA_PAGE_PATH } from '@/features/permissions/constants'
+import { hasPageAction } from '@/features/permissions/utils/permissions'
+import { selectAuthUser } from '@/features/auth/model/authSlice'
+import { useAppSelector } from '@/shared/hooks/useAppSelector'
 import {
   TAX_ID_LENGTH,
   TAX_ID_TYPE_OPTIONS,
+  validatePurchaseContractFields,
   VAT_RATE_OPTIONS,
   buildPendingRowsFromRequest,
   calculateVatAmountInput,
@@ -59,13 +65,28 @@ export const CompletePurchaseForm = ({ requestId, onCancel, onSuccess }) => {
   const [pendingRows, setPendingRows] = useState([])
   const [activeTab, setActiveTab] = useState(0)
   const [dispatchBatch, setDispatchBatch] = useState(null)
+  const [autoOpenIshonchnomaBatchId, setAutoOpenIshonchnomaBatchId] = useState(null)
   const [error, setError] = useState('')
+
+  const user = useAppSelector(selectAuthUser)
+  const canUploadIshonchnoma = hasPageAction(user, ISHONCHNOMA_PAGE_PATH, 'create')
 
   const [completePurchase, { isLoading: isPurchasing }] = useCompletePurchaseMutation()
   const [markItemsUnavailable, { isLoading: isMarkingUnavailable }] =
     useMarkItemsUnavailableMutation()
 
   const isLoading = isPurchasing || isMarkingUnavailable
+
+  const contractValidationError = useMemo(
+    () =>
+      validatePurchaseContractFields({
+        contractNumber,
+        organizationName,
+        taxIdType,
+        taxIdNumber,
+      }),
+    [contractNumber, organizationName, taxIdType, taxIdNumber],
+  )
 
   const detailQuery = useGetPurchaseRequestByIdQuery(
     { id: requestId, purchasingView: true },
@@ -95,6 +116,20 @@ export const CompletePurchaseForm = ({ requestId, onCancel, onSuccess }) => {
       (left, right) => new Date(right.markedAt).getTime() - new Date(left.markedAt).getTime(),
     )
   }, [liveRequest?.purchaseUnavailableBatches])
+
+  const resolveLatestBatchId = (request) => {
+    const batches = [...(request?.purchaseBatches ?? [])].sort(
+      (left, right) =>
+        new Date(right.purchasedAt).getTime() - new Date(left.purchasedAt).getTime(),
+    )
+
+    return batches[0]?.batchId ?? null
+  }
+
+  const goToIshonchnomaTab = (request) => {
+    setActiveTab(3)
+    setAutoOpenIshonchnomaBatchId(resolveLatestBatchId(request))
+  }
 
   const pendingItemsSignature = useMemo(
     () =>
@@ -235,23 +270,16 @@ export const CompletePurchaseForm = ({ requestId, onCancel, onSuccess }) => {
     }
 
     const trimmedTaxIdNumber = taxIdNumber.trim()
+    const contractError = validatePurchaseContractFields({
+      contractNumber,
+      organizationName,
+      taxIdType,
+      taxIdNumber,
+    })
 
-    if ((taxIdType && !trimmedTaxIdNumber) || (!taxIdType && trimmedTaxIdNumber)) {
-      setError('INN yoki PINFL uchun avval turini tanlang, keyin raqamni kiriting')
+    if (contractError) {
+      setError(contractError)
       return
-    }
-
-    if (taxIdType && trimmedTaxIdNumber) {
-      const expectedLength = TAX_ID_LENGTH[taxIdType]
-
-      if (trimmedTaxIdNumber.length !== expectedLength) {
-        setError(
-          taxIdType === 'inn'
-            ? 'INN 9 ta raqamdan iborat bo‘lishi kerak'
-            : 'PINFL 14 ta raqamdan iborat bo‘lishi kerak',
-        )
-        return
-      }
     }
 
     const formData = new FormData()
@@ -285,20 +313,21 @@ export const CompletePurchaseForm = ({ requestId, onCancel, onSuccess }) => {
         0,
       )
 
+      resetBatchFields()
+      setError('')
+      goToIshonchnomaTab(result)
+
       if (remainingCount > 0) {
         setPendingRows(buildPendingRowsFromRequest(result))
-        setActiveTab(0)
-        resetBatchFields()
-        setError('')
         onSuccess?.(
           remainingQuantity > remainingCount
-            ? `Qisman xarid qilindi — ${remainingQuantity} dona navbatda qoldi`
-            : `${selectedRows.length} ta tovar xarid qilindi — ${remainingCount} ta tovar navbatda qoldi`,
+            ? `Qisman xarid qilindi — ishonchnoma yuklang`
+            : `${selectedRows.length} ta tovar xarid qilindi — ishonchnoma yuklang`,
         )
         return
       }
 
-      onSuccess?.()
+      onSuccess?.('Xarid yakunlandi — ishonchnoma yuklang')
     } catch (submitError) {
       setError(getApiErrorMessage(submitError, 'Xarid qilishda xatolik'))
     }
@@ -400,6 +429,7 @@ export const CompletePurchaseForm = ({ requestId, onCancel, onSuccess }) => {
   const unavailableItemCount = (liveRequest.items ?? []).filter(
     (item) => item.isPurchaseUnavailable,
   ).length
+  const ishonchnomaTabIndex = 3
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
@@ -462,7 +492,7 @@ export const CompletePurchaseForm = ({ requestId, onCancel, onSuccess }) => {
           <Stack spacing={2.5}>
             {hasPending ? (
               <Typography variant="body2" color="text.secondary">
-                Izoh, shartnoma ma’lumotlari, havola va fayllar shu xarid partiyasiga saqlanadi.
+                Shartnoma raqami, tashkilot nomi va INN/PINFL majburiy. Havola va fayllar ixtiyoriy.
                 Har bir tovar uchun summa, INDS foizi va INDS summasini alohida kiriting. Sonni
                 kamaytirsangiz, qolgan miqdor xarid navbatida qoladi.
               </Typography>
@@ -545,6 +575,7 @@ export const CompletePurchaseForm = ({ requestId, onCancel, onSuccess }) => {
                 onChange={(event) => setContractNumber(event.target.value)}
                 fullWidth
                 size="small"
+                required
               />
               <TextField
                 label="Tashkilot nomi"
@@ -552,6 +583,7 @@ export const CompletePurchaseForm = ({ requestId, onCancel, onSuccess }) => {
                 onChange={(event) => setOrganizationName(event.target.value)}
                 fullWidth
                 size="small"
+                required
               />
               <Stack direction="row" spacing={1} sx={{ width: '100%' }}>
                 <TextField
@@ -566,11 +598,9 @@ export const CompletePurchaseForm = ({ requestId, onCancel, onSuccess }) => {
                     )
                   }}
                   size="small"
+                  required
                   sx={{ minWidth: 150, flexShrink: 0 }}
                 >
-                  <MenuItem value="">
-                    <em>Tanlash</em>
-                  </MenuItem>
                   {TAX_ID_TYPE_OPTIONS.map((option) => (
                     <MenuItem key={option.value} value={option.value}>
                       {option.label}
@@ -586,12 +616,13 @@ export const CompletePurchaseForm = ({ requestId, onCancel, onSuccess }) => {
                   }}
                   fullWidth
                   size="small"
+                  required
                   disabled={!taxIdType}
                   helperText={
                     taxIdType === 'inn'
-                      ? '9 ta raqam'
+                      ? '9 ta raqam (majburiy)'
                       : taxIdType === 'pinfl'
-                        ? '14 ta raqam'
+                        ? '14 ta raqam (majburiy)'
                         : 'Avval INN yoki PINFL tanlang'
                   }
                   slotProps={{
@@ -628,6 +659,10 @@ export const CompletePurchaseForm = ({ requestId, onCancel, onSuccess }) => {
                 />
                 <Tab label={`Xarid qilingan tovarlar (${purchasedItemCount})`} />
                 <Tab label={`Xarid qilib bo‘lmaydi (${unavailableItemCount})`} />
+                <Tab
+                  label={`Ishonchnoma (${purchaseBatches.length})`}
+                  disabled={!purchaseBatches.length}
+                />
               </Tabs>
 
               {activeTab === 0 && hasPending ? (
@@ -869,6 +904,15 @@ export const CompletePurchaseForm = ({ requestId, onCancel, onSuccess }) => {
                 )
               ) : null}
 
+              {activeTab === ishonchnomaTabIndex ? (
+                <RequestIshonchnomaSection
+                  request={liveRequest}
+                  canUpload={canUploadIshonchnoma}
+                  autoOpenBatchId={autoOpenIshonchnomaBatchId}
+                  onAutoOpenHandled={() => setAutoOpenIshonchnomaBatchId(null)}
+                />
+              ) : null}
+
               {activeTab === 0 && !hasPending ? (
                 <Typography variant="body2" color="text.secondary">
                   Xarid qilinadigan tovarlar qolmadi
@@ -903,7 +947,11 @@ export const CompletePurchaseForm = ({ requestId, onCancel, onSuccess }) => {
               >
                 Xarid qilib bo‘lmaydi ({selectedRows.length || 0})
               </Button>
-              <Button type="submit" variant="contained" disabled={isLoading || !selectedRows.length}>
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={isLoading || !selectedRows.length || Boolean(contractValidationError)}
+              >
                 {selectedRows.length
                   ? `Tanlanganlarni xarid qilish (${selectedRows.length})`
                   : 'Xarid qilish'}

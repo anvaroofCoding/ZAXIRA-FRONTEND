@@ -35,6 +35,7 @@ import {
 } from '@/features/warehouse-dispatches/api/warehouseDispatchesApi'
 import { useGetWarehouseLocationsQuery } from '@/features/warehouse/api/warehouseApi'
 import { DispatchNakladnoyTable } from '@/features/warehouse-dispatches/components/DispatchNakladnoyTable'
+import { DispatchIshonchnomaFilesBlock } from '@/features/warehouse-dispatches/components/DispatchIshonchnomaFilesBlock'
 import { WarehouseDispatchSummaryPanel } from '@/features/warehouse-dispatches/components/WarehouseDispatchSummaryPanel'
 import { dispatchCodeSx } from '@/features/warehouse-dispatches/utils/dispatchCodeDisplay'
 import { downloadAuthenticatedFile } from '@/shared/utils/downloadFile'
@@ -389,6 +390,13 @@ export const ReceiveWarehouseDispatchDialog = ({
                   <Box sx={{ mt: 0 }}>
                     <DispatchNakladnoyTable dispatch={dispatch} />
                   </Box>
+
+                  {dispatch.purchaseRequestId ? (
+                    <DispatchIshonchnomaFilesBlock
+                      purchaseRequestId={dispatch.purchaseRequestId}
+                      ishonchnoma={dispatch.ishonchnoma}
+                    />
+                  ) : null}
 
                   {hasLocations ? (
                     <Box sx={{ mt: 2, maxWidth: 420 }}>

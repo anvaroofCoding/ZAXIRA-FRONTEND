@@ -10,6 +10,8 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import { ProfileMenu } from '@/features/profile/components/ProfileMenu'
 import { NotificationsDrawer } from '@/features/notifications/components/NotificationsDrawer'
+import { SettingsNavButton } from '@/features/settings/components/SettingsNavButton'
+import { WeatherNavButton } from '@/features/weather/components/WeatherNavButton'
 import { ChatNavButton } from '@/shared/components/chat/ChatFabDrawer'
 import { ThemeToggle } from '@/shared/components/ThemeToggle'
 import { AppContainer } from '@/shared/components/layout/AppContainer'
@@ -159,6 +161,8 @@ export const AppNavbar = () => {
           >
             <ChatNavButton />
             <NotificationsDrawer />
+            <WeatherNavButton />
+            <SettingsNavButton />
             <ThemeToggle />
             <ProfileMenu />
           </Box>

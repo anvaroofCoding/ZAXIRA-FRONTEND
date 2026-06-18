@@ -89,6 +89,11 @@ export const PurchaseBatchCard = ({
             </Typography>
           </Box>
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+            {batch.ishonchnomaSubmitted ? (
+              <Chip size="small" color="success" label="Ishonchnoma yuborilgan" />
+            ) : (
+              <Chip size="small" color="warning" variant="outlined" label="Ishonchnoma kutilmoqda" />
+            )}
             {batch.warehouseDispatch ? (
               <Chip
                 size="small"
@@ -140,6 +145,25 @@ export const PurchaseBatchCard = ({
           <InfoBlock label="Yuklangan fayllar">
             <Stack spacing={0.5}>
               {batch.files.map((file) => (
+                <Link
+                  key={file.storedName}
+                  component={requestId ? 'button' : 'span'}
+                  type={requestId ? 'button' : undefined}
+                  variant="body2"
+                  onClick={requestId ? () => handleDownloadFile(file) : undefined}
+                  sx={{ textAlign: 'left' }}
+                >
+                  {file.originalName || file.label}
+                </Link>
+              ))}
+            </Stack>
+          </InfoBlock>
+        ) : null}
+
+        {batch.ishonchnoma?.files?.length ? (
+          <InfoBlock label="Ishonchnoma fayllari">
+            <Stack spacing={0.5}>
+              {batch.ishonchnoma.files.map((file) => (
                 <Link
                   key={file.storedName}
                   component={requestId ? 'button' : 'span'}

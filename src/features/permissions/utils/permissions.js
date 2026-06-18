@@ -1,5 +1,6 @@
 import {
   DISABLED_PAGE_ACTIONS,
+  ISHONCHNOMA_PAGE_PATH,
   PURCHASING_QUEUE_PAGE_PATH,
   RECEIPT_PAGE_PATHS,
   WAREHOUSES_2D_LEGACY_PAGE_PATH,
@@ -178,7 +179,27 @@ export const normalizePermissions = (catalog, input) => {
     })
   })
 
-  return base
+  return syncDerivedPermissions(base)
+}
+
+const syncDerivedPermissions = (permissions) => {
+  const purchasing = permissions[PURCHASING_QUEUE_PAGE_PATH]
+
+  if (!purchasing?.access) {
+    return permissions
+  }
+
+  return {
+    ...permissions,
+    [ISHONCHNOMA_PAGE_PATH]: sanitizePagePermission(ISHONCHNOMA_PAGE_PATH, {
+      access: true,
+      actions: {
+        create: purchasing.actions.create,
+        update: purchasing.actions.create,
+        delete: false,
+      },
+    }),
+  }
 }
 
 export const getGroupPaths = (group) => group.pages.map((page) => page.path)
@@ -295,6 +316,9 @@ const ASOSIY_VOSITALAR_PATH = '/omborlar/asosiy-vositalar'
 const DASHBOARD_CALENDAR_PATH = '/dashboard/kalendar'
 
 const resolvePermissionLookupPaths = (path) => {
+  if (path === ISHONCHNOMA_PAGE_PATH) {
+    return [ISHONCHNOMA_PAGE_PATH, PURCHASING_QUEUE_PAGE_PATH]
+  }
   if (
     path.startsWith(`${PURCHASING_QUEUE_PAGE_PATH}/`) &&
     path.endsWith('/xarid-qilish')

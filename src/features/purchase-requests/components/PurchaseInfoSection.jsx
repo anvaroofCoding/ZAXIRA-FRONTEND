@@ -10,6 +10,8 @@ import { PurchaseContractInfoBlock } from '@/features/purchase-requests/componen
 import { PurchaseContractInfoEditDialog } from '@/features/purchase-requests/components/PurchaseContractInfoEditDialog'
 import { PurchaseUnavailableBatchCard } from '@/features/purchase-requests/components/PurchaseUnavailableBatchCard'
 import { useUpdatePurchaseBatchContractMutation } from '@/features/purchase-requests/api/purchaseRequestsApi'
+import { useDispatch } from 'react-redux'
+import { showNotification } from '@/shared/model/notificationSlice'
 import {
   enrichBatchContractInfo,
   hasPurchaseContractInfo,
@@ -23,6 +25,7 @@ export const PurchaseInfoSection = ({
   onDispatchBatch,
   canEditContract = false,
 }) => {
+  const dispatch = useDispatch()
   const [editBatch, setEditBatch] = useState(null)
   const [updatePurchaseBatchContract, { isLoading: isUpdatingContract }] =
     useUpdatePurchaseBatchContractMutation()
@@ -55,15 +58,25 @@ export const PurchaseInfoSection = ({
   const editableBatch = sortedBatches[0] ?? null
 
   const handleSaveContract = async (body) => {
-    if (!editableBatch?.batchId) {
-      return
+    const batchId = editBatch?.batchId ?? editableBatch?.batchId
+
+    if (!batchId) {
+      throw new Error('Xarid partiyasi topilmadi')
     }
 
     await updatePurchaseBatchContract({
       id: request.id,
-      batchId: editableBatch.batchId,
+      batchId,
       body,
     }).unwrap()
+
+    dispatch(
+      showNotification({
+        message: 'Tashkilot ma’lumotlari saqlandi',
+        severity: 'success',
+      }),
+    )
+    setEditBatch(null)
   }
 
   return (

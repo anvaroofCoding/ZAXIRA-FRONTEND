@@ -20,6 +20,7 @@ export const NAV_ITEMS = [
       { label: 'Sotib olinadigan maxsulotlar', path: '/xarid-qilish/sotib-olinadigan-tavarlar' },
       { label: 'Xarid qilingan tavarlar', path: '/xarid-qilish/xarid-qilingan-tavarlar' },
       { label: 'Xaridni qabul qilish', path: '/xarid-qilish/xaridni-qabul-qilish', badgeKey: 'warehouse-receipt' },
+      { label: 'Ishonchnoma', path: '/xarid-qilish/ishonchnoma' },
     ],
   },
   {

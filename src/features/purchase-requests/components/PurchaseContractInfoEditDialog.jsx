@@ -8,7 +8,11 @@ import DialogTitle from '@mui/material/DialogTitle'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
-import { TAX_ID_LENGTH, TAX_ID_TYPE_OPTIONS } from '@/features/purchase-requests/utils/completePurchaseFormUtils'
+import {
+  TAX_ID_LENGTH,
+  TAX_ID_TYPE_OPTIONS,
+  validatePurchaseContractFields,
+} from '@/features/purchase-requests/utils/completePurchaseFormUtils'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
 export const PurchaseContractInfoEditDialog = ({
@@ -39,24 +43,16 @@ export const PurchaseContractInfoEditDialog = ({
   const handleSubmit = async () => {
     setError('')
 
-    const trimmedTaxIdNumber = taxIdNumber.trim()
+    const validationError = validatePurchaseContractFields({
+      contractNumber,
+      organizationName,
+      taxIdType,
+      taxIdNumber,
+    })
 
-    if ((taxIdType && !trimmedTaxIdNumber) || (!taxIdType && trimmedTaxIdNumber)) {
-      setError('INN yoki PINFL uchun avval turini tanlang, keyin raqamni kiriting')
+    if (validationError) {
+      setError(validationError)
       return
-    }
-
-    if (taxIdType && trimmedTaxIdNumber) {
-      const expectedLength = TAX_ID_LENGTH[taxIdType]
-
-      if (trimmedTaxIdNumber.length !== expectedLength) {
-        setError(
-          taxIdType === 'inn'
-            ? 'INN 9 ta raqamdan iborat bo‘lishi kerak'
-            : 'PINFL 14 ta raqamdan iborat bo‘lishi kerak',
-        )
-        return
-      }
     }
 
     try {
@@ -64,7 +60,7 @@ export const PurchaseContractInfoEditDialog = ({
         contractNumber: contractNumber.trim(),
         organizationName: organizationName.trim(),
         innOrPinflType: taxIdType,
-        innOrPinfl: trimmedTaxIdNumber,
+        innOrPinfl: taxIdNumber.trim(),
       })
       onClose()
     } catch (submitError) {
@@ -83,6 +79,7 @@ export const PurchaseContractInfoEditDialog = ({
             onChange={(event) => setContractNumber(event.target.value)}
             fullWidth
             size="small"
+            required
           />
           <TextField
             label="Tashkilot nomi"
@@ -90,6 +87,7 @@ export const PurchaseContractInfoEditDialog = ({
             onChange={(event) => setOrganizationName(event.target.value)}
             fullWidth
             size="small"
+            required
           />
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
             <TextField
@@ -104,11 +102,9 @@ export const PurchaseContractInfoEditDialog = ({
                 )
               }}
               size="small"
+              required
               sx={{ minWidth: 150 }}
             >
-              <MenuItem value="">
-                <em>Tanlash</em>
-              </MenuItem>
               {TAX_ID_TYPE_OPTIONS.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
                   {option.label}
@@ -124,6 +120,7 @@ export const PurchaseContractInfoEditDialog = ({
               }}
               fullWidth
               size="small"
+              required
               disabled={!taxIdType}
             />
           </Stack>

@@ -258,7 +258,16 @@ const postSessionPayload = async (baseQuery, sessionId, payload) =>
     body: payload,
   })
 
-const buildInboxQueryParams = ({ page, limit, search, dateFrom, dateTo, inboxType, structureId }) => ({
+const buildInboxQueryParams = ({
+  page,
+  limit,
+  search,
+  dateFrom,
+  dateTo,
+  inboxType,
+  structureId,
+  ishonchnomaStatus,
+}) => ({
   page,
   limit,
   ...(search?.trim() ? { search: search.trim() } : {}),
@@ -266,6 +275,7 @@ const buildInboxQueryParams = ({ page, limit, search, dateFrom, dateTo, inboxTyp
   ...(dateTo ? { dateTo } : {}),
   ...(inboxType ? { inboxType } : {}),
   ...(structureId ? { structureId } : {}),
+  ...(ishonchnomaStatus ? { ishonchnomaStatus } : {}),
 })
 
 export const purchaseRequestsApi = baseApi.injectEndpoints({
@@ -360,6 +370,27 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
         return tags
       },
     }),
+    getIshonchnomaInbox: builder.query({
+      query: ({
+        page = 1,
+        limit = 10,
+        search = '',
+        dateFrom,
+        dateTo,
+        ishonchnomaStatus = 'pending',
+      } = {}) => ({
+        url: '/purchase-requests/ishonchnoma/inbox',
+        params: buildInboxQueryParams({
+          page,
+          limit,
+          search,
+          dateFrom,
+          dateTo,
+          ishonchnomaStatus,
+        }),
+      }),
+      providesTags: [API_TAGS.PURCHASE_REQUEST],
+    }),
     rejectPurchase: builder.mutation({
       query: ({ id, reasonKey, comment }) => ({
         url: `/purchase-requests/${id}/purchase/reject`,
@@ -384,9 +415,23 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
     }),
     updatePurchaseBatchContract: builder.mutation({
       query: ({ id, batchId, body }) => ({
-        url: `/purchase-requests/${id}/purchase-batches/${batchId}/contract`,
+        url: `/purchase-requests/${id}/purchase/contract`,
         method: 'POST',
-        body,
+        body: {
+          batchId,
+          ...body,
+        },
+      }),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: API_TAGS.PURCHASE_REQUEST, id },
+        API_TAGS.PURCHASE_REQUEST,
+      ],
+    }),
+    uploadPurchaseIshonchnoma: builder.mutation({
+      query: ({ id, formData }) => ({
+        url: `/purchase-requests/${id}/purchase/ishonchnoma`,
+        method: 'POST',
+        body: formData,
       }),
       invalidatesTags: (_result, _error, { id }) => [
         { type: API_TAGS.PURCHASE_REQUEST, id },
@@ -944,8 +989,10 @@ export const {
   useResubmitPurchaseRequestWithDocumentsMutation,
   useGetPurchasingInboxQuery,
   useGetPurchasedInboxQuery,
+  useGetIshonchnomaInboxQuery,
   useCompletePurchaseMutation,
   useUpdatePurchaseBatchContractMutation,
+  useUploadPurchaseIshonchnomaMutation,
   useMarkItemsUnavailableMutation,
   useRejectPurchaseMutation,
   useDeletePurchaseRequestMutation,

@@ -11,6 +11,12 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
+import { PurchaseContractInfoBlock } from '@/features/purchase-requests/components/PurchaseContractInfoBlock'
+import {
+  formatPurchaseVatRateLabel,
+  getPurchaseUnitTotal,
+  hasPurchaseContractInfo,
+} from '@/features/purchase-requests/utils/purchaseDisplayUtils'
 import { formatDateTime } from '@/shared/utils/formatDate'
 import { formatUzs } from '@/shared/utils/formatUzs'
 import { downloadAuthenticatedFile } from '@/shared/utils/downloadFile'
@@ -43,9 +49,9 @@ export const PurchaseBatchCard = ({
   onDispatch,
 }) => {
   const batchItems = resolveBatchItems(batch, items)
+  const getUnitTotal = (item) => getPurchaseUnitTotal(item)
   const batchTotal = batchItems.reduce((sum, item) => {
-    const unit = Number(item.purchaseAmount ?? 0)
-    return sum + unit * Number(item.quantity ?? 0)
+    return sum + getUnitTotal(item) * Number(item.quantity ?? 0)
   }, 0)
 
   const handleDownloadFile = (file) => {
@@ -97,6 +103,12 @@ export const PurchaseBatchCard = ({
             ) : null}
           </Stack>
         </Stack>
+
+        {hasPurchaseContractInfo(batch) ? (
+          <InfoBlock label="Tashkilot ma’lumotlari">
+            <PurchaseContractInfoBlock batch={batch} title="" />
+          </InfoBlock>
+        ) : null}
 
         {batch.comment?.trim() ? (
           <InfoBlock label="Izoh">
@@ -153,7 +165,13 @@ export const PurchaseBatchCard = ({
                     Miqdor
                   </TableCell>
                   <TableCell width={130} align="right">
-                    1 dona narxi
+                    Summa (1 dona)
+                  </TableCell>
+                  <TableCell width={90} align="right">
+                    % INDS
+                  </TableCell>
+                  <TableCell width={130} align="right">
+                    INDS (1 dona)
                   </TableCell>
                   <TableCell width={140} align="right">
                     Jami
@@ -163,7 +181,10 @@ export const PurchaseBatchCard = ({
               <TableBody>
                 {batchItems.map((item) => {
                   const unit = Number(item.purchaseAmount ?? 0)
-                  const total = unit * Number(item.quantity ?? 0)
+                  const vatAmount = Number(item.purchaseVatAmount ?? 0)
+                  const vatRate = Number(item.purchaseVatRate ?? 0)
+                  const unitTotal = unit + vatAmount
+                  const total = unitTotal * Number(item.quantity ?? 0)
                   const substitution = batch.itemSubstitutions?.find(
                     (row) => row.itemIndex === item.itemIndex,
                   )
@@ -180,9 +201,6 @@ export const PurchaseBatchCard = ({
                             Ariza bo‘yicha: {originalName}
                           </Typography>
                         ) : null}
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          {item.characteristics}
-                        </Typography>
                       </TableCell>
                       <TableCell align="right">
                         <Typography variant="body2">
@@ -193,6 +211,14 @@ export const PurchaseBatchCard = ({
                         <Typography variant="body2">{formatUzs(unit)}</Typography>
                       </TableCell>
                       <TableCell align="right">
+                        <Typography variant="body2">
+                          {formatPurchaseVatRateLabel(vatRate)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2">{formatUzs(vatAmount)}</Typography>
+                      </TableCell>
+                      <TableCell align="right">
                         <Typography variant="body2" fontWeight={700}>
                           {formatUzs(total)}
                         </Typography>
@@ -201,7 +227,7 @@ export const PurchaseBatchCard = ({
                   )
                 })}
                 <TableRow>
-                  <TableCell colSpan={3} sx={{ fontWeight: 700 }}>
+                  <TableCell colSpan={5} sx={{ fontWeight: 700 }}>
                     Partiya jami
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700 }}>

@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import AddIcon from '@mui/icons-material/Add'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import DeleteIcon from '@mui/icons-material/Delete'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
+import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import MenuItem from '@mui/material/MenuItem'
+import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Tab from '@mui/material/Tab'
 import Table from '@mui/material/Table'
@@ -32,49 +31,29 @@ import { PurchaseBatchCard } from '@/features/purchase-requests/components/Purch
 import { PurchaseRequestItemCharacteristicsField } from '@/features/purchase-requests/components/PurchaseRequestItemCharacteristicsField'
 import { PurchaseUnavailableBatchCard } from '@/features/purchase-requests/components/PurchaseUnavailableBatchCard'
 import { DispatchToWarehouseDialog } from '@/features/warehouse-dispatches/components/DispatchToWarehouseDialog'
-import { MEASUREMENT_UNITS } from '@/features/purchase-requests/constants/measurementUnits'
-import { parseUzsInput } from '@/shared/utils/formatUzs'
+import {
+  TAX_ID_LENGTH,
+  TAX_ID_TYPE_OPTIONS,
+  VAT_RATE_OPTIONS,
+  buildPendingRowsFromRequest,
+  calculateVatAmountInput,
+  formatAmountInput,
+  getRowLineTotal,
+  getRowUnitTotal,
+  newFileRow,
+  newLink,
+  resolveUnitOptions,
+} from '@/features/purchase-requests/utils/completePurchaseFormUtils'
+import { enrichBatchContractInfo } from '@/features/purchase-requests/utils/purchaseDisplayUtils'
+import { formatUzs, parseUzsInput } from '@/shared/utils/formatUzs'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
-const newLink = () => ({ id: crypto.randomUUID(), url: '' })
-const newFileRow = () => ({ id: crypto.randomUUID(), file: null })
-
-const buildPendingRow = (item, index) => ({
-  itemIndex: index,
-  selected: false,
-  name: item.name,
-  characteristics: item.characteristics,
-  quantity: String(item.quantity),
-  originalQuantity: item.quantity,
-  unit: item.unit?.trim() || 'dona',
-  amount: '',
-})
-
-const resolveUnitOptions = (currentUnit) => {
-  const trimmed = currentUnit?.trim()
-
-  if (trimmed && !MEASUREMENT_UNITS.includes(trimmed)) {
-    return [trimmed, ...MEASUREMENT_UNITS]
-  }
-
-  return MEASUREMENT_UNITS
-}
-
-const isItemPending = (item) => !item.isPurchased && !item.isPurchaseUnavailable
-
-const buildPendingRowsFromRequest = (request) =>
-  (request?.items ?? [])
-    .map((item, index) => ({ item, index }))
-    .filter(({ item }) => isItemPending(item))
-    .map(({ item, index }) => buildPendingRow(item, index))
-
-const formatAmountInput = (value) => {
-  const digits = value.replace(/\D/g, '')
-  return digits ? new Intl.NumberFormat('uz-UZ').format(Number(digits)) : ''
-}
-
-export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) => {
+export const CompletePurchaseForm = ({ requestId, onCancel, onSuccess }) => {
   const [comment, setComment] = useState('')
+  const [contractNumber, setContractNumber] = useState('')
+  const [organizationName, setOrganizationName] = useState('')
+  const [taxIdType, setTaxIdType] = useState('')
+  const [taxIdNumber, setTaxIdNumber] = useState('')
   const [links, setLinks] = useState([])
   const [fileRows, setFileRows] = useState([])
   const [pendingRows, setPendingRows] = useState([])
@@ -89,11 +68,11 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
   const isLoading = isPurchasing || isMarkingUnavailable
 
   const detailQuery = useGetPurchaseRequestByIdQuery(
-    { id: request?.id, purchasingView: true },
-    { skip: !open || !request?.id },
+    { id: requestId, purchasingView: true },
+    { skip: !requestId },
   )
 
-  const liveRequest = detailQuery.data ?? request
+  const liveRequest = detailQuery.data
 
   const purchaseBatches = useMemo(() => {
     const batches = liveRequest?.purchaseBatches ?? []
@@ -102,13 +81,11 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
     )
   }, [liveRequest?.purchaseBatches])
 
-  const isItemPending = (item) => !item.isPurchased && !item.isPurchaseUnavailable
-
   const pendingItems = useMemo(
     () =>
       (liveRequest?.items ?? [])
         .map((item, index) => ({ ...item, itemIndex: index }))
-        .filter((item) => isItemPending(item)),
+        .filter((item) => !item.isPurchased && !item.isPurchaseUnavailable),
     [liveRequest?.items],
   )
 
@@ -131,11 +108,15 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
   )
 
   useEffect(() => {
-    if (!open || !liveRequest) {
+    if (!liveRequest) {
       return
     }
 
     setComment('')
+    setContractNumber('')
+    setOrganizationName('')
+    setTaxIdType('')
+    setTaxIdNumber('')
     setDispatchBatch(null)
     setLinks([])
     setFileRows([])
@@ -152,9 +133,41 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
     }
 
     setError('')
-  }, [open, liveRequest?.id, liveRequest?.updatedAt, pendingItemsSignature])
+  }, [liveRequest?.id, liveRequest?.updatedAt, pendingItemsSignature])
 
   const selectedRows = pendingRows.filter((row) => row.selected)
+
+  const updatePendingRow = (rowIndex, patch) => {
+    setPendingRows((prev) =>
+      prev.map((entry, entryIndex) => {
+        if (entryIndex !== rowIndex) {
+          return entry
+        }
+
+        const next = { ...entry, ...patch }
+
+        if ('amount' in patch || 'vatRate' in patch) {
+          if (next.vatRate && next.vatRate !== '0') {
+            next.vatAmount = calculateVatAmountInput(next.amount, next.vatRate)
+          } else if ('vatRate' in patch) {
+            next.vatAmount = ''
+          }
+        }
+
+        return next
+      }),
+    )
+  }
+
+  const resetBatchFields = () => {
+    setComment('')
+    setContractNumber('')
+    setOrganizationName('')
+    setTaxIdType('')
+    setTaxIdNumber('')
+    setLinks([])
+    setFileRows([])
+  }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -173,6 +186,8 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
 
     for (const row of selectedRows) {
       const amount = parseUzsInput(row.amount)
+      const vatAmount = parseUzsInput(row.vatAmount) || 0
+      const vatRate = Number(row.vatRate) || 0
       const quantity = Number(row.quantity)
 
       if (!row.name.trim()) {
@@ -202,9 +217,16 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
         return
       }
 
+      if (vatRate > 0 && vatAmount < 1) {
+        setError(`${row.itemIndex + 1}-tovar uchun INDS summasini kiriting`)
+        return
+      }
+
       purchasedItemsPayload.push({
         itemIndex: row.itemIndex,
         amount,
+        vatRate,
+        vatAmount,
         name: row.name.trim(),
         characteristics: row.characteristics.trim(),
         quantity: Math.round(quantity),
@@ -212,8 +234,32 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
       })
     }
 
+    const trimmedTaxIdNumber = taxIdNumber.trim()
+
+    if ((taxIdType && !trimmedTaxIdNumber) || (!taxIdType && trimmedTaxIdNumber)) {
+      setError('INN yoki PINFL uchun avval turini tanlang, keyin raqamni kiriting')
+      return
+    }
+
+    if (taxIdType && trimmedTaxIdNumber) {
+      const expectedLength = TAX_ID_LENGTH[taxIdType]
+
+      if (trimmedTaxIdNumber.length !== expectedLength) {
+        setError(
+          taxIdType === 'inn'
+            ? 'INN 9 ta raqamdan iborat bo‘lishi kerak'
+            : 'PINFL 14 ta raqamdan iborat bo‘lishi kerak',
+        )
+        return
+      }
+    }
+
     const formData = new FormData()
     formData.append('comment', comment.trim())
+    formData.append('contractNumber', contractNumber.trim())
+    formData.append('organizationName', organizationName.trim())
+    formData.append('innOrPinflType', taxIdType)
+    formData.append('innOrPinfl', trimmedTaxIdNumber)
     formData.append('links', JSON.stringify(preparedLinks))
     formData.append('purchasedItems', JSON.stringify(purchasedItemsPayload))
 
@@ -242,20 +288,17 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
       if (remainingCount > 0) {
         setPendingRows(buildPendingRowsFromRequest(result))
         setActiveTab(0)
+        resetBatchFields()
+        setError('')
         onSuccess?.(
           remainingQuantity > remainingCount
             ? `Qisman xarid qilindi — ${remainingQuantity} dona navbatda qoldi`
             : `${selectedRows.length} ta tovar xarid qilindi — ${remainingCount} ta tovar navbatda qoldi`,
         )
-        setComment('')
-        setLinks([])
-        setFileRows([])
-        setError('')
         return
       }
 
       onSuccess?.()
-      onClose()
     } catch (submitError) {
       setError(getApiErrorMessage(submitError, 'Xarid qilishda xatolik'))
     }
@@ -327,15 +370,29 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
         return
       }
 
-      onSuccess?.('Tovarlar xarid qilib bo‘lmaydi deb belgilandi')
-      onClose()
+      onSuccess?.()
     } catch (submitError) {
       setError(getApiErrorMessage(submitError, 'Belgilanishda xatolik'))
     }
   }
 
+  if (detailQuery.isLoading || detailQuery.isFetching) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
+
   if (!liveRequest) {
-    return null
+    return (
+      <Stack spacing={2}>
+        <Alert severity="error">Ariza topilmadi yoki ko‘rish huquqi yo‘q</Alert>
+        <Button startIcon={<ArrowBackIcon />} onClick={onCancel}>
+          Orqaga
+        </Button>
+      </Stack>
+    )
   }
 
   const hasPending = pendingItems.length > 0
@@ -345,51 +402,69 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
   ).length
 
   return (
-    <Dialog open={open} onClose={isLoading ? undefined : onClose} maxWidth="lg" fullWidth>
-      <Box component="form" onSubmit={handleSubmit}>
-        <DialogTitle
+    <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+      <Stack spacing={2.5}>
+        <Paper
+          variant="outlined"
           sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            pr: 2,
+            p: { xs: 2, md: 2.5 },
+            borderRadius: 2,
+            position: 'sticky',
+            top: 0,
+            zIndex: 2,
+            bgcolor: 'background.paper',
           }}
         >
-          <Typography variant="h6" component="span" sx={{ flex: 1, fontWeight: 600 }}>
-            Xarid qilish — {liveRequest.requestCode}
-          </Typography>
-          <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<AddIcon />}
-              disabled={isLoading}
-              onClick={() => setLinks((prev) => [...prev, newLink()])}
-            >
-              Havola qo‘shish
-            </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<AddIcon />}
-              disabled={isLoading}
-              onClick={() => setFileRows((prev) => [...prev, newFileRow()])}
-            >
-              Fayl qo‘shish
-            </Button>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={2}
+            sx={{ alignItems: { md: 'center' }, justifyContent: 'space-between' }}
+          >
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', minWidth: 0 }}>
+              <IconButton aria-label="Orqaga" onClick={onCancel} disabled={isLoading}>
+                <ArrowBackIcon />
+              </IconButton>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="h5" fontWeight={700} noWrap>
+                  Xarid qilish — {liveRequest.requestCode}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" noWrap>
+                  {liveRequest.applicant?.displayName}
+                </Typography>
+              </Box>
+            </Stack>
+            <Stack direction="row" spacing={1} sx={{ flexShrink: 0, flexWrap: 'wrap' }}>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<AddIcon />}
+                disabled={isLoading}
+                onClick={() => setLinks((prev) => [...prev, newLink()])}
+              >
+                Havola qo‘shish
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<AddIcon />}
+                disabled={isLoading}
+                onClick={() => setFileRows((prev) => [...prev, newFileRow()])}
+              >
+                Fayl qo‘shish
+              </Button>
+            </Stack>
           </Stack>
-        </DialogTitle>
+        </Paper>
 
-        <DialogContent dividers>
+        {error ? <Alert severity="error">{error}</Alert> : null}
+
+        <Paper variant="outlined" sx={{ p: { xs: 2, md: 2.5 }, borderRadius: 2 }}>
           <Stack spacing={2.5}>
-            {error ? <Alert severity="error">{error}</Alert> : null}
-
             {hasPending ? (
               <Typography variant="body2" color="text.secondary">
-                Izoh, havola va fayllar shu xarid partiyasiga saqlanadi va «Xarid qilingan tovarlar»
-                bo‘limida alohida karta sifatida ko‘rinadi. Sonni kamaytirsangiz (masalan, 20 o‘rniga
-                10), qolgan miqdor xarid navbatida alohida qator sifatida qoladi — xarid qilishda ham,
-                «Xarid qilib bo‘lmaydi» da ham.
+                Izoh, shartnoma ma’lumotlari, havola va fayllar shu xarid partiyasiga saqlanadi.
+                Har bir tovar uchun summa, INDS foizi va INDS summasini alohida kiriting. Sonni
+                kamaytirsangiz, qolgan miqdor xarid navbatida qoladi.
               </Typography>
             ) : null}
 
@@ -463,6 +538,73 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
               </Box>
             ) : null}
 
+            <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2}>
+              <TextField
+                label="Shartnoma raqami"
+                value={contractNumber}
+                onChange={(event) => setContractNumber(event.target.value)}
+                fullWidth
+                size="small"
+              />
+              <TextField
+                label="Tashkilot nomi"
+                value={organizationName}
+                onChange={(event) => setOrganizationName(event.target.value)}
+                fullWidth
+                size="small"
+              />
+              <Stack direction="row" spacing={1} sx={{ width: '100%' }}>
+                <TextField
+                  select
+                  label="Identifikator turi"
+                  value={taxIdType}
+                  onChange={(event) => {
+                    const nextType = event.target.value
+                    setTaxIdType(nextType)
+                    setTaxIdNumber((prev) =>
+                      nextType ? prev.slice(0, TAX_ID_LENGTH[nextType]) : '',
+                    )
+                  }}
+                  size="small"
+                  sx={{ minWidth: 150, flexShrink: 0 }}
+                >
+                  <MenuItem value="">
+                    <em>Tanlash</em>
+                  </MenuItem>
+                  {TAX_ID_TYPE_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  label={taxIdType === 'pinfl' ? 'PINFL raqami' : 'INN raqami'}
+                  value={taxIdNumber}
+                  onChange={(event) => {
+                    const maxLength = taxIdType ? TAX_ID_LENGTH[taxIdType] : 14
+                    setTaxIdNumber(event.target.value.replace(/\D/g, '').slice(0, maxLength))
+                  }}
+                  fullWidth
+                  size="small"
+                  disabled={!taxIdType}
+                  helperText={
+                    taxIdType === 'inn'
+                      ? '9 ta raqam'
+                      : taxIdType === 'pinfl'
+                        ? '14 ta raqam'
+                        : 'Avval INN yoki PINFL tanlang'
+                  }
+                  slotProps={{
+                    htmlInput: {
+                      inputMode: 'numeric',
+                      pattern: '[0-9]*',
+                      maxLength: taxIdType ? TAX_ID_LENGTH[taxIdType] : 14,
+                    },
+                  }}
+                />
+              </Stack>
+            </Stack>
+
             <TextField
               label="Izoh"
               value={comment}
@@ -471,7 +613,7 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
               minRows={2}
               fullWidth
               size="small"
-              helperText="Xarid qilishda ixtiyoriy. «Xarid qilib bo‘lmaydi» uchun xarid qilinmaganlik sababi sifatida majburiy."
+              helperText="Xarid qilishda ixtiyoriy. «Xarid qilib bo‘lmaydi» uchun sabab sifatida majburiy."
             />
 
             <Box>
@@ -489,45 +631,61 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
               </Tabs>
 
               {activeTab === 0 && hasPending ? (
-                <TableContainer sx={{ maxHeight: 440, overflow: 'auto' }}>
-                  <Table size="small" stickyHeader sx={{ tableLayout: 'fixed', minWidth: 820 }}>
+                <TableContainer sx={{ overflowX: 'auto' }}>
+                  <Table size="small" stickyHeader sx={{ tableLayout: 'fixed', minWidth: 1280 }}>
                     <TableHead>
                       <TableRow>
-                        <TableCell padding="checkbox" width={48} sx={{ verticalAlign: 'top' }}>
+                        <TableCell
+                          padding="checkbox"
+                          width={56}
+                          align="center"
+                          sx={{ verticalAlign: 'middle' }}
+                        >
                           Tanlash
                         </TableCell>
-                        <TableCell sx={{ minWidth: 200, width: '22%', verticalAlign: 'top' }}>
+                        <TableCell sx={{ minWidth: 180, width: '16%', verticalAlign: 'top' }}>
                           Olib beriladigan nomi
                         </TableCell>
-                        <TableCell sx={{ minWidth: 220, width: '30%', verticalAlign: 'top' }}>
+                        <TableCell sx={{ minWidth: 220, width: '24%', verticalAlign: 'top' }}>
                           Xususiyat
                         </TableCell>
-                        <TableCell width={108} sx={{ verticalAlign: 'top' }}>
+                        <TableCell width={96} sx={{ verticalAlign: 'top' }}>
                           Soni
                         </TableCell>
-                        <TableCell width={130} sx={{ verticalAlign: 'top' }}>
+                        <TableCell width={120} sx={{ verticalAlign: 'top' }}>
                           Birlik
                         </TableCell>
-                        <TableCell width={150} sx={{ verticalAlign: 'top' }}>
+                        <TableCell width={140} sx={{ verticalAlign: 'top' }}>
                           Summa (1 dona)
+                        </TableCell>
+                        <TableCell width={120} sx={{ verticalAlign: 'top' }}>
+                          % INDS
+                        </TableCell>
+                        <TableCell width={140} sx={{ verticalAlign: 'top' }}>
+                          INDS summasi
+                        </TableCell>
+                        <TableCell width={140} sx={{ verticalAlign: 'top' }}>
+                          Jami (1 dona)
+                        </TableCell>
+                        <TableCell width={150} sx={{ verticalAlign: 'top' }}>
+                          Qator jami
                         </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {pendingRows.map((row, rowIndex) => (
                         <TableRow key={row.itemIndex} selected={row.selected}>
-                          <TableCell padding="checkbox" sx={{ verticalAlign: 'top', pt: 1.25 }}>
+                          <TableCell
+                            padding="checkbox"
+                            align="center"
+                            sx={{ verticalAlign: 'middle', py: 1, px: 0.5 }}
+                          >
                             <Checkbox
                               checked={row.selected}
                               onChange={(event) =>
-                                setPendingRows((prev) =>
-                                  prev.map((entry, entryIndex) =>
-                                    entryIndex === rowIndex
-                                      ? { ...entry, selected: event.target.checked }
-                                      : entry,
-                                  ),
-                                )
+                                updatePendingRow(rowIndex, { selected: event.target.checked })
                               }
+                              sx={{ p: 0.75 }}
                             />
                           </TableCell>
                           <TableCell sx={{ verticalAlign: 'top', py: 1 }}>
@@ -539,22 +697,11 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
                               <TextField
                                 value={row.name}
                                 onChange={(event) =>
-                                  setPendingRows((prev) =>
-                                    prev.map((entry, entryIndex) =>
-                                      entryIndex === rowIndex
-                                        ? { ...entry, name: event.target.value }
-                                        : entry,
-                                    ),
-                                  )
+                                  updatePendingRow(rowIndex, { name: event.target.value })
                                 }
                                 size="small"
                                 fullWidth
                                 disabled={!row.selected}
-                                slotProps={{
-                                  htmlInput: {
-                                    style: { textOverflow: 'ellipsis' },
-                                  },
-                                }}
                               />
                             </Tooltip>
                           </TableCell>
@@ -563,13 +710,7 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
                               value={row.characteristics}
                               disabled={!row.selected}
                               onChange={(nextValue) =>
-                                setPendingRows((prev) =>
-                                  prev.map((entry, entryIndex) =>
-                                    entryIndex === rowIndex
-                                      ? { ...entry, characteristics: nextValue }
-                                      : entry,
-                                  ),
-                                )
+                                updatePendingRow(rowIndex, { characteristics: nextValue })
                               }
                             />
                           </TableCell>
@@ -577,16 +718,9 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
                             <TextField
                               value={row.quantity}
                               onChange={(event) =>
-                                setPendingRows((prev) =>
-                                  prev.map((entry, entryIndex) =>
-                                    entryIndex === rowIndex
-                                      ? {
-                                          ...entry,
-                                          quantity: event.target.value.replace(/\D/g, ''),
-                                        }
-                                      : entry,
-                                  ),
-                                )
+                                updatePendingRow(rowIndex, {
+                                  quantity: event.target.value.replace(/\D/g, ''),
+                                })
                               }
                               size="small"
                               fullWidth
@@ -595,18 +729,15 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
                                 htmlInput: {
                                   inputMode: 'numeric',
                                   pattern: '[0-9]*',
-                                  min: 1,
-                                  max: row.originalQuantity,
                                   style: { textAlign: 'center' },
                                 },
                               }}
-                              sx={{ minWidth: 72 }}
                             />
                             {row.selected && row.originalQuantity > 1 ? (
                               <Typography
                                 variant="caption"
                                 color="text.secondary"
-                                sx={{ display: 'block', mt: 0.25, textAlign: 'center', lineHeight: 1.2 }}
+                                sx={{ display: 'block', mt: 0.25, textAlign: 'center' }}
                               >
                                 So‘ralgan: {row.originalQuantity}
                               </Typography>
@@ -617,18 +748,11 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
                               select
                               value={row.unit}
                               onChange={(event) =>
-                                setPendingRows((prev) =>
-                                  prev.map((entry, entryIndex) =>
-                                    entryIndex === rowIndex
-                                      ? { ...entry, unit: event.target.value }
-                                      : entry,
-                                  ),
-                                )
+                                updatePendingRow(rowIndex, { unit: event.target.value })
                               }
                               size="small"
                               fullWidth
                               disabled={!row.selected}
-                              sx={{ minWidth: 110 }}
                             >
                               {resolveUnitOptions(row.unit).map((unit) => (
                                 <MenuItem key={unit} value={unit}>
@@ -641,19 +765,57 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
                             <TextField
                               value={row.amount}
                               onChange={(event) =>
-                                setPendingRows((prev) =>
-                                  prev.map((entry, entryIndex) =>
-                                    entryIndex === rowIndex
-                                      ? { ...entry, amount: formatAmountInput(event.target.value) }
-                                      : entry,
-                                  ),
-                                )
+                                updatePendingRow(rowIndex, {
+                                  amount: formatAmountInput(event.target.value),
+                                })
                               }
                               placeholder="10 000 000"
                               size="small"
                               fullWidth
                               disabled={!row.selected}
                             />
+                          </TableCell>
+                          <TableCell sx={{ verticalAlign: 'top', py: 1 }}>
+                            <TextField
+                              select
+                              value={row.vatRate}
+                              onChange={(event) =>
+                                updatePendingRow(rowIndex, { vatRate: event.target.value })
+                              }
+                              size="small"
+                              fullWidth
+                              disabled={!row.selected}
+                            >
+                              {VAT_RATE_OPTIONS.map((option) => (
+                                <MenuItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </MenuItem>
+                              ))}
+                            </TextField>
+                          </TableCell>
+                          <TableCell sx={{ verticalAlign: 'top', py: 1 }}>
+                            <TextField
+                              value={row.vatAmount}
+                              onChange={(event) =>
+                                updatePendingRow(rowIndex, {
+                                  vatAmount: formatAmountInput(event.target.value),
+                                })
+                              }
+                              placeholder="0"
+                              size="small"
+                              fullWidth
+                              disabled={!row.selected || row.vatRate === '0'}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ verticalAlign: 'top', py: 1 }}>
+                            <Typography variant="body2" fontWeight={600} sx={{ pt: 1 }}>
+                              {row.selected ? formatUzs(getRowUnitTotal(row)) : '—'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell sx={{ verticalAlign: 'top', py: 1 }}>
+                            <Typography variant="body2" fontWeight={700} sx={{ pt: 1 }}>
+                              {row.selected ? formatUzs(getRowLineTotal(row)) : '—'}
+                            </Typography>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -668,11 +830,10 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
                     {purchaseBatches.map((batch, index) => (
                       <PurchaseBatchCard
                         key={batch.batchId}
-                        batch={batch}
+                        batch={enrichBatchContractInfo(batch, liveRequest)}
                         batchNumber={purchaseBatches.length - index}
                         items={liveRequest.items}
                         requestId={liveRequest.id}
-                        compact
                         onDispatch={(selectedBatch) =>
                           setDispatchBatch({
                             ...selectedBatch,
@@ -698,7 +859,6 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
                         batch={batch}
                         batchNumber={unavailableBatches.length - index}
                         items={liveRequest.items}
-                        compact
                       />
                     ))}
                   </Stack>
@@ -716,14 +876,24 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
               ) : null}
             </Box>
           </Stack>
-        </DialogContent>
+        </Paper>
 
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={onClose} disabled={isLoading}>
-            Bekor qilish
-          </Button>
-          {hasPending ? (
-            <>
+        {hasPending ? (
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              position: 'sticky',
+              bottom: 0,
+              bgcolor: 'background.paper',
+              zIndex: 2,
+            }}
+          >
+            <Stack direction="row" spacing={1.5} sx={{ justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <Button onClick={onCancel} disabled={isLoading}>
+                Bekor qilish
+              </Button>
               <Button
                 type="button"
                 variant="outlined"
@@ -738,20 +908,22 @@ export const CompletePurchaseDialog = ({ open, request, onClose, onSuccess }) =>
                   ? `Tanlanganlarni xarid qilish (${selectedRows.length})`
                   : 'Xarid qilish'}
               </Button>
-            </>
-          ) : null}
-        </DialogActions>
-      </Box>
+            </Stack>
+          </Paper>
+        ) : (
+          <Stack direction="row" sx={{ justifyContent: 'flex-end' }}>
+            <Button onClick={onCancel}>Orqaga</Button>
+          </Stack>
+        )}
+      </Stack>
 
       <DispatchToWarehouseDialog
         open={Boolean(dispatchBatch)}
         request={liveRequest}
         purchaseBatch={dispatchBatch}
         onClose={() => setDispatchBatch(null)}
-        onSuccess={() => {
-          onSuccess?.('Partiya omborga jo‘natildi')
-        }}
+        onSuccess={() => onSuccess?.('Partiya omborga jo‘natildi')}
       />
-    </Dialog>
+    </Box>
   )
 }

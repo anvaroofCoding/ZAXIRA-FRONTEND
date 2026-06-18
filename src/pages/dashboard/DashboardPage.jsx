@@ -16,7 +16,9 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import Button from '@mui/material/Button'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
+import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined'
 import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined'
+import OutputOutlinedIcon from '@mui/icons-material/OutputOutlined'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import { LineChart } from '@mui/x-charts/LineChart'
@@ -30,7 +32,7 @@ import {
   DashboardSummaryCardSkeleton,
 } from '@/features/dashboard/components/DashboardPageSkeleton'
 import { TAVAR_IMPORT_PAGE_PATH, WAREHOUSES_2D_PAGE_PATH } from '@/features/permissions/constants'
-import { Warehouse2DMap } from '@/features/warehouse/components/Warehouse2DMap'
+import { WarehouseMapViewer } from '@/features/warehouse/components/WarehouseMapViewer'
 import { usePermissions } from '@/shared/hooks/usePermissions'
 import { formatUzs } from '@/shared/utils/formatUzs'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
@@ -346,6 +348,7 @@ export const DashboardPage = () => {
               <Button
                 variant="outlined"
                 size={isMobile ? 'small' : 'medium'}
+                startIcon={<CategoryOutlinedIcon />}
                 onClick={() => navigate('/dashboard/maxsulotlar')}
                 sx={{ textTransform: 'none' }}
               >
@@ -357,6 +360,7 @@ export const DashboardPage = () => {
               <Button
                 variant="contained"
                 size={isMobile ? 'small' : 'medium'}
+                startIcon={<OutputOutlinedIcon />}
                 onClick={() => navigate('/omborlar/chiqim-qilish')}
                 sx={{ textTransform: 'none' }}
               >
@@ -549,7 +553,7 @@ export const DashboardPage = () => {
 
       {canViewWarehouses2D ? (
         <Box sx={{ mt: 3, width: '100%' }}>
-          <Warehouse2DMap viewerStructureId={viewerStructureId} embedded />
+          <WarehouseMapViewer viewerStructureId={viewerStructureId} embedded />
         </Box>
       ) : null}
     </Box>

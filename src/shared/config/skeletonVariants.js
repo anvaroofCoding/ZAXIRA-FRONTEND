@@ -1,6 +1,5 @@
 const TABLE_ROUTE_PATTERNS = [
   'tarixi',
-  'tasdiqlash',
   'invertarizatsiya',
   'boshqaruv',
   'qilingan-tavarlar',
@@ -13,6 +12,7 @@ export const SKELETON_VARIANTS = {
   structures: 'structures',
   commissions: 'commissions',
   purchaseRequestsSubmit: 'purchaseRequestsSubmit',
+  purchaseRequestsApproval: 'purchaseRequestsApproval',
   purchasingQueue: 'purchasingQueue',
   purchasingPurchased: 'purchasingPurchased',
   purchasingReceipt: 'purchasingReceipt',
@@ -39,6 +39,10 @@ export const resolveSkeletonVariant = (pathname) => {
 
   if (pathname.includes('/xaridlar/arizalar-yuborish')) {
     return SKELETON_VARIANTS.purchaseRequestsSubmit
+  }
+
+  if (pathname.includes('/xaridlar/arizalarni-tasdiqlash')) {
+    return SKELETON_VARIANTS.purchaseRequestsApproval
   }
 
   if (pathname.includes('/xarid-qilish/sotib-olinadigan-tavarlar')) {

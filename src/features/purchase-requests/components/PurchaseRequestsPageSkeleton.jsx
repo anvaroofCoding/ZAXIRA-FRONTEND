@@ -7,6 +7,7 @@ import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
+import { PurchasingPageFiltersSkeleton } from '@/features/purchase-requests/components/PurchasingPageFiltersSkeleton'
 import { SubmittedRequestsPageFiltersSkeleton } from '@/features/purchase-requests/components/SubmittedRequestsPageFiltersSkeleton'
 import { SkeletonBlock } from '@/shared/components/skeleton'
 
@@ -43,7 +44,7 @@ const PaginationSkeleton = () => (
       py: 1,
     }}
   >
-    <Stack direction="row" spacing={1.5} alignItems="center">
+    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
       <SkeletonBlock variant="text" width={64} height={18} />
       <SkeletonBlock variant="rounded" width={56} height={32} />
     </Stack>
@@ -230,9 +231,7 @@ const SubmitPageSkeleton = ({ showAddButton }) => (
 
 const ApprovalPageSkeleton = () => (
   <>
-    <SkeletonBlock variant="text" width={210} height={32} />
-
-    <SearchFieldSkeleton sx={{ minWidth: { xs: '100%', sm: 280 }, maxWidth: 400 }} />
+    <PurchasingPageFiltersSkeleton />
 
     <ApprovalTableSkeleton />
     <PaginationSkeleton />

@@ -1,5 +1,6 @@
 import {
   DISABLED_PAGE_ACTIONS,
+  PURCHASING_QUEUE_PAGE_PATH,
   RECEIPT_PAGE_PATHS,
   WAREHOUSES_2D_LEGACY_PAGE_PATH,
   WAREHOUSES_2D_PAGE_PATH,
@@ -294,6 +295,12 @@ const ASOSIY_VOSITALAR_PATH = '/omborlar/asosiy-vositalar'
 const DASHBOARD_CALENDAR_PATH = '/dashboard/kalendar'
 
 const resolvePermissionLookupPaths = (path) => {
+  if (
+    path.startsWith(`${PURCHASING_QUEUE_PAGE_PATH}/`) &&
+    path.endsWith('/xarid-qilish')
+  ) {
+    return [PURCHASING_QUEUE_PAGE_PATH]
+  }
   if (
     path === CHIQIM_HISTORY_PATH ||
     path === ASOSIY_VOSITALAR_PATH ||

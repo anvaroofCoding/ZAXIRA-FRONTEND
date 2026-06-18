@@ -14,6 +14,10 @@ const getRequestUrl = (args) => {
 export const getApiErrorText = (error) => {
   const message = error?.data?.message
 
+  if (message && typeof message === 'object' && message.message) {
+    return message.message
+  }
+
   if (Array.isArray(message)) {
     return message[0] ?? ''
   }

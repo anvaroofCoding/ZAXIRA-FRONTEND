@@ -1,15 +1,40 @@
+import { useState } from 'react'
+import EditIcon from '@mui/icons-material/Edit'
+import IconButton from '@mui/material/IconButton'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { PurchaseBatchCard } from '@/features/purchase-requests/components/PurchaseBatchCard'
+import { PurchaseContractInfoBlock } from '@/features/purchase-requests/components/PurchaseContractInfoBlock'
+import { PurchaseContractInfoEditDialog } from '@/features/purchase-requests/components/PurchaseContractInfoEditDialog'
 import { PurchaseUnavailableBatchCard } from '@/features/purchase-requests/components/PurchaseUnavailableBatchCard'
+import { useUpdatePurchaseBatchContractMutation } from '@/features/purchase-requests/api/purchaseRequestsApi'
+import {
+  enrichBatchContractInfo,
+  hasPurchaseContractInfo,
+  resolveLatestContractInfo,
+  summarizePurchasedItems,
+} from '@/features/purchase-requests/utils/purchaseDisplayUtils'
 import { formatUzs } from '@/shared/utils/formatUzs'
 
-export const PurchaseInfoSection = ({ request, onDispatchBatch }) => {
+export const PurchaseInfoSection = ({
+  request,
+  onDispatchBatch,
+  canEditContract = false,
+}) => {
+  const [editBatch, setEditBatch] = useState(null)
+  const [updatePurchaseBatchContract, { isLoading: isUpdatingContract }] =
+    useUpdatePurchaseBatchContractMutation()
   const batches = request?.purchaseBatches ?? []
   const unavailableBatches = request?.purchaseUnavailableBatches ?? []
 
-  if (!batches.length && !unavailableBatches.length) {
+  if (
+    !batches.length &&
+    !unavailableBatches.length &&
+    request?.purchaseTotalAmount == null &&
+    !resolveLatestContractInfo(request)
+  ) {
     return null
   }
 
@@ -19,35 +44,79 @@ export const PurchaseInfoSection = ({ request, onDispatchBatch }) => {
   const sortedUnavailableBatches = [...unavailableBatches].sort(
     (left, right) => new Date(right.markedAt).getTime() - new Date(left.markedAt).getTime(),
   )
+  const purchaseSummary = summarizePurchasedItems(request.items)
+  const latestContractInfo = resolveLatestContractInfo(request)
+  const contractDisplayBatch =
+    latestContractInfo ||
+    (sortedBatches[0] ? enrichBatchContractInfo(sortedBatches[0], request) : null)
+  const shouldShowContractBlock =
+    Boolean(contractDisplayBatch) &&
+    (sortedBatches.length > 0 || hasPurchaseContractInfo(contractDisplayBatch))
+  const editableBatch = sortedBatches[0] ?? null
+
+  const handleSaveContract = async (body) => {
+    if (!editableBatch?.batchId) {
+      return
+    }
+
+    await updatePurchaseBatchContract({
+      id: request.id,
+      batchId: editableBatch.batchId,
+      body,
+    }).unwrap()
+  }
 
   return (
     <Stack spacing={2}>
+      <Typography variant="subtitle2" fontWeight={600}>
+        Xarid ma’lumotlari
+      </Typography>
+
+      {shouldShowContractBlock ? (
+        <Paper variant="outlined" sx={{ p: 2, borderRadius: 1.5 }}>
+          <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+              Tashkilot ma’lumotlari
+            </Typography>
+            {canEditContract && editableBatch ? (
+              <Tooltip title="Tahrirlash">
+                <IconButton size="small" onClick={() => setEditBatch(editableBatch)}>
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            ) : null}
+          </Stack>
+          <PurchaseContractInfoBlock
+            batch={contractDisplayBatch}
+            title=""
+            showPlaceholders={!hasPurchaseContractInfo(contractDisplayBatch)}
+          />
+        </Paper>
+      ) : null}
       {sortedBatches.length ? (
-        <>
-          <Typography variant="subtitle2" fontWeight={600}>
+        <Stack spacing={2}>
+          <Typography variant="body2" color="text.secondary" fontWeight={600}>
             Xarid qilingan partiyalar
           </Typography>
-          <Stack spacing={2}>
-            {sortedBatches.map((batch, index) => (
-              <PurchaseBatchCard
-                key={batch.batchId}
-                batch={batch}
-                batchNumber={sortedBatches.length - index}
-                items={request.items}
-                requestId={request.id}
-                onDispatch={
-                  onDispatchBatch
-                    ? (selectedBatch) =>
-                        onDispatchBatch({
-                          ...selectedBatch,
-                          batchNumber: sortedBatches.length - index,
-                        })
-                    : undefined
-                }
-              />
-            ))}
-          </Stack>
-        </>
+          {sortedBatches.map((batch, index) => (
+            <PurchaseBatchCard
+              key={batch.batchId}
+              batch={enrichBatchContractInfo(batch, request)}
+              batchNumber={sortedBatches.length - index}
+              items={request.items}
+              requestId={request.id}
+              onDispatch={
+                onDispatchBatch
+                  ? (selectedBatch) =>
+                      onDispatchBatch({
+                        ...selectedBatch,
+                        batchNumber: sortedBatches.length - index,
+                      })
+                  : undefined
+              }
+            />
+          ))}
+        </Stack>
       ) : null}
 
       {sortedUnavailableBatches.length ? (
@@ -70,16 +139,45 @@ export const PurchaseInfoSection = ({ request, onDispatchBatch }) => {
 
       {request.purchaseTotalAmount != null ? (
         <Paper variant="outlined" sx={{ p: 2, borderRadius: 1.5 }}>
-          <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="subtitle2" fontWeight={700}>
-              Umumiy xarid summasi
-            </Typography>
-            <Typography variant="subtitle1" fontWeight={700}>
-              {formatUzs(request.purchaseTotalAmount)}
-            </Typography>
+          <Stack spacing={1}>
+            <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                Summa (INDSsiz)
+              </Typography>
+              <Typography variant="body2" fontWeight={600}>
+                {formatUzs(purchaseSummary.subtotal)}
+              </Typography>
+            </Stack>
+            <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                INDS jami
+              </Typography>
+              <Typography variant="body2" fontWeight={600}>
+                {formatUzs(purchaseSummary.vatTotal)}
+              </Typography>
+            </Stack>
+            <Stack
+              direction="row"
+              sx={{ justifyContent: 'space-between', alignItems: 'center', pt: 0.5 }}
+            >
+              <Typography variant="subtitle2" fontWeight={700}>
+                Umumiy xarid summasi
+              </Typography>
+              <Typography variant="subtitle1" fontWeight={700}>
+                {formatUzs(request.purchaseTotalAmount)}
+              </Typography>
+            </Stack>
           </Stack>
         </Paper>
       ) : null}
+
+      <PurchaseContractInfoEditDialog
+        open={Boolean(editBatch)}
+        batch={editBatch ? enrichBatchContractInfo(editBatch, request) : null}
+        onClose={() => setEditBatch(null)}
+        onSave={handleSaveContract}
+        isSaving={isUpdatingContract}
+      />
     </Stack>
   )
 }

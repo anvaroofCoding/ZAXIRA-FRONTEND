@@ -44,6 +44,7 @@ export const DispatchNakladnoyTable = ({ dispatch, structureNameMode = 'full' })
   }
 
   const items = dispatch.items ?? []
+  const showCharacteristics = items.some((item) => item.characteristics?.trim())
 
   return (
     <Paper variant="outlined" sx={{ overflow: 'hidden' }}>
@@ -55,7 +56,7 @@ export const DispatchNakladnoyTable = ({ dispatch, structureNameMode = 'full' })
             <TableRow>
               <TableCell width={48}>T/R</TableCell>
               <TableCell>Tovar</TableCell>
-              <TableCell>Xususiyat</TableCell>
+              {showCharacteristics ? <TableCell>Xususiyat</TableCell> : null}
               <TableCell width={160}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
               <TableCell width={90} align="right">
                 Soni
@@ -72,12 +73,14 @@ export const DispatchNakladnoyTable = ({ dispatch, structureNameMode = 'full' })
                       {item.name}
                     </Typography>
                   </TableCell>
-                  <TableCell>
-                    <PurchaseRequestItemCharacteristicsCell
-                      value={item.characteristics}
-                      modalOnly
-                    />
-                  </TableCell>
+                  {showCharacteristics ? (
+                    <TableCell>
+                      <PurchaseRequestItemCharacteristicsCell
+                        value={item.characteristics}
+                        modalOnly
+                      />
+                    </TableCell>
+                  ) : null}
                   <TableCell sx={nomenclatureTableCellSx}>
                     {getItemNomenclatureCode(item)}
                   </TableCell>
@@ -86,7 +89,7 @@ export const DispatchNakladnoyTable = ({ dispatch, structureNameMode = 'full' })
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5}>
+                <TableCell colSpan={showCharacteristics ? 5 : 4}>
                   <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
                     Tovarlar yo‘q
                   </Typography>

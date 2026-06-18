@@ -1,15 +1,16 @@
 import { useCallback, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Snackbar from '@mui/material/Snackbar'
 import TablePagination from '@mui/material/TablePagination'
 import Alert from '@mui/material/Alert'
 import { useGetPurchasingInboxQuery } from '@/features/purchase-requests/api/purchaseRequestsApi'
-import { CompletePurchaseDialog } from '@/features/purchase-requests/components/CompletePurchaseDialog'
-import { DispatchToWarehouseDialog } from '@/features/warehouse-dispatches/components/DispatchToWarehouseDialog'
 import { PurchaseRequestReadOnlyDetailDialog } from '@/features/purchase-requests/components/PurchaseRequestReadOnlyDetailDialog'
 import { PurchasingPageFilters } from '@/features/purchase-requests/components/PurchasingPageFilters'
 import { PurchasingInboxSkeleton } from '@/features/purchase-requests/components/PurchasingInboxSkeletons'
 import { PurchasingQueueTable } from '@/features/purchase-requests/components/PurchasingQueueTable'
+import { buildPurchaseWorkspacePath } from '@/features/purchase-requests/utils/completePurchaseFormUtils'
+import { DispatchToWarehouseDialog } from '@/features/warehouse-dispatches/components/DispatchToWarehouseDialog'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { usePurchasingListFilters } from '@/shared/hooks/usePurchasingListFilters'
 import { useSubmittedDocumentDownload } from '@/features/purchase-requests/hooks/useSubmittedDocumentDownload'
@@ -34,6 +35,7 @@ const resolveDispatchableBatch = (request) => {
 }
 
 export const SotibOlinadiganTovarlarPage = () => {
+  const navigate = useNavigate()
   const {
     search,
     setSearch,
@@ -60,7 +62,6 @@ export const SotibOlinadiganTovarlarPage = () => {
   const [detailTarget, setDetailTarget] = useState(null)
   const openDetailFromQuery = useCallback((id) => setDetailTarget({ id }), [])
   useQueryParamOpen('detail', openDetailFromQuery)
-  const [purchaseTarget, setPurchaseTarget] = useState(null)
   const [dispatchTarget, setDispatchTarget] = useState(null)
   const [dispatchBatch, setDispatchBatch] = useState(null)
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
@@ -85,6 +86,10 @@ export const SotibOlinadiganTovarlarPage = () => {
   const { downloadingId, downloadHandlers } = useSubmittedDocumentDownload({
     onError: (error) => showSnackbar(error.message || 'Yuklab olishda xatolik', 'error'),
   })
+
+  const openPurchasePage = (request) => {
+    navigate(buildPurchaseWorkspacePath(request.id))
+  }
 
   return (
     <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -126,7 +131,7 @@ export const SotibOlinadiganTovarlarPage = () => {
             items={items}
             emptyMessage="Sotib olinadigan maxsulotlar topilmadi"
             onView={setDetailTarget}
-            onPurchase={setPurchaseTarget}
+            onPurchase={openPurchasePage}
             onDispatch={(request) => {
               setDispatchTarget(request)
               setDispatchBatch(resolveDispatchableBatch(request))
@@ -156,7 +161,7 @@ export const SotibOlinadiganTovarlarPage = () => {
         onClose={() => setDetailTarget(null)}
         onPurchase={(request) => {
           setDetailTarget(null)
-          setPurchaseTarget(request)
+          openPurchasePage(request)
         }}
         onDispatchBatch={(request, batch) => {
           setDispatchTarget(request)
@@ -164,15 +169,6 @@ export const SotibOlinadiganTovarlarPage = () => {
         }}
         {...downloadHandlers}
         downloading={Boolean(downloadingId)}
-      />
-
-      <CompletePurchaseDialog
-        open={Boolean(purchaseTarget)}
-        request={purchaseTarget}
-        onClose={() => setPurchaseTarget(null)}
-        onSuccess={(message) =>
-          showSnackbar(message || 'Xarid muvaffaqiyatli qayd etildi')
-        }
       />
 
       <DispatchToWarehouseDialog

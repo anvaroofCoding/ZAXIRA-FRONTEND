@@ -23,6 +23,12 @@ const skeletonByVariant = {
       ariaLabel="Arizalar yuborish yuklanmoqda"
     />
   ),
+  [SKELETON_VARIANTS.purchaseRequestsApproval]: () => (
+    <PurchaseRequestsPageSkeleton
+      variant="approval"
+      ariaLabel="Tasdiqlash arizalari yuklanmoqda"
+    />
+  ),
   [SKELETON_VARIANTS.purchasingQueue]: () => (
     <PurchasingInboxSkeleton
       variant="queue"

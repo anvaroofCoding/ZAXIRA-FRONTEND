@@ -83,6 +83,9 @@ export const warehouseApi = baseApi.injectEndpoints({
     getAllWarehousesOverview: builder.query({
       query: () => '/warehouse/all/overview',
     }),
+    getWarehouseStructureAnalytics: builder.query({
+      query: (structureId) => `/warehouse/all/structures/${structureId}/analytics`,
+    }),
     getWarehouseInventoryByAnyLocation: builder.query({
       query: ({ structureId, locationId, page = 1, limit = 10, search = '' }) => ({
         url: `/warehouse/all/locations/${locationId}/inventory`,
@@ -204,6 +207,7 @@ export const {
   useGetWarehouseInventoryItemHistoryQuery,
   useUpdateWarehouseInventoryNomenclatureMutation,
   useGetAllWarehousesOverviewQuery,
+  useGetWarehouseStructureAnalyticsQuery,
   useGetWarehouseInventoryByAnyLocationQuery,
   useLazyGetWarehouseInventoryItemByBarcodeQuery,
   useLazyGetWarehouseInventoryItemByBarcodeGloballyQuery,

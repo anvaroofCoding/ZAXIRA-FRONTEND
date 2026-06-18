@@ -38,12 +38,17 @@ const baseQuery = async (args, api, extraOptions) => {
   }
 
   if (result.error?.status === 403) {
-    api.dispatch(
-      showNotification({
-        message: PERMISSION_DENIED_MESSAGE,
-        severity: 'warning',
-      }),
-    )
+    const url = typeof args === 'string' ? args : args?.url ?? ''
+    const isLoginRequest = url.includes('/auth/login')
+
+    if (!isLoginRequest) {
+      api.dispatch(
+        showNotification({
+          message: PERMISSION_DENIED_MESSAGE,
+          severity: 'warning',
+        }),
+      )
+    }
   }
 
   if (result.data && typeof result.data === 'object' && 'success' in result.data) {

@@ -1,50 +1,56 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen'
-import FullscreenIcon from '@mui/icons-material/Fullscreen'
 import LocalShippingIcon from '@mui/icons-material/LocalShipping'
-import RestartAltIcon from '@mui/icons-material/RestartAlt'
 import WarehouseOutlinedIcon from '@mui/icons-material/WarehouseOutlined'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
-import IconButton from '@mui/material/IconButton'
 import Paper from '@mui/material/Paper'
-import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { alpha, useTheme } from '@mui/material/styles'
 import { getTransfer2DMarkerColor } from '@/features/warehouse-dispatches/utils/dispatchStatusDisplay'
-import { useGetTransferHistoryQuery } from '@/features/transfer/api/transferApi'
-import { useGetAllWarehousesOverviewQuery } from '@/features/warehouse/api/warehouseApi'
 import { Transfer2DDetailDialog } from '@/features/warehouse/components/Transfer2DDetailDialog'
+import { useWarehouseMapData } from '@/features/warehouse/hooks/useWarehouseMapData'
 import {
+  adjustDragPosition,
   buildCircularLayout,
-  buildTransferLinkPairs,
+  clampNodeToCanvas,
+  computeFitViewport,
   getConnectionGeometry,
   getPathBounds,
-  getTransferEndpointIds,
   isActiveTransfer,
   loadWarehousePositions,
+  matchesWarehouseSearch,
   NODE_HEIGHT,
   NODE_WIDTH,
+  resolvePositionCollisions,
   saveWarehousePositions,
+  zoomViewportAtPoint,
 } from '@/features/warehouse/utils/warehouse2dLayout'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
-const TRANSFER_FETCH_LIMIT = 200
 const ACTIVE_TRANSFER_DURATION = 32
 const COMPLETED_TRANSFER_DURATION = 48
 const HIT_SIZE = 44
 const CARGO_ICON_SIZE = 22
 
-const ConnectionRope = ({ pathD }) => {
+const ConnectionRope = ({ pathD, transferCount }) => {
   const theme = useTheme()
   const bounds = useMemo(() => getPathBounds(pathD, 8), [pathD])
   const lineMain = theme.palette.primary.main
   const lineDark = theme.palette.primary.dark
   const lineLight = theme.palette.primary.light
+  const mid = useMemo(() => {
+    if (!pathD) return null
+    const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+    pathEl.setAttribute('d', pathD)
+    try {
+      return pathEl.getPointAtLength(pathEl.getTotalLength() / 2)
+    } catch {
+      return null
+    }
+  }, [pathD])
 
   if (!pathD || !bounds.width || !bounds.height) return null
 
@@ -62,13 +68,7 @@ const ConnectionRope = ({ pathD }) => {
         zIndex: 1,
       }}
     >
-      <path
-        d={pathD}
-        fill="none"
-        stroke={alpha(lineDark, 0.28)}
-        strokeWidth={5}
-        strokeLinecap="round"
-      />
+      <path d={pathD} fill="none" stroke={alpha(lineDark, 0.28)} strokeWidth={5} strokeLinecap="round" />
       <path
         d={pathD}
         fill="none"
@@ -78,13 +78,7 @@ const ConnectionRope = ({ pathD }) => {
         strokeDasharray="2 5"
         opacity={0.5}
       />
-      <path
-        d={pathD}
-        fill="none"
-        stroke={lineMain}
-        strokeWidth={2}
-        strokeLinecap="round"
-      />
+      <path d={pathD} fill="none" stroke={lineMain} strokeWidth={2} strokeLinecap="round" />
       <path
         d={pathD}
         fill="none"
@@ -93,6 +87,21 @@ const ConnectionRope = ({ pathD }) => {
         strokeLinecap="round"
         strokeDasharray="8 12"
       />
+      {transferCount > 1 && mid ? (
+        <>
+          <circle cx={mid.x} cy={mid.y} r={10} fill={theme.palette.background.paper} stroke={lineDark} strokeWidth={1} />
+          <text
+            x={mid.x}
+            y={mid.y + 3.5}
+            textAnchor="middle"
+            fontSize={9}
+            fontWeight={700}
+            fill={theme.palette.text.primary}
+          >
+            {transferCount}
+          </text>
+        </>
+      ) : null}
     </svg>
   )
 }
@@ -192,11 +201,52 @@ const TransferMarker = ({ pathD, transfer, delay, active, reversed, onSelect }) 
 const WarehouseNode = ({
   warehouse,
   position,
+  selected,
+  highlighted,
+  dimmed,
+  isViewerWarehouse,
   onDragStart,
   onPointerMove,
   onPointerUp,
+  onSelect,
 }) => {
   const theme = useTheme()
+
+  const nodeContent = (
+    <>
+      <WarehouseOutlinedIcon
+        sx={{ color: selected ? 'primary.contrastText' : undefined }}
+        color={selected ? 'inherit' : 'action'}
+      />
+      <Typography
+        variant="caption"
+        fontWeight={700}
+        textAlign="center"
+        color={selected ? 'primary.contrastText' : 'text.primary'}
+        sx={{
+          lineHeight: 1.2,
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }}
+      >
+        {warehouse.structure.shortName}
+      </Typography>
+      {selected ? (
+        <Typography
+          variant="caption"
+          fontWeight={700}
+          color="primary.contrastText"
+          sx={{ fontSize: '0.68rem' }}
+        >
+          {warehouse.totalQuantity} ta
+        </Typography>
+      ) : (
+        <Chip size="small" label={`${warehouse.totalQuantity} ta`} sx={{ height: 20, fontSize: '0.68rem' }} />
+      )}
+    </>
+  )
 
   return (
     <Box
@@ -204,6 +254,10 @@ const WarehouseNode = ({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      onClick={(event) => {
+        event.stopPropagation()
+        onSelect(warehouse.structure.id)
+      }}
       sx={{
         position: 'absolute',
         left: position.x,
@@ -213,12 +267,14 @@ const WarehouseNode = ({
         touchAction: 'none',
         cursor: 'grab',
         userSelect: 'none',
-        zIndex: 4,
+        zIndex: selected ? 5 : 4,
+        opacity: dimmed ? 0.38 : 1,
+        transition: 'opacity 0.2s ease, box-shadow 0.2s ease',
         '&:active': { cursor: 'grabbing' },
       }}
     >
       <Paper
-        elevation={1}
+        elevation={selected ? 4 : 1}
         variant="outlined"
         sx={{
           width: '100%',
@@ -229,69 +285,60 @@ const WarehouseNode = ({
           justifyContent: 'center',
           gap: 0.5,
           px: 1,
-          borderWidth: 1,
-          borderColor: 'divider',
-          bgcolor: 'background.paper',
-          transition: 'box-shadow 0.2s ease',
+          borderWidth: selected ? 2 : isViewerWarehouse ? 2 : 1,
+          borderColor: selected
+            ? 'primary.dark'
+            : isViewerWarehouse
+              ? 'primary.main'
+              : highlighted
+                ? 'primary.light'
+                : 'divider',
+          bgcolor: selected ? 'primary.main' : 'background.paper',
+          color: selected ? 'primary.contrastText' : undefined,
+          transition: 'box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease',
           '&:hover': {
-            boxShadow: theme.shadows[4],
+            boxShadow: theme.shadows[selected ? 6 : 4],
           },
         }}
       >
-        <WarehouseOutlinedIcon color="action" />
-        <Typography
-          variant="caption"
-          fontWeight={700}
-          textAlign="center"
-          sx={{
-            lineHeight: 1.2,
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-          }}
-        >
-          {warehouse.structure.shortName}
-        </Typography>
-        <Chip
-          size="small"
-          label={`${warehouse.totalQuantity} ta`}
-          sx={{ height: 20, fontSize: '0.68rem' }}
-        />
+        {nodeContent}
       </Paper>
     </Box>
   )
 }
 
-export const Warehouse2DMap = ({ viewerStructureId = '', embedded = false }) => {
+export const Warehouse2DMap = ({
+  viewerStructureId = '',
+  embedded = false,
+  searchQuery = '',
+  selectedWarehouseId = '',
+  onSelectWarehouse,
+  selectedTransferId = '',
+  onSelectTransfer,
+  onFitViewRef,
+  onResetLayoutRef,
+  canvasHeight: canvasHeightProp,
+  hideTransferDialog = false,
+  enableViewportControls = false,
+}) => {
   const theme = useTheme()
   const canvasRef = useRef(null)
   const dragRef = useRef(null)
+  const panRef = useRef(null)
   const prevCanvasSizeRef = useRef(null)
 
-  const overviewQuery = useGetAllWarehousesOverviewQuery()
-  const transferQuery = useGetTransferHistoryQuery({
-    page: 1,
-    limit: TRANSFER_FETCH_LIMIT,
-  })
+  const { overviewQuery, transferQuery, warehouses, structureIds, buildTransferLinks } =
+    useWarehouseMapData()
 
-  const warehouses = overviewQuery.data ?? []
-  const transfers = transferQuery.data?.items ?? []
-  const structureIds = useMemo(
-    () => warehouses.map((entry) => entry.structure.id),
-    [warehouses],
-  )
-
-  const [isFullscreen, setIsFullscreen] = useState(false)
   const [canvasSize, setCanvasSize] = useState({ width: 900, height: 640 })
   const [positions, setPositions] = useState({})
-  const [selectedTransferId, setSelectedTransferId] = useState('')
+  const [viewport, setViewport] = useState({ scale: 1, x: 0, y: 0 })
 
-  const canvasHeight = isFullscreen
-    ? '100%'
-    : embedded
-      ? { xs: 460, sm: 540, md: 620 }
-      : { xs: 'calc(100vh - 220px)', md: 'calc(100vh - 200px)' }
+  const canvasHeight =
+    canvasHeightProp ??
+    (embedded ? { xs: 460, sm: 540, md: 620 } : { xs: 'calc(100vh - 220px)', md: 'calc(100vh - 200px)' })
+
+  const searchActive = searchQuery.trim().length > 0
 
   useLayoutEffect(() => {
     const element = canvasRef.current
@@ -307,7 +354,7 @@ export const Warehouse2DMap = ({ viewerStructureId = '', embedded = false }) => 
     const observer = new ResizeObserver(() => updateSize())
     observer.observe(element)
     return () => observer.disconnect()
-  }, [isFullscreen])
+  }, [])
 
   useEffect(() => {
     const prev = prevCanvasSizeRef.current
@@ -316,13 +363,10 @@ export const Warehouse2DMap = ({ viewerStructureId = '', embedded = false }) => 
       return
     }
 
-    if (prev.width === canvasSize.width && prev.height === canvasSize.height) {
-      return
-    }
+    if (prev.width === canvasSize.width && prev.height === canvasSize.height) return
 
     const scaleX = canvasSize.width / prev.width
     const scaleY = canvasSize.height / prev.height
-
     if (!Number.isFinite(scaleX) || !Number.isFinite(scaleY)) {
       prevCanvasSizeRef.current = canvasSize
       return
@@ -334,184 +378,208 @@ export const Warehouse2DMap = ({ viewerStructureId = '', embedded = false }) => 
       const next = Object.fromEntries(
         Object.entries(current).map(([id, pos]) => [
           id,
-          {
-            x: Math.max(8, Math.min(canvasSize.width - NODE_WIDTH - 8, pos.x * scaleX)),
-            y: Math.max(8, Math.min(canvasSize.height - NODE_HEIGHT - 8, pos.y * scaleY)),
-          },
+          clampNodeToCanvas(
+            {
+              x: pos.x * scaleX,
+              y: pos.y * scaleY,
+            },
+            canvasSize.width,
+            canvasSize.height,
+          ),
         ]),
       )
-      saveWarehousePositions(next)
-      return next
+      const separated = resolvePositionCollisions(
+        next,
+        Object.keys(next),
+        canvasSize.width,
+        canvasSize.height,
+      )
+      saveWarehousePositions(separated)
+      return separated
     })
 
     prevCanvasSizeRef.current = canvasSize
   }, [canvasSize.width, canvasSize.height])
 
   useEffect(() => {
-    if (!isFullscreen) return undefined
-
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [isFullscreen])
-
-  useEffect(() => {
     if (!structureIds.length) return
 
     const saved = loadWarehousePositions()
     const hasAllPositions = structureIds.every((id) => saved[id])
-    if (hasAllPositions) {
-      setPositions(
-        structureIds.reduce((acc, id) => {
-          acc[id] = saved[id]
-          return acc
-        }, {}),
-      )
-      return
-    }
+    const nextPositions = resolvePositionCollisions(
+      hasAllPositions
+        ? structureIds.reduce((acc, id) => {
+            acc[id] = saved[id]
+            return acc
+          }, {})
+        : buildCircularLayout(structureIds, canvasSize.width, canvasSize.height),
+      structureIds,
+      canvasSize.width,
+      canvasSize.height,
+    )
 
-    setPositions(buildCircularLayout(structureIds, canvasSize.width, canvasSize.height))
+    setPositions(nextPositions)
+    if (hasAllPositions) {
+      saveWarehousePositions(nextPositions)
+    }
   }, [structureIds, canvasSize.width, canvasSize.height])
 
-  const handleDragStart = useCallback((event, structureId) => {
-    if (event.button !== 0) return
-    const current = positions[structureId]
-    if (!current) return
+  const handleFitView = useCallback(() => {
+    setViewport(computeFitViewport(positions, canvasSize.width, canvasSize.height))
+  }, [positions, canvasSize.width, canvasSize.height])
 
-    dragRef.current = {
-      structureId,
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: current.x,
-      originY: current.y,
-      pointerId: event.pointerId,
-    }
-    event.currentTarget.setPointerCapture(event.pointerId)
-  }, [positions])
-
-  const handlePointerMove = useCallback((event) => {
-    const drag = dragRef.current
-    if (!drag || drag.pointerId !== event.pointerId) return
-
-    const dx = event.clientX - drag.startX
-    const dy = event.clientY - drag.startY
-    const nextX = Math.max(8, Math.min(canvasSize.width - NODE_WIDTH - 8, drag.originX + dx))
-    const nextY = Math.max(8, Math.min(canvasSize.height - NODE_HEIGHT - 8, drag.originY + dy))
-
-    setPositions((prev) => ({
-      ...prev,
-      [drag.structureId]: { x: nextX, y: nextY },
-    }))
-  }, [canvasSize.height, canvasSize.width])
-
-  const handlePointerUp = useCallback((event) => {
-    const drag = dragRef.current
-    if (!drag || drag.pointerId !== event.pointerId) return
-
-    dragRef.current = null
-    setPositions((prev) => {
-      saveWarehousePositions(prev)
-      return prev
-    })
-  }, [])
-
-  const handleResetLayout = () => {
+  const handleResetLayout = useCallback(() => {
     const next = buildCircularLayout(structureIds, canvasSize.width, canvasSize.height)
     setPositions(next)
     saveWarehousePositions(next)
-  }
+    setViewport(computeFitViewport(next, canvasSize.width, canvasSize.height))
+  }, [structureIds, canvasSize.width, canvasSize.height])
 
-  const transferLinks = useMemo(() => {
-    return buildTransferLinkPairs(structureIds, transfers)
-      .map((pair) => {
-        const fromPos = positions[pair.fromId]
-        const toPos = positions[pair.toId]
-        if (!fromPos || !toPos) return null
+  useEffect(() => {
+    if (onFitViewRef) onFitViewRef.current = handleFitView
+    if (onResetLayoutRef) onResetLayoutRef.current = handleResetLayout
+  }, [handleFitView, handleResetLayout, onFitViewRef, onResetLayoutRef])
 
-        const geometry = getConnectionGeometry(fromPos, toPos)
-        const markers = pair.transfers
-          .map((transfer, index) => {
-            const { fromId, toId } = getTransferEndpointIds(transfer)
-            const reversed = fromId !== pair.fromId || toId !== pair.toId
+  useEffect(() => {
+    if (!enableViewportControls && Object.keys(positions).length && canvasSize.width > 0) {
+      setViewport(computeFitViewport(positions, canvasSize.width, canvasSize.height))
+    }
+  }, [enableViewportControls, positions, canvasSize.width, canvasSize.height])
 
-            return {
-              transfer,
-              pathD: geometry.pathD,
-              reversed,
-              delay: index * 4,
-            }
-          })
-          .filter(Boolean)
+  useEffect(() => {
+    if (enableViewportControls && Object.keys(positions).length && canvasSize.width > 0) {
+      setViewport(computeFitViewport(positions, canvasSize.width, canvasSize.height))
+    }
+    // Faqat to'liq ekranga o'tganda bir marta moslashtirish
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enableViewportControls])
 
-        return {
-          key: `${pair.fromId}-${pair.toId}`,
-          geometry,
-          markers,
-        }
+  const handleDragStart = useCallback(
+    (event, structureId) => {
+      if (event.button !== 0) return
+      const current = positions[structureId]
+      if (!current) return
+
+      dragRef.current = {
+        structureId,
+        startX: event.clientX,
+        startY: event.clientY,
+        originX: current.x,
+        originY: current.y,
+        pointerId: event.pointerId,
+      }
+      event.currentTarget.setPointerCapture(event.pointerId)
+      event.stopPropagation()
+    },
+    [positions],
+  )
+
+  const handlePointerMove = useCallback(
+    (event) => {
+      const drag = dragRef.current
+      if (drag?.pointerId === event.pointerId) {
+        const dx = (event.clientX - drag.startX) / viewport.scale
+        const dy = (event.clientY - drag.startY) / viewport.scale
+
+        setPositions((prev) => {
+          const target = adjustDragPosition(
+            drag.structureId,
+            { x: drag.originX + dx, y: drag.originY + dy },
+            prev,
+            canvasSize.width,
+            canvasSize.height,
+          )
+
+          return {
+            ...prev,
+            [drag.structureId]: target,
+          }
+        })
+        return
+      }
+
+      const pan = panRef.current
+      if (enableViewportControls && pan?.pointerId === event.pointerId) {
+        setViewport((prev) => ({
+          ...prev,
+          x: pan.originX + (event.clientX - pan.startX),
+          y: pan.originY + (event.clientY - pan.startY),
+        }))
+      }
+    },
+    [canvasSize.height, canvasSize.width, enableViewportControls, viewport.scale],
+  )
+
+  const handlePointerUp = useCallback((event) => {
+    const drag = dragRef.current
+    if (drag?.pointerId === event.pointerId) {
+      dragRef.current = null
+      setPositions((prev) => {
+        const separated = resolvePositionCollisions(
+          prev,
+          structureIds,
+          canvasSize.width,
+          canvasSize.height,
+        )
+        saveWarehousePositions(separated)
+        return separated
       })
-      .filter(Boolean)
-  }, [structureIds, transfers, positions])
+    }
+
+    const pan = panRef.current
+    if (pan?.pointerId === event.pointerId) {
+      panRef.current = null
+    }
+  }, [canvasSize.height, canvasSize.width, structureIds])
+
+  const handleCanvasPanStart = useCallback(
+    (event) => {
+      if (!enableViewportControls) return
+      if (event.button !== 0 && event.button !== 1) return
+      panRef.current = {
+        startX: event.clientX,
+        startY: event.clientY,
+        originX: viewport.x,
+        originY: viewport.y,
+        pointerId: event.pointerId,
+      }
+      event.currentTarget.setPointerCapture(event.pointerId)
+    },
+    [enableViewportControls, viewport.x, viewport.y],
+  )
+
+  const handleWheel = useCallback(
+    (event) => {
+      if (!enableViewportControls) return
+      event.preventDefault()
+      const rect = canvasRef.current?.getBoundingClientRect()
+      if (!rect) return
+
+      const pointerX = event.clientX - rect.left
+      const pointerY = event.clientY - rect.top
+      const factor = event.deltaY > 0 ? 0.92 : 1.08
+
+      setViewport((prev) => zoomViewportAtPoint(prev, pointerX, pointerY, factor))
+    },
+    [enableViewportControls],
+  )
+
+  useEffect(() => {
+    const element = canvasRef.current
+    if (!element || !enableViewportControls) return undefined
+
+    element.addEventListener('wheel', handleWheel, { passive: false })
+    return () => element.removeEventListener('wheel', handleWheel)
+  }, [enableViewportControls, handleWheel])
+
+  const transferLinks = useMemo(
+    () => buildTransferLinks(positions, getConnectionGeometry),
+    [buildTransferLinks, positions],
+  )
 
   const transferMarkers = useMemo(
     () => transferLinks.flatMap((link) => link.markers),
     [transferLinks],
-  )
-
-  const activeTransferCount = transfers.filter(isActiveTransfer).length
-
-  const toolbar = (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 2,
-        flexWrap: 'wrap',
-        flexShrink: 0,
-      }}
-    >
-      <Box>
-        <Typography variant="h6" fontWeight={700}>
-          2D Omborlar
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Omborlarni sudrab joylashtiring. Transfer bo&apos;lgan omborlar arqon bilan bog&apos;lanadi.
-        </Typography>
-      </Box>
-      <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', alignItems: 'center' }}>
-        <Chip size="small" label={`Omborlar: ${warehouses.length}`} />
-        <Chip
-          size="small"
-          color={activeTransferCount ? 'warning' : 'default'}
-          label={`Faol transferlar: ${activeTransferCount}`}
-        />
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<RestartAltIcon />}
-          onClick={handleResetLayout}
-          disabled={!structureIds.length}
-        >
-          Joylashuvni tiklash
-        </Button>
-        <Tooltip title={isFullscreen ? 'Kichiklashtirish' : 'Butun ekran'}>
-          <IconButton
-            size="small"
-            onClick={() => setIsFullscreen((prev) => !prev)}
-            aria-label={isFullscreen ? 'Kichiklashtirish' : 'Butun ekran'}
-            sx={{
-              border: 1,
-              borderColor: 'divider',
-              borderRadius: 1,
-            }}
-          >
-            {isFullscreen ? <CloseFullscreenIcon fontSize="small" /> : <FullscreenIcon fontSize="small" />}
-          </IconButton>
-        </Tooltip>
-      </Stack>
-    </Box>
   )
 
   const mapContent = (
@@ -541,48 +609,97 @@ export const Warehouse2DMap = ({ viewerStructureId = '', embedded = false }) => 
               linear-gradient(${alpha(theme.palette.divider, 0.35)} 1px, transparent 1px),
               linear-gradient(90deg, ${alpha(theme.palette.divider, 0.35)} 1px, transparent 1px)
             `,
-            backgroundSize: '28px 28px',
+            backgroundSize: `${28 * viewport.scale}px ${28 * viewport.scale}px`,
+            backgroundPosition: `${viewport.x}px ${viewport.y}px`,
           }}
         >
           <Box
             ref={canvasRef}
+            onPointerDown={enableViewportControls ? handleCanvasPanStart : undefined}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
             sx={{
               position: 'relative',
               width: '100%',
               height: '100%',
+              cursor: enableViewportControls ? 'grab' : 'default',
+              touchAction: enableViewportControls ? 'none' : 'auto',
+              '&:active': enableViewportControls ? { cursor: 'grabbing' } : undefined,
             }}
           >
-            {transferLinks.map(({ key, geometry }) => (
-              <ConnectionRope key={key} pathD={geometry.pathD} />
-            ))}
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})`,
+                transformOrigin: '0 0',
+              }}
+            >
+              {transferLinks.map(({ key, geometry, transferCount }) => (
+                <ConnectionRope key={key} pathD={geometry.pathD} transferCount={transferCount} />
+              ))}
 
-            {transferMarkers.map(({ transfer, pathD, delay, reversed }) => (
-              <TransferMarker
-                key={transfer.id}
-                pathD={pathD}
-                transfer={transfer}
-                delay={delay}
-                reversed={reversed}
-                active={isActiveTransfer(transfer)}
-                onSelect={setSelectedTransferId}
-              />
-            ))}
-
-            {warehouses.map((warehouse) => {
-              const position = positions[warehouse.structure.id]
-              if (!position) return null
-
-              return (
-                <WarehouseNode
-                  key={warehouse.structure.id}
-                  warehouse={warehouse}
-                  position={position}
-                  onDragStart={handleDragStart}
-                  onPointerMove={handlePointerMove}
-                  onPointerUp={handlePointerUp}
+              {transferMarkers.map(({ transfer, pathD, delay, reversed }) => (
+                <TransferMarker
+                  key={transfer.id}
+                  pathD={pathD}
+                  transfer={transfer}
+                  delay={delay}
+                  reversed={reversed}
+                  active={isActiveTransfer(transfer)}
+                  onSelect={onSelectTransfer}
                 />
-              )
-            })}
+              ))}
+
+              {warehouses.map((warehouse) => {
+                const position = positions[warehouse.structure.id]
+                if (!position) return null
+
+                const id = warehouse.structure.id
+                const highlighted = matchesWarehouseSearch(warehouse, searchQuery)
+                const dimmed = searchActive && !highlighted
+
+                return (
+                  <WarehouseNode
+                    key={id}
+                    warehouse={warehouse}
+                    position={position}
+                    selected={selectedWarehouseId === id}
+                    highlighted={highlighted && selectedWarehouseId !== id}
+                    dimmed={dimmed}
+                    isViewerWarehouse={viewerStructureId === id}
+                    onDragStart={handleDragStart}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={handlePointerUp}
+                    onSelect={onSelectWarehouse}
+                  />
+                )
+              })}
+            </Box>
+
+            {enableViewportControls ? (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  bottom: 10,
+                  left: 10,
+                  px: 1,
+                  py: 0.5,
+                  borderRadius: 1,
+                  bgcolor: alpha(theme.palette.background.paper, 0.92),
+                  border: 1,
+                  borderColor: 'divider',
+                  zIndex: 7,
+                  pointerEvents: 'none',
+                }}
+              >
+                <Typography variant="caption" color="text.secondary">
+                  Zoom: {Math.round(viewport.scale * 100)}% · Bo&apos;sh joyni sudrab ko&apos;chiring · Omborni
+                  sudrab joylashtiring
+                </Typography>
+              </Box>
+            ) : null}
           </Box>
         </Paper>
       )}
@@ -591,50 +708,19 @@ export const Warehouse2DMap = ({ viewerStructureId = '', embedded = false }) => 
 
   return (
     <>
-      {isFullscreen ? (
-        <Box
-          sx={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: (t) => t.zIndex.drawer + 20,
-            bgcolor: 'background.default',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 1.5,
-            p: 2,
-          }}
-        >
-          {toolbar}
-          {mapContent}
-          {transferQuery.isError ? (
-            <Alert severity="warning" sx={{ flexShrink: 0 }}>
-              {getApiErrorMessage(transferQuery.error, 'Transferlarni yuklashda xatolik')}
-            </Alert>
-          ) : null}
-        </Box>
-      ) : (
-        <Stack
-          spacing={2}
-          sx={{
-            width: '100%',
-            minHeight: embedded ? { xs: 500, sm: 580, md: 660 } : 'calc(100vh - 160px)',
-          }}
-        >
-          {toolbar}
-          {mapContent}
-          {transferQuery.isError ? (
-            <Alert severity="warning">
-              {getApiErrorMessage(transferQuery.error, 'Transferlarni yuklashda xatolik')}
-            </Alert>
-          ) : null}
-        </Stack>
-      )}
-
-      <Transfer2DDetailDialog
-        transferId={selectedTransferId}
-        viewerStructureId={viewerStructureId}
-        onClose={() => setSelectedTransferId('')}
-      />
+      {mapContent}
+      {transferQuery.isError ? (
+        <Alert severity="warning" sx={{ mt: 1 }}>
+          {getApiErrorMessage(transferQuery.error, 'Transferlarni yuklashda xatolik')}
+        </Alert>
+      ) : null}
+      {!hideTransferDialog ? (
+        <Transfer2DDetailDialog
+          transferId={selectedTransferId}
+          viewerStructureId={viewerStructureId}
+          onClose={() => onSelectTransfer('')}
+        />
+      ) : null}
     </>
   )
 }

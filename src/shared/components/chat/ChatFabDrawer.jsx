@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
-import ChatIcon from '@mui/icons-material/Chat'
+import ChatOutlinedIcon from '@mui/icons-material/ChatOutlined'
 import CloseIcon from '@mui/icons-material/Close'
 import DownloadIcon from '@mui/icons-material/Download'
 import PersonIcon from '@mui/icons-material/Person'
@@ -25,9 +25,6 @@ import ListItemButton from '@mui/material/ListItemButton'
 import ListItemText from '@mui/material/ListItemText'
 import Paper from '@mui/material/Paper'
 import Popover from '@mui/material/Popover'
-import SpeedDial from '@mui/material/SpeedDial'
-import SpeedDialAction from '@mui/material/SpeedDialAction'
-import SpeedDialIcon from '@mui/material/SpeedDialIcon'
 import Stack from '@mui/material/Stack'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
@@ -55,6 +52,60 @@ const CHAT_TABS = [
   { key: 'GLOBAL', label: 'Umumiy', icon: <PublicIcon fontSize="small" /> },
   { key: 'DIRECT', label: 'Lichka', icon: <PersonIcon fontSize="small" /> },
 ]
+
+let chatOpenHandler = null
+
+export const registerChatOpenHandler = (handler) => {
+  chatOpenHandler = handler
+  return () => {
+    if (chatOpenHandler === handler) {
+      chatOpenHandler = null
+    }
+  }
+}
+
+const useChatUnreadCount = () => {
+  const user = useAppSelector(selectAuthUser)
+  const isSupportOperator = useMemo(
+    () =>
+      user?.role === 'SUPER_ADMIN' ||
+      user?.role === 'ADMIN' ||
+      hasFullPermissions(user?.permissions),
+    [user?.permissions, user?.role],
+  )
+  const summaryQuery = useGetChatSummaryQuery(undefined, {
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
+  })
+  const summary = summaryQuery.data
+
+  return useMemo(() => {
+    const supportUnread = isSupportOperator
+      ? (summary?.supportThreads ?? []).reduce((sum, thread) => sum + (thread.unreadCount ?? 0), 0)
+      : (summary?.support?.unreadCount ?? 0)
+    const directUnread = Object.values(summary?.direct ?? {}).reduce(
+      (sum, item) => sum + (item.unreadCount ?? 0),
+      0,
+    )
+    return supportUnread + (summary?.global?.unreadCount ?? 0) + directUnread
+  }, [isSupportOperator, summary])
+}
+
+export const ChatNavButton = () => {
+  const unreadCount = useChatUnreadCount()
+
+  return (
+    <IconButton
+      color="inherit"
+      aria-label="Chat"
+      onClick={() => chatOpenHandler?.()}
+    >
+      <Badge badgeContent={unreadCount} color="error" max={99}>
+        <ChatOutlinedIcon />
+      </Badge>
+    </IconButton>
+  )
+}
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥']
 
 const hasFullPermissions = (permissions) => {
@@ -331,6 +382,13 @@ export const ChatFabDrawer = () => {
       view,
     ],
   )
+
+  useEffect(() => {
+    return registerChatOpenHandler(() => {
+      setOpen(true)
+      setView('list')
+    })
+  }, [])
 
   useEffect(() => {
     setChatUiState({
@@ -952,33 +1010,6 @@ export const ChatFabDrawer = () => {
 
   return (
     <>
-      <Box sx={{ position: 'fixed', bottom: 16, right: 16, zIndex: 1300 }}>
-        <SpeedDial
-          ariaLabel="Chat"
-          icon={<SpeedDialIcon openIcon={<ChatIcon />} />}
-          onClick={() => {
-            setOpen(true)
-            setView('list')
-          }}
-          sx={{ position: 'static' }}
-        >
-          {CHAT_TABS.map((action) => (
-            <SpeedDialAction
-              key={action.key}
-              icon={action.icon}
-              slotProps={{
-                tooltip: { title: action.label },
-              }}
-              onClick={() => {
-                setTab(action.key)
-                setOpen(true)
-                setView('list')
-              }}
-            />
-          ))}
-        </SpeedDial>
-      </Box>
-
       <Drawer
         anchor="left"
         open={open}

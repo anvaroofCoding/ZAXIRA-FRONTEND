@@ -7,15 +7,41 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import { truncateText } from '@/features/products/utils/truncateText'
 
-const PREVIEW_MAX_LENGTH = 160
-const LINE_CLAMP = 3
+const DEFAULT_EXPAND_THRESHOLD = 40
+const DEFAULT_LINE_CLAMP = 2
 
-const needsExpand = (text) =>
-  text.length > PREVIEW_MAX_LENGTH || text.split('\n').length > LINE_CLAMP
+const needsExpand = (text, expandThreshold) =>
+  text.length > expandThreshold || text.split('\n').length > 1
 
-export const PurchaseRequestItemCharacteristicsCell = ({ value, modalOnly = false }) => {
+const DetailDialog = ({ open, title, text, onClose }) => (
+  <Dialog
+    open={open}
+    onClose={onClose}
+    maxWidth="md"
+    fullWidth
+    onClick={(event) => event.stopPropagation()}
+  >
+    <DialogTitle>{title}</DialogTitle>
+    <DialogContent dividers>
+      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+        {text}
+      </Typography>
+    </DialogContent>
+    <DialogActions>
+      <Button onClick={onClose}>Yopish</Button>
+    </DialogActions>
+  </Dialog>
+)
+
+export const PurchaseRequestItemCharacteristicsCell = ({
+  value,
+  modalOnly = false,
+  dialogTitle = 'Tovar xususiyati',
+  emphasized = false,
+  expandThreshold = DEFAULT_EXPAND_THRESHOLD,
+  lineClamp = DEFAULT_LINE_CLAMP,
+}) => {
   const [detailOpen, setDetailOpen] = useState(false)
   const text = String(value ?? '').trim()
 
@@ -27,8 +53,7 @@ export const PurchaseRequestItemCharacteristicsCell = ({ value, modalOnly = fals
     )
   }
 
-  const preview = truncateText(text, PREVIEW_MAX_LENGTH)
-  const expandable = needsExpand(text)
+  const expandable = needsExpand(text, expandThreshold)
 
   const openDetail = (event) => {
     event.stopPropagation()
@@ -47,23 +72,12 @@ export const PurchaseRequestItemCharacteristicsCell = ({ value, modalOnly = fals
           Ko‘rish
         </Button>
 
-        <Dialog
+        <DetailDialog
           open={detailOpen}
+          title={dialogTitle}
+          text={text}
           onClose={() => setDetailOpen(false)}
-          maxWidth="sm"
-          fullWidth
-          onClick={(event) => event.stopPropagation()}
-        >
-          <DialogTitle>Tovar xususiyati</DialogTitle>
-          <DialogContent dividers>
-            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              {text}
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setDetailOpen(false)}>Yopish</Button>
-          </DialogActions>
-        </Dialog>
+        />
       </>
     )
   }
@@ -71,29 +85,32 @@ export const PurchaseRequestItemCharacteristicsCell = ({ value, modalOnly = fals
   const previewNode = (
     <Typography
       variant="body2"
+      fontWeight={emphasized ? 600 : 400}
       sx={{
         whiteSpace: 'pre-wrap',
         wordBreak: 'break-word',
         ...(expandable
           ? {
               display: '-webkit-box',
-              WebkitLineClamp: LINE_CLAMP,
+              WebkitLineClamp: lineClamp,
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
             }
           : {}),
       }}
     >
-      {expandable ? preview.text : text}
+      {text}
     </Typography>
   )
 
   return (
     <>
       {expandable ? (
-        <Box onClick={openDetail}>
+        <Box>
           <Tooltip title="To‘liq matnni ko‘rish uchun bosing" placement="top-start">
-            <Box sx={{ cursor: 'pointer' }}>{previewNode}</Box>
+            <Box sx={{ cursor: 'pointer' }} onClick={openDetail}>
+              {previewNode}
+            </Box>
           </Tooltip>
           <Button
             size="small"
@@ -106,11 +123,11 @@ export const PurchaseRequestItemCharacteristicsCell = ({ value, modalOnly = fals
         </Box>
       ) : (
         <Tooltip
-          title={text.length > 80 ? text : ''}
+          title={text.length > expandThreshold ? text : ''}
           placement="top-start"
           slotProps={{
             popper: {
-              sx: { maxWidth: 420 },
+              sx: { maxWidth: 480 },
             },
           }}
         >
@@ -118,23 +135,12 @@ export const PurchaseRequestItemCharacteristicsCell = ({ value, modalOnly = fals
         </Tooltip>
       )}
 
-      <Dialog
+      <DetailDialog
         open={detailOpen}
+        title={dialogTitle}
+        text={text}
         onClose={() => setDetailOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        onClick={(event) => event.stopPropagation()}
-      >
-        <DialogTitle>Tovar xususiyati</DialogTitle>
-        <DialogContent dividers>
-          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-            {text}
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDetailOpen(false)}>Yopish</Button>
-        </DialogActions>
-      </Dialog>
+      />
     </>
   )
 }

@@ -382,6 +382,17 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
         API_TAGS.PURCHASE_REQUEST,
       ],
     }),
+    updatePurchaseBatchContract: builder.mutation({
+      query: ({ id, batchId, body }) => ({
+        url: `/purchase-requests/${id}/purchase-batches/${batchId}/contract`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: API_TAGS.PURCHASE_REQUEST, id },
+        API_TAGS.PURCHASE_REQUEST,
+      ],
+    }),
     markItemsUnavailable: builder.mutation({
       query: ({ id, itemIndexes, unavailableItems, comment }) => ({
         url: `/purchase-requests/${id}/purchase/unavailable`,
@@ -934,6 +945,7 @@ export const {
   useGetPurchasingInboxQuery,
   useGetPurchasedInboxQuery,
   useCompletePurchaseMutation,
+  useUpdatePurchaseBatchContractMutation,
   useMarkItemsUnavailableMutation,
   useRejectPurchaseMutation,
   useDeletePurchaseRequestMutation,

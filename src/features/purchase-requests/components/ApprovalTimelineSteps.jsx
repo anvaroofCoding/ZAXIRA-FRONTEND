@@ -14,6 +14,10 @@ import Stepper from '@mui/material/Stepper'
 import Typography from '@mui/material/Typography'
 import { getApprovalDecisionLabel, getDecisionChipColor } from '@/features/purchase-requests/utils/purchaseRequestStatus'
 import { formatPurchaseDeadline } from '@/features/purchase-requests/utils/formatPurchaseDeadline'
+import {
+  formatTaxIdTypeLabel,
+  hasPurchaseContractInfo,
+} from '@/features/purchase-requests/utils/purchaseDisplayUtils'
 import { formatDateTime } from '@/shared/utils/formatDate'
 
 const STEP_META = {
@@ -103,6 +107,36 @@ export const ApprovalTimelineSteps = ({ history = [] }) => {
                 >
                   {step.comment}
                 </Typography>
+              ) : null}
+              {hasPurchaseContractInfo(step) ? (
+                <Box
+                  sx={{
+                    mt: 1,
+                    bgcolor: 'action.hover',
+                    p: 1.5,
+                    borderRadius: 1,
+                  }}
+                >
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
+                    Tashkilot ma’lumotlari
+                  </Typography>
+                  {step.contractNumber?.trim() ? (
+                    <Typography variant="body2">
+                      Shartnoma raqami: <strong>{step.contractNumber}</strong>
+                    </Typography>
+                  ) : null}
+                  {step.organizationName?.trim() ? (
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      Tashkilot nomi: <strong>{step.organizationName}</strong>
+                    </Typography>
+                  ) : null}
+                  {step.innOrPinfl?.trim() ? (
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      {formatTaxIdTypeLabel(step.innOrPinflType)}:{' '}
+                      <strong>{step.innOrPinfl}</strong>
+                    </Typography>
+                  ) : null}
+                </Box>
               ) : null}
               {step.itemSubstitutions?.length ? (
                 <Box

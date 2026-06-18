@@ -10,6 +10,7 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import { ProfileMenu } from '@/features/profile/components/ProfileMenu'
 import { NotificationsDrawer } from '@/features/notifications/components/NotificationsDrawer'
+import { ChatNavButton } from '@/shared/components/chat/ChatFabDrawer'
 import { ThemeToggle } from '@/shared/components/ThemeToggle'
 import { AppContainer } from '@/shared/components/layout/AppContainer'
 import { AppLogo } from '@/shared/components/layout/AppLogo'
@@ -156,6 +157,7 @@ export const AppNavbar = () => {
               ml: 'auto',
             }}
           >
+            <ChatNavButton />
             <NotificationsDrawer />
             <ThemeToggle />
             <ProfileMenu />

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSelector } from 'react-redux'
 import CheckIcon from '@mui/icons-material/Check'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import { PurchaseRequestDocumentDownloadButtons } from '@/features/purchase-requests/components/PurchaseRequestDocumentDownloadButtons'
@@ -28,8 +29,10 @@ import { ApprovalTimelineSteps } from '@/features/purchase-requests/components/A
 import { PurchaseDeadlineDetailRow } from '@/features/purchase-requests/components/PurchaseDeadlineDetailRow'
 import { PurchasePeriodDetailRow } from '@/features/purchase-requests/components/PurchasePeriodDetailRow'
 import { PurchaseInfoSection } from '@/features/purchase-requests/components/PurchaseInfoSection'
+import { resolveLatestContractInfo } from '@/features/purchase-requests/utils/purchaseDisplayUtils'
 import { PurchaseRequestItemsTable } from '@/features/purchase-requests/components/PurchaseRequestItemsTable'
 import { useGetPurchaseRequestByIdQuery } from '@/features/purchase-requests/api/purchaseRequestsApi'
+import { selectAuthUser } from '@/features/auth/model/authSlice'
 import { formatMemberLabel } from '@/features/purchase-requests/utils/formatMemberLabel'
 import { formatBossDocumentName } from '@/features/purchase-requests/utils/formatBossDocumentName'
 import {
@@ -68,6 +71,9 @@ export const PurchaseRequestReadOnlyDetailDialog = ({
   onDispatchBatch,
 }) => {
   const [copied, setCopied] = useState(false)
+  const authUser = useSelector(selectAuthUser)
+  const isSuperAdmin =
+    authUser?.isSuperAdmin || authUser?.role === 'SUPER_ADMIN'
   const detailQuery = useGetPurchaseRequestByIdQuery(
     { id: requestId, purchasingView, historyView },
     {
@@ -231,7 +237,11 @@ export const PurchaseRequestReadOnlyDetailDialog = ({
               </TableContainer>
             </Box>
 
-            <PurchaseRequestItemsTable items={request.items} title="Tovarlar" />
+            <PurchaseRequestItemsTable
+              items={request.items}
+              title="Tovarlar"
+              showPurchaseInfo={request.items.some((item) => item.isPurchased)}
+            />
 
             <DetailRow label="Sotib olish sababi" value={request.comment} />
 
@@ -244,11 +254,15 @@ export const PurchaseRequestReadOnlyDetailDialog = ({
 
             <BossDecisionAlert request={request} />
 
-            {request.purchaseBatches?.length || request.purchaseUnavailableBatches?.length ? (
+            {request.purchaseBatches?.length ||
+            request.purchaseUnavailableBatches?.length ||
+            request.purchaseTotalAmount != null ||
+            resolveLatestContractInfo(request) ? (
               <>
                 <Divider />
                 <PurchaseInfoSection
                   request={request}
+                  canEditContract={purchasingView || isSuperAdmin}
                   onDispatchBatch={
                     onDispatchBatch
                       ? (batch) => onDispatchBatch(request, batch)

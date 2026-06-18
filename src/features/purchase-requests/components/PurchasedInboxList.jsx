@@ -5,6 +5,7 @@ import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { PurchaseBatchCard } from '@/features/purchase-requests/components/PurchaseBatchCard'
+import { enrichBatchContractInfo } from '@/features/purchase-requests/utils/purchaseDisplayUtils'
 import { formatUzs } from '@/shared/utils/formatUzs'
 
 export const PurchasedInboxList = ({ items, emptyMessage, onView }) => {
@@ -60,7 +61,7 @@ export const PurchasedInboxList = ({ items, emptyMessage, onView }) => {
                 {batches.map((batch, index) => (
                   <PurchaseBatchCard
                     key={batch.batchId}
-                    batch={batch}
+                    batch={enrichBatchContractInfo(batch, request)}
                     batchNumber={batches.length - index}
                     items={request.items}
                     requestId={request.id}

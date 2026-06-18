@@ -46,6 +46,10 @@ const { XaridniQabulQilishPage } = lazyImport(
   () => import('@/pages/xarid-qilish/XaridniQabulQilishPage'),
   'XaridniQabulQilishPage',
 )
+const { XaridQilishPage } = lazyImport(
+  () => import('@/pages/xarid-qilish/XaridQilishPage'),
+  'XaridQilishPage',
+)
 
 const { MeningOmborimPage } = lazyImport(
   () => import('@/pages/omborlar'),
@@ -203,6 +207,10 @@ export const routes = [
           {
             path: 'xarid-qilish/sotib-olinadigan-tavarlar',
             Component: SotibOlinadiganTovarlarPage,
+          },
+          {
+            path: 'xarid-qilish/sotib-olinadigan-tavarlar/:requestId/xarid-qilish',
+            Component: XaridQilishPage,
           },
           {
             path: 'xarid-qilish/xarid-qilingan-tavarlar',

@@ -1,9 +1,9 @@
-export const DEFAULT_PRIMARY_COLOR = '#1565c0'
+export const DEFAULT_PRIMARY_COLOR = '#1549c1'
 export const THEME_COLOR_STORAGE_KEY = 'zaxira-theme-primary'
 export const THEME_COLOR_CHANGED = 'zaxira:theme-color-changed'
 
 export const THEME_COLOR_PRESETS = [
-  { label: 'Ko‘k', value: '#1565c0' },
+  { label: 'Ko‘k', value: '#1549c1' },
   { label: 'Yashil', value: '#2e7d32' },
   { label: 'Binafsha', value: '#6a1b9a' },
   { label: 'Qizil', value: '#c62828' },

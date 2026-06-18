@@ -55,7 +55,7 @@ export const isPurchaseContractComplete = (fields) =>
   !validatePurchaseContractFields(fields)
 
 export const VAT_RATE_OPTIONS = [
-  { value: '0', label: 'INDS siz' },
+  { value: '0', label: 'QQSsiz' },
   { value: '6', label: '6%' },
   { value: '12', label: '12%' },
 ]

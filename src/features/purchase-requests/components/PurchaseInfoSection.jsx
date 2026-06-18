@@ -155,7 +155,7 @@ export const PurchaseInfoSection = ({
           <Stack spacing={1}>
             <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 2 }}>
               <Typography variant="body2" color="text.secondary">
-                Summa (INDSsiz)
+                Summa (QQSsiz)
               </Typography>
               <Typography variant="body2" fontWeight={600}>
                 {formatUzs(purchaseSummary.subtotal)}
@@ -163,7 +163,7 @@ export const PurchaseInfoSection = ({
             </Stack>
             <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 2 }}>
               <Typography variant="body2" color="text.secondary">
-                INDS jami
+                QQS jami
               </Typography>
               <Typography variant="body2" fontWeight={600}>
                 {formatUzs(purchaseSummary.vatTotal)}

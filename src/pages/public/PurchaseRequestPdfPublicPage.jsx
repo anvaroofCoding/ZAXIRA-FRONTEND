@@ -7,6 +7,7 @@ import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { env } from '@/shared/config/env'
+import { openPdfFromApiUrl } from '@/shared/utils/openPdfFromApiUrl'
 
 export const PurchaseRequestPdfPublicPage = ({ variant = 'bildirgi' }) => {
   const { id } = useParams()
@@ -25,8 +26,17 @@ export const PurchaseRequestPdfPublicPage = ({ variant = 'bildirgi' }) => {
       return undefined
     }
 
-    window.location.replace(pdfApiUrl)
-    return undefined
+    let cancelled = false
+
+    openPdfFromApiUrl(pdfApiUrl).catch((err) => {
+      if (!cancelled) {
+        setError(err?.message || 'PDF faylni ochib bo‘lmadi')
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
   }, [pdfApiUrl])
 
   const title =

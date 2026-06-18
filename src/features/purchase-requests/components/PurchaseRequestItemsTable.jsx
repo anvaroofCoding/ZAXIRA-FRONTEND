@@ -58,10 +58,10 @@ export const PurchaseRequestItemsTable = ({
                     Summa (1 dona)
                   </TableCell>
                   <TableCell width={90} align="right">
-                    % INDS
+                    % QQS
                   </TableCell>
                   <TableCell width={120} align="right">
-                    INDS (1 dona)
+                    QQS (1 dona)
                   </TableCell>
                   <TableCell width={130} align="right">
                     Xarid jami

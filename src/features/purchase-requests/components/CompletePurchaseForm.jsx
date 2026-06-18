@@ -253,7 +253,7 @@ export const CompletePurchaseForm = ({ requestId, onCancel, onSuccess }) => {
       }
 
       if (vatRate > 0 && vatAmount < 1) {
-        setError(`${row.itemIndex + 1}-tovar uchun INDS summasini kiriting`)
+        setError(`${row.itemIndex + 1}-tovar uchun QQS summasini kiriting`)
         return
       }
 
@@ -493,7 +493,7 @@ export const CompletePurchaseForm = ({ requestId, onCancel, onSuccess }) => {
             {hasPending ? (
               <Typography variant="body2" color="text.secondary">
                 Shartnoma raqami, tashkilot nomi va INN/PINFL majburiy. Havola va fayllar ixtiyoriy.
-                Har bir tovar uchun summa, INDS foizi va INDS summasini alohida kiriting. Sonni
+                Har bir tovar uchun summa, QQS foizi va QQS summasini alohida kiriting. Sonni
                 kamaytirsangiz, qolgan miqdor xarid navbatida qoladi.
               </Typography>
             ) : null}
@@ -694,10 +694,10 @@ export const CompletePurchaseForm = ({ requestId, onCancel, onSuccess }) => {
                           Summa (1 dona)
                         </TableCell>
                         <TableCell width={120} sx={{ verticalAlign: 'top' }}>
-                          % INDS
+                          % QQS
                         </TableCell>
                         <TableCell width={140} sx={{ verticalAlign: 'top' }}>
-                          INDS summasi
+                          QQS summasi
                         </TableCell>
                         <TableCell width={140} sx={{ verticalAlign: 'top' }}>
                           Jami (1 dona)

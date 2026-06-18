@@ -6,7 +6,7 @@ export const getPurchaseLineTotal = (item) =>
 
 export const formatPurchaseVatRateLabel = (vatRate) => {
   const rate = Number(vatRate) || 0
-  return rate > 0 ? `${rate}%` : 'INDS siz'
+  return rate > 0 ? `${rate}%` : 'QQSsiz'
 }
 
 export const formatTaxIdTypeLabel = (type) => {

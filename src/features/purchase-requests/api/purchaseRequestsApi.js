@@ -391,6 +391,17 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
       }),
       providesTags: [API_TAGS.PURCHASE_REQUEST],
     }),
+    getPurchaseStatistics: builder.query({
+      query: ({ structureId, granularity = 'yearly', year } = {}) => ({
+        url: '/purchase-requests/analytics/purchase-statistics',
+        params: {
+          ...(structureId ? { structureId } : {}),
+          granularity,
+          ...(year ? { year } : {}),
+        },
+      }),
+      providesTags: [API_TAGS.PURCHASE_REQUEST],
+    }),
     rejectPurchase: builder.mutation({
       query: ({ id, reasonKey, comment }) => ({
         url: `/purchase-requests/${id}/purchase/reject`,
@@ -990,6 +1001,7 @@ export const {
   useGetPurchasingInboxQuery,
   useGetPurchasedInboxQuery,
   useGetIshonchnomaInboxQuery,
+  useGetPurchaseStatisticsQuery,
   useCompletePurchaseMutation,
   useUpdatePurchaseBatchContractMutation,
   useUploadPurchaseIshonchnomaMutation,

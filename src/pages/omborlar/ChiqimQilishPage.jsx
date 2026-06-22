@@ -185,7 +185,7 @@ export const ChiqimQilishPage = () => {
       const result = await createExpense({
         reasonKey,
         comment,
-        ...(isFixedAssetReason ? { serviceStructureId } : {}),
+        ...(serviceStructureId ? { serviceStructureId } : {}),
         items: rows.map((r) => ({ locationId: r.locationId, barcode: r.barcode, quantity: r.quantity })),
       }).unwrap()
 
@@ -386,13 +386,7 @@ export const ChiqimQilishPage = () => {
                 labelId="expense-reason-label"
                 label="Chiqim sababi"
                 value={reasonKey}
-                onChange={(e) => {
-                  const nextReason = e.target.value
-                  setReasonKey(nextReason)
-                  if (nextReason !== FIXED_ASSET_REASON_KEY) {
-                    setServiceStructureId('')
-                  }
-                }}
+                onChange={(e) => setReasonKey(e.target.value)}
               >
                 {reasons.map((r) => (
                   <MenuItem key={r.key} value={r.key}>
@@ -402,27 +396,42 @@ export const ChiqimQilishPage = () => {
               </Select>
             </FormControl>
 
-            {isFixedAssetReason ? (
-              <FormControl
-                fullWidth
-                size="small"
-                disabled={structuresQuery.isLoading || createExpenseState.isLoading}
+            <FormControl
+              fullWidth
+              size="small"
+              required={isFixedAssetReason}
+              disabled={structuresQuery.isLoading || createExpenseState.isLoading}
+            >
+              <InputLabel id="service-structure-label">
+                {isFixedAssetReason
+                  ? 'Qaysi tuzilmaga ishlatildi'
+                  : 'Qaysi tuzilmaga ishlatildi (ixtiyoriy)'}
+              </InputLabel>
+              <Select
+                labelId="service-structure-label"
+                label={
+                  isFixedAssetReason
+                    ? 'Qaysi tuzilmaga ishlatildi'
+                    : 'Qaysi tuzilmaga ishlatildi (ixtiyoriy)'
+                }
+                value={serviceStructureId}
+                onChange={(e) => setServiceStructureId(e.target.value)}
               >
-                <InputLabel id="service-structure-label">Qaysi xizmatga ishlatildi</InputLabel>
-                <Select
-                  labelId="service-structure-label"
-                  label="Qaysi xizmatga ishlatildi"
-                  value={serviceStructureId}
-                  onChange={(e) => setServiceStructureId(e.target.value)}
-                >
-                  {serviceStructures.map((structure) => (
-                    <MenuItem key={structure.id} value={structure.id}>
-                      {structure.shortName || structure.fullName}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            ) : null}
+                {!isFixedAssetReason ? (
+                  <MenuItem value="">
+                    <em>Tanlanmagan</em>
+                  </MenuItem>
+                ) : null}
+                {serviceStructures.map((structure) => (
+                  <MenuItem key={structure.id} value={structure.id}>
+                    {structure.shortName || structure.fullName}
+                    {structure.fullName && structure.shortName
+                      ? ` — ${structure.fullName}`
+                      : ''}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
             <TextField
               size="small"

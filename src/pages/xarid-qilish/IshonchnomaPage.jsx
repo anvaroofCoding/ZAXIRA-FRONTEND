@@ -10,7 +10,7 @@ import { PurchasingPageFilters } from '@/features/purchase-requests/components/P
 import { PurchasingInboxSkeleton } from '@/features/purchase-requests/components/PurchasingInboxSkeletons'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { usePurchasingListFilters } from '@/shared/hooks/usePurchasingListFilters'
-import { canReceiveOnPage, hasPageAction } from '@/features/permissions/utils/permissions'
+import { hasPageAction } from '@/features/permissions/utils/permissions'
 import { ISHONCHNOMA_PAGE_PATH } from '@/features/permissions/constants'
 import { useAppSelector } from '@/shared/hooks/useAppSelector'
 import { selectAuthUser } from '@/features/auth/model/authSlice'
@@ -19,7 +19,8 @@ const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
 
 export const IshonchnomaPage = () => {
   const user = useAppSelector(selectAuthUser)
-  const canUpload = hasPageAction(user, ISHONCHNOMA_PAGE_PATH, 'create')
+  const canUploadIshonchnoma = hasPageAction(user, ISHONCHNOMA_PAGE_PATH, 'create')
+  const canUpdateIshonchnoma = hasPageAction(user, ISHONCHNOMA_PAGE_PATH, 'update')
 
   const [statusTab, setStatusTab] = useState('pending')
   const [uploadTarget, setUploadTarget] = useState(null)
@@ -114,7 +115,8 @@ export const IshonchnomaPage = () => {
             items={items}
             emptyMessage={emptyMessages[statusTab]}
             onUpload={handleUpload}
-            canUpload={canUpload}
+            canUpload={canUploadIshonchnoma}
+            canUpdateUpload={canUpdateIshonchnoma}
           />
 
           <TablePagination

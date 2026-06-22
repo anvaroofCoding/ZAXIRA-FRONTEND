@@ -9,6 +9,8 @@ export const warehouseDispatchesApi = baseApi.injectEndpoints({
         params: {
           page,
           limit,
+          source: 'purchase',
+          scope: 'receipt',
           ...(search?.trim() ? { search: search.trim() } : {}),
           ...(dateFrom ? { dateFrom } : {}),
           ...(dateTo ? { dateTo } : {}),

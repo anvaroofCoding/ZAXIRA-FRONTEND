@@ -20,7 +20,8 @@ export const IshonchnomaInboxList = ({
   items,
   emptyMessage,
   onUpload,
-  canUpload = true,
+  canUpload = false,
+  canUpdateUpload = false,
 }) => {
   if (!items.length) {
     return (
@@ -79,15 +80,29 @@ export const IshonchnomaInboxList = ({
                 ) : null}
               </Stack>
 
-              {canUpload ? (
-                <Button
-                  size="small"
-                  variant={ishonchnomaSubmitted ? 'outlined' : 'contained'}
-                  onClick={() => onUpload(entry)}
-                >
-                  {ishonchnomaSubmitted ? 'Yana yuklash' : 'Ishonchnoma yuklash'}
-                </Button>
-              ) : null}
+              {(() => {
+                const canUploadThis = ishonchnomaSubmitted
+                  ? canUpdateUpload
+                  : canUpload
+
+                if (!canUpload && !canUpdateUpload) {
+                  return null
+                }
+
+                return (
+                  <Button
+                    size="small"
+                    variant={ishonchnomaSubmitted ? 'outlined' : 'contained'}
+                    disabled={!canUploadThis}
+                    onClick={() => {
+                      if (!canUploadThis) return
+                      onUpload(entry)
+                    }}
+                  >
+                    {ishonchnomaSubmitted ? 'Yana yuklash' : 'Ishonchnoma yuklash'}
+                  </Button>
+                )
+              })()}
             </Box>
 
             <Box sx={{ p: 2 }}>

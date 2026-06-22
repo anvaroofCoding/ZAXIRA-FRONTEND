@@ -59,7 +59,12 @@ const modeLabel = (session) => {
   return 'Umumiy (joylar aralash)'
 }
 
-export const StocktakeSessionPanel = ({ session, onSessionChange }) => {
+export const StocktakeSessionPanel = ({
+  session,
+  onSessionChange,
+  canEdit = false,
+  canCancel = false,
+}) => {
   const dispatch = useAppDispatch()
   const [tab, setTab] = useState('hammasi')
   const [barcode, setBarcode] = useState('')
@@ -122,6 +127,7 @@ export const StocktakeSessionPanel = ({ session, onSessionChange }) => {
   }
 
   const handleScan = async () => {
+    if (!canEdit) return
     setError('')
     const value = barcode.trim()
     if (!value || !session?.id) return
@@ -139,6 +145,7 @@ export const StocktakeSessionPanel = ({ session, onSessionChange }) => {
   }
 
   const handleAddCount = async () => {
+    if (!canEdit) return
     if (!selectedLine || !session?.id) return
     setError('')
 
@@ -161,6 +168,7 @@ export const StocktakeSessionPanel = ({ session, onSessionChange }) => {
   }
 
   const handleSetCount = async (line, countedQuantity) => {
+    if (!canEdit) return
     if (!session?.id) return
     try {
       const next = await updateLine({
@@ -175,6 +183,7 @@ export const StocktakeSessionPanel = ({ session, onSessionChange }) => {
   }
 
   const handleComplete = async () => {
+    if (!canEdit) return
     if (!session?.id) return
     setError('')
     try {
@@ -194,6 +203,7 @@ export const StocktakeSessionPanel = ({ session, onSessionChange }) => {
   }
 
   const handleCancel = async () => {
+    if (!canCancel) return
     if (!session?.id) return
     setError('')
     try {
@@ -245,6 +255,10 @@ export const StocktakeSessionPanel = ({ session, onSessionChange }) => {
 
       {error ? <Alert severity="error">{error}</Alert> : null}
 
+      {!canEdit ? (
+        <Alert severity="info">Siz faqat ko‘rishingiz mumkin. Sanash va yakunlash uchun tahrirlash ruxsati kerak.</Alert>
+      ) : null}
+
       <Paper variant="outlined" sx={{ p: 2 }}>
         <Stack spacing={2}>
           <TextField
@@ -254,7 +268,7 @@ export const StocktakeSessionPanel = ({ session, onSessionChange }) => {
             placeholder="Skaner qiling yoki kiriting (har safar +1)"
             value={barcode}
             onChange={(e) => setBarcode(e.target.value)}
-            disabled={isBusy}
+            disabled={isBusy || !canEdit}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault()
@@ -274,10 +288,10 @@ export const StocktakeSessionPanel = ({ session, onSessionChange }) => {
                 setSearch(e.target.value)
                 setSelectedLine(null)
               }}
-              disabled={isBusy}
+              disabled={isBusy || !canEdit}
               fullWidth
             />
-            {search.trim().length >= 2 && searchResults.length ? (
+            {canEdit && search.trim().length >= 2 && searchResults.length ? (
               <List dense sx={{ mt: 1, border: 1, borderColor: 'divider', borderRadius: 1, maxHeight: 200, overflow: 'auto' }}>
                 {searchResults.map((line) => (
                   <ListItemButton
@@ -297,7 +311,7 @@ export const StocktakeSessionPanel = ({ session, onSessionChange }) => {
               </List>
             ) : null}
 
-            {selectedLine ? (
+            {canEdit && selectedLine ? (
               <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1.5 }} flexWrap="wrap">
                 <Typography variant="body2" sx={{ flex: 1, minWidth: 160 }}>
                   <b>{selectedLine.name}</b> (kitobda {selectedLine.bookQuantity})
@@ -398,7 +412,7 @@ export const StocktakeSessionPanel = ({ session, onSessionChange }) => {
                       <Stack direction="row" justifyContent="flex-end" alignItems="center" spacing={0.5}>
                         <IconButton
                           size="small"
-                          disabled={isBusy || line.countedQuantity <= 0}
+                          disabled={isBusy || !canEdit || line.countedQuantity <= 0}
                           onClick={() => handleSetCount(line, line.countedQuantity - 1)}
                         >
                           <RemoveIcon fontSize="small" />
@@ -407,13 +421,13 @@ export const StocktakeSessionPanel = ({ session, onSessionChange }) => {
                           size="small"
                           value={line.countedQuantity}
                           onChange={(e) => handleSetCount(line, e.target.value)}
-                          disabled={isBusy}
+                          disabled={isBusy || !canEdit}
                           inputMode="numeric"
                           sx={{ width: 72 }}
                         />
                         <IconButton
                           size="small"
-                          disabled={isBusy}
+                          disabled={isBusy || !canEdit}
                           onClick={() => handleSetCount(line, line.countedQuantity + 1)}
                         >
                           <AddIcon fontSize="small" />
@@ -428,14 +442,20 @@ export const StocktakeSessionPanel = ({ session, onSessionChange }) => {
         </Table>
       </TableContainer>
 
-      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-        <Button color="inherit" onClick={() => setCancelOpen(true)} disabled={isBusy}>
-          Bekor qilish
-        </Button>
-        <Button variant="contained" onClick={() => setCompleteOpen(true)} disabled={isBusy}>
-          Yakunlash
-        </Button>
-      </Box>
+      {(canCancel || canEdit) ? (
+        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          {canCancel ? (
+            <Button color="inherit" onClick={() => setCancelOpen(true)} disabled={isBusy}>
+              Bekor qilish
+            </Button>
+          ) : null}
+          {canEdit ? (
+            <Button variant="contained" onClick={() => setCompleteOpen(true)} disabled={isBusy}>
+              Yakunlash
+            </Button>
+          ) : null}
+        </Box>
+      ) : null}
 
       <Dialog open={cancelOpen} onClose={cancelState.isLoading ? undefined : () => setCancelOpen(false)}>
         <DialogTitle>Invertarizatsiyani bekor qilish</DialogTitle>

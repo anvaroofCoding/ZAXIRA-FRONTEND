@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AddIcon from '@mui/icons-material/Add'
 import SearchIcon from '@mui/icons-material/Search'
+import VpnKeyOutlinedIcon from '@mui/icons-material/VpnKeyOutlined'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -18,6 +19,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useGetStructuresQuery } from '@/features/structures/api/structuresApi'
 import { PermanentDeleteDialog } from '@/features/users/components/PermanentDeleteDialog'
+import { GlobalSecondCodeDialog } from '@/features/settings/components/GlobalSecondCodeDialog'
 import { UsersPageSkeleton } from '@/features/users/components/UsersPageSkeleton'
 import { UsersTable } from '@/features/users/components/UsersTable'
 import {
@@ -45,6 +47,7 @@ export const FoydalanuvchilarPage = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const [statusLoadingId, setStatusLoadingId] = useState(null)
   const [permanentTarget, setPermanentTarget] = useState(null)
+  const [globalCodeOpen, setGlobalCodeOpen] = useState(false)
 
   const debouncedSearch = useDebouncedValue(search, 350)
 
@@ -52,12 +55,19 @@ export const FoydalanuvchilarPage = () => {
     setPage(0)
   }, [debouncedSearch, structureFilter])
 
+  const isSuperAdmin =
+    authUser?.isSuperAdmin || authUser?.role === 'SUPER_ADMIN'
+
+  const canViewActivity = isSuperAdmin
+
   const structuresQuery = useGetStructuresQuery()
   const usersQuery = useGetUsersQuery({
     page: page + 1,
     limit: rowsPerPage,
     search: debouncedSearch,
     structureId: structureFilter,
+  }, {
+    pollingInterval: canViewActivity ? 15000 : 0,
   })
 
   const [deleteUser] = useDeleteUserMutation()
@@ -71,9 +81,6 @@ export const FoydalanuvchilarPage = () => {
   )
   const users = useMemo(() => usersQuery.data?.items ?? [], [usersQuery.data?.items])
   const total = usersQuery.data?.total ?? 0
-
-  const isSuperAdmin =
-    authUser?.isSuperAdmin || authUser?.role === 'SUPER_ADMIN'
 
   const canCreate =
     isSuperAdmin || hasPageAction(authUser, USERS_PAGE_PATH, 'create')
@@ -92,6 +99,10 @@ export const FoydalanuvchilarPage = () => {
 
   const handleOpenEdit = (user) => {
     navigate(`${USERS_PAGE_PATH}/${user.id}/tahrirlash`)
+  }
+
+  const handleViewActivity = (user) => {
+    navigate(`${USERS_PAGE_PATH}/${user.id}/faollik`)
   }
 
   const handleDeactivate = async (user) => {
@@ -165,18 +176,30 @@ export const FoydalanuvchilarPage = () => {
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Profil ochish va sahifa ruxsatlarini boshqarish
+                {canViewActivity ? ' · Faollik uchun qatorni bosing' : ''}
               </Typography>
             </Stack>
 
-            {canCreate ? (
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={handleOpenCreate}
-              >
-                Qo‘shish
-              </Button>
-            ) : null}
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {isSuperAdmin ? (
+                <Button
+                  variant="outlined"
+                  startIcon={<VpnKeyOutlinedIcon />}
+                  onClick={() => setGlobalCodeOpen(true)}
+                >
+                  Umumiy kod
+                </Button>
+              ) : null}
+              {canCreate ? (
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={handleOpenCreate}
+                >
+                  Qo‘shish
+                </Button>
+              ) : null}
+            </Stack>
           </Paper>
 
           <Box
@@ -236,11 +259,13 @@ export const FoydalanuvchilarPage = () => {
                 isSuperAdmin={isSuperAdmin}
                 canUpdate={canUpdate}
                 canDelete={canDelete}
+                canViewActivity={canViewActivity}
                 statusLoadingId={statusLoadingId}
                 onEdit={handleOpenEdit}
                 onDeactivate={handleDeactivate}
                 onActivate={handleActivate}
                 onPermanentDelete={handlePermanentDeleteRequest}
+                onViewActivity={handleViewActivity}
               />
 
               <TablePagination
@@ -272,6 +297,12 @@ export const FoydalanuvchilarPage = () => {
           if (!permanentDeleteState.isLoading) setPermanentTarget(null)
         }}
         onConfirm={handlePermanentDeleteConfirm}
+      />
+
+      <GlobalSecondCodeDialog
+        open={globalCodeOpen}
+        onClose={() => setGlobalCodeOpen(false)}
+        onSaved={(message) => showSnackbar(message)}
       />
 
       <Snackbar

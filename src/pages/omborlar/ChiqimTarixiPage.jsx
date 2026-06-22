@@ -443,7 +443,7 @@ export const ChiqimTarixiPage = () => {
                 {detailQuery.data.serviceStructureName ? (
                   <Box>
                     <Typography variant="caption" color="text.secondary">
-                      Xizmat
+                      Ishlatilgan tuzilma
                     </Typography>
                     <Typography variant="body2" fontWeight={600}>
                       {detailQuery.data.serviceStructureName}

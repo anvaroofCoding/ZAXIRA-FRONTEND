@@ -8,6 +8,7 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import { formatDateTime } from '@/shared/utils/formatDate'
+import { formatLastOnline } from '@/shared/utils/formatLastOnline'
 import { UserRowActionsMenu } from './UserRowActionsMenu'
 
 export const UsersTable = ({
@@ -16,11 +17,13 @@ export const UsersTable = ({
   isSuperAdmin,
   canUpdate,
   canDelete,
+  canViewActivity,
   statusLoadingId,
   onEdit,
   onDeactivate,
   onActivate,
   onPermanentDelete,
+  onViewActivity,
 }) => {
   if (!users.length) {
     return (
@@ -40,6 +43,8 @@ export const UsersTable = ({
             <TableCell width={140}>Tuzilma</TableCell>
             <TableCell width={150}>Yaratilgan sana</TableCell>
             <TableCell width={140}>Kim yaratdi</TableCell>
+            {canViewActivity ? <TableCell width={130}>Onlayn</TableCell> : null}
+            {canViewActivity ? <TableCell width={150}>Oxirgi kirish</TableCell> : null}
             <TableCell width={100}>Holat</TableCell>
             <TableCell width={72} align="right">
               Amallar
@@ -49,7 +54,12 @@ export const UsersTable = ({
 
         <TableBody>
           {users.map((user) => (
-            <TableRow key={user.id} hover>
+            <TableRow
+              key={user.id}
+              hover
+              onClick={canViewActivity ? () => onViewActivity?.(user) : undefined}
+              sx={canViewActivity ? { cursor: 'pointer' } : undefined}
+            >
               <TableCell sx={{ fontWeight: 500 }}>{user.login}</TableCell>
               <TableCell>{user.displayName}</TableCell>
               <TableCell>
@@ -79,6 +89,26 @@ export const UsersTable = ({
                   </Typography>
                 )}
               </TableCell>
+              {canViewActivity ? (
+                <TableCell>
+                  <Chip
+                    size="small"
+                    color={user.isOnline ? 'success' : 'default'}
+                    label={user.isOnline ? 'Onlayn' : 'Oflayn'}
+                    variant={user.isOnline ? 'filled' : 'outlined'}
+                  />
+                </TableCell>
+              ) : null}
+              {canViewActivity ? (
+                <TableCell>
+                  <Typography variant="body2" noWrap>
+                    {user.isOnline
+                      ? 'Hozir'
+                      : formatLastOnline(user.lastLoginAt) ||
+                        formatDateTime(user.lastLoginAt)}
+                  </Typography>
+                </TableCell>
+              ) : null}
               <TableCell>
                 <Chip
                   size="small"
@@ -86,7 +116,7 @@ export const UsersTable = ({
                   label={user.isActive ? 'Faol' : 'Nofaol'}
                 />
               </TableCell>
-              <TableCell align="right">
+              <TableCell align="right" onClick={(event) => event.stopPropagation()}>
                 <UserRowActionsMenu
                   user={user}
                   currentUserId={currentUserId}

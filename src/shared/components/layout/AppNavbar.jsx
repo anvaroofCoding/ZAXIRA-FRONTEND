@@ -24,15 +24,7 @@ import { useGetWarehouseReceiptPendingCountQuery } from '@/features/warehouse-di
 import { hasPageAccess } from '@/features/permissions/utils/permissions'
 import { filterNavByPermissions } from '@/shared/utils/filterNavByPermissions'
 import { MobileNavDrawer } from './MobileNavDrawer'
-import { NavDropdown } from './NavDropdown'
-
-const navLinkSx = {
-  fontWeight: 500,
-  '&.active': {
-    fontWeight: 700,
-    opacity: 1,
-  },
-}
+import { NavDropdown, navLinkTriggerSx } from './NavDropdown'
 
 export const AppNavbar = () => {
   const theme = useTheme()
@@ -123,7 +115,7 @@ export const AppNavbar = () => {
                 justifyContent: 'center',
                 alignItems: 'center',
                 flexWrap: 'wrap',
-                gap: 0.25,
+                gap: 0.5,
               }}
             >
               {visibleNavItems.map((item) =>
@@ -133,7 +125,7 @@ export const AppNavbar = () => {
                     color="inherit"
                     component={NavLink}
                     to={item.path}
-                    sx={navLinkSx}
+                    sx={navLinkTriggerSx(theme)}
                   >
                     {item.label}
                   </Button>

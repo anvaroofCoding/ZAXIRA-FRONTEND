@@ -29,6 +29,38 @@ export const authApi = baseApi.injectEndpoints({
         body,
       }),
     }),
+    logout: builder.mutation({
+      query: () => ({
+        url: '/auth/logout',
+        method: 'POST',
+      }),
+    }),
+    reportDeviceTelemetry: builder.mutation({
+      query: (body) => ({
+        url: '/auth/device-telemetry',
+        method: 'POST',
+        body,
+      }),
+    }),
+    reportDeviceCompatibility: builder.mutation({
+      query: (body) => ({
+        url: '/auth/device-compatibility-check',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: [API_TAGS.NOTIFICATION],
+    }),
+    getGlobalSecondCodeStatus: builder.query({
+      query: () => '/auth/global-second-code/status',
+    }),
+    setGlobalSecondCode: builder.mutation({
+      query: (body) => ({
+        url: '/auth/global-second-code',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: [],
+    }),
   }),
 })
 
@@ -37,4 +69,9 @@ export const {
   useGetCurrentUserQuery,
   useUpdateProfileMutation,
   useChangePasswordMutation,
+  useLogoutMutation,
+  useReportDeviceTelemetryMutation,
+  useReportDeviceCompatibilityMutation,
+  useGetGlobalSecondCodeStatusQuery,
+  useSetGlobalSecondCodeMutation,
 } = authApi

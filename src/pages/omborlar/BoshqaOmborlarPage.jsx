@@ -35,6 +35,7 @@ import {
 } from '@/features/warehouse/api/warehouseApi'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { SkeletonBlock } from '@/shared/components/skeleton'
+import { OtherWarehousesVolumeCharts } from '@/features/warehouse/components/OtherWarehousesVolumeCharts'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
@@ -168,13 +169,14 @@ export const BoshqaOmborlarPage = () => {
       )}
 
       {!selectedStructure ? (
-        <QuerySkeleton
-          isLoading={overviewQuery.isLoading}
-          isFetching={overviewQuery.isFetching}
-          isUninitialized={overviewQuery.isUninitialized}
-          data={overviewQuery.data}
-          skeleton={<CardsSkeleton />}
-        >
+        <>
+          <QuerySkeleton
+            isLoading={overviewQuery.isLoading}
+            isFetching={overviewQuery.isFetching}
+            isUninitialized={overviewQuery.isUninitialized}
+            data={overviewQuery.data}
+            skeleton={<CardsSkeleton />}
+          >
           {overviewQuery.isError ? (
             <Alert severity="error">
               {getApiErrorMessage(overviewQuery.error, 'Boshqa omborlarni yuklashda xatolik')}
@@ -224,6 +226,12 @@ export const BoshqaOmborlarPage = () => {
             </Grid>
           )}
         </QuerySkeleton>
+
+          <OtherWarehousesVolumeCharts
+            structures={structures}
+            isLoading={overviewQuery.isLoading || overviewQuery.isFetching}
+          />
+        </>
       ) : null}
 
       {selectedStructure ? (

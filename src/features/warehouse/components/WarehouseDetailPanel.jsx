@@ -11,11 +11,13 @@ import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router-dom'
 import { WarehouseAnalyticsPanel } from '@/features/warehouse/components/WarehouseAnalyticsPanel'
 
+export const WAREHOUSE_DETAIL_PANEL_WIDTH = 360
+
 export const WarehouseDetailPanel = ({
   warehouse,
   viewerStructureId = '',
   onClose,
-  width = 360,
+  width = WAREHOUSE_DETAIL_PANEL_WIDTH,
 }) => {
   const navigate = useNavigate()
 
@@ -34,7 +36,7 @@ export const WarehouseDetailPanel = ({
         bottom: 8,
         width,
         maxWidth: 'calc(100% - 16px)',
-        zIndex: 9,
+        zIndex: 10,
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',

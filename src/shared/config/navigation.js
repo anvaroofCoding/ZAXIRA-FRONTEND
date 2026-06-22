@@ -11,6 +11,7 @@ export const NAV_ITEMS = [
       { label: 'Arizalar yuborish', path: '/xaridlar/arizalar-yuborish' },
       { label: 'Arizalarni tasdiqlash', path: '/xaridlar/arizalarni-tasdiqlash' },
       { label: 'Arizalar tarixi', path: '/xaridlar/arizalar-tarixi' },
+      { label: 'Sotib olish statistikasi', path: '/xaridlar/sotib-olish-statistikasi' },
     ],
   },
   {

@@ -8,22 +8,21 @@ import Typography from '@mui/material/Typography'
 import { alpha, useTheme } from '@mui/material/styles'
 import { getTransfer2DMarkerColor } from '@/features/warehouse-dispatches/utils/dispatchStatusDisplay'
 import { Transfer2DDetailDialog } from '@/features/warehouse/components/Transfer2DDetailDialog'
-import { WarehouseMapBackground } from '@/features/warehouse/components/WarehouseMapBackground'
+import { WarehouseMapInfiniteLayer } from '@/features/warehouse/components/WarehouseMapBackground'
 import { useWarehouseMapData } from '@/features/warehouse/hooks/useWarehouseMapData'
-import { YANDEX_MAP } from '@/features/warehouse/utils/warehouseMapTheme'
+import { useWarehouseMapPalette } from '@/features/warehouse/hooks/useWarehouseMapPalette'
 import {
-  adjustDragPosition,
   buildCircularLayout,
-  clampNodeToCanvas,
+  clampNodeToWorld,
   computeFitViewport,
   getConnectionGeometry,
   getPathBounds,
   isActiveTransfer,
   loadWarehousePositions,
   matchesWarehouseSearch,
+  MIN_ZOOM,
   NODE_HEIGHT,
   NODE_WIDTH,
-  resolvePositionCollisions,
   saveWarehousePositions,
   zoomViewportAtPoint,
 } from '@/features/warehouse/utils/warehouse2dLayout'
@@ -37,6 +36,7 @@ const CARGO_ICON_SIZE = 22
 
 const ConnectionRope = ({ pathD, transferCount }) => {
   const theme = useTheme()
+  const { palette: mapPalette } = useWarehouseMapPalette()
   const bounds = useMemo(() => getPathBounds(pathD, 8), [pathD])
   const lineMain = theme.palette.primary.main
   const mid = useMemo(() => {
@@ -66,7 +66,7 @@ const ConnectionRope = ({ pathD, transferCount }) => {
         zIndex: 1,
       }}
     >
-      <path d={pathD} fill="none" stroke={alpha(YANDEX_MAP.road, 0.9)} strokeWidth={6} strokeLinecap="round" />
+      <path d={pathD} fill="none" stroke={alpha(mapPalette.road, 0.9)} strokeWidth={6} strokeLinecap="round" />
       <path d={pathD} fill="none" stroke={alpha(lineMain, 0.85)} strokeWidth={2.5} strokeLinecap="round" strokeDasharray="6 8" />
       {transferCount > 1 && mid ? (
         <>
@@ -192,6 +192,7 @@ const WarehouseNode = ({
   onSelect,
 }) => {
   const theme = useTheme()
+  const { palette: mapPalette } = useWarehouseMapPalette()
   const primary = theme.palette.primary.main
   const primaryDark = theme.palette.primary.dark
 
@@ -230,7 +231,7 @@ const WarehouseNode = ({
           width: '100%',
           height: '100%',
           borderRadius: '6px',
-          bgcolor: selected ? primary : highlighted ? alpha(primary, 0.2) : YANDEX_MAP.buildingTop,
+          bgcolor: selected ? primary : highlighted ? alpha(primary, 0.2) : mapPalette.buildingTop,
           border: '1px solid',
           borderColor: selected
             ? primaryDark
@@ -238,10 +239,10 @@ const WarehouseNode = ({
               ? primary
               : highlighted
                 ? alpha(primary, 0.6)
-                : YANDEX_MAP.buildingStroke,
+                : mapPalette.buildingStroke,
           boxShadow: selected
             ? `0 0 0 3px ${alpha(primary, 0.35)}, 0 4px 14px ${alpha(primary, 0.45)}`
-            : '0 2px 6px rgba(0,0,0,0.1)',
+            : `0 2px 6px ${mapPalette.buildingShadow}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -250,7 +251,7 @@ const WarehouseNode = ({
           '&:hover': {
             boxShadow: selected
               ? `0 0 0 3px ${alpha(primary, 0.35)}, 0 6px 18px ${alpha(primary, 0.5)}`
-              : '0 3px 10px rgba(0,0,0,0.14)',
+              : `0 3px 10px ${mapPalette.buildingShadowHover}`,
           },
         }}
       >
@@ -260,7 +261,7 @@ const WarehouseNode = ({
           sx={{
             textAlign: 'center',
             lineHeight: 1.25,
-            color: selected ? theme.palette.primary.contrastText : YANDEX_MAP.text,
+            color: selected ? theme.palette.primary.contrastText : mapPalette.text,
             display: '-webkit-box',
             WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',
@@ -290,10 +291,10 @@ export const Warehouse2DMap = ({
   enableViewportControls = false,
 }) => {
   const theme = useTheme()
+  const { palette: mapPalette } = useWarehouseMapPalette()
   const canvasRef = useRef(null)
   const dragRef = useRef(null)
   const panRef = useRef(null)
-  const prevCanvasSizeRef = useRef(null)
 
   const { overviewQuery, transferQuery, warehouses, structureIds, buildTransferLinks } =
     useWarehouseMapData()
@@ -325,82 +326,44 @@ export const Warehouse2DMap = ({
   }, [])
 
   useEffect(() => {
-    const prev = prevCanvasSizeRef.current
-    if (!prev) {
-      prevCanvasSizeRef.current = canvasSize
-      return
-    }
-
-    if (prev.width === canvasSize.width && prev.height === canvasSize.height) return
-
-    const scaleX = canvasSize.width / prev.width
-    const scaleY = canvasSize.height / prev.height
-    if (!Number.isFinite(scaleX) || !Number.isFinite(scaleY)) {
-      prevCanvasSizeRef.current = canvasSize
-      return
-    }
-
-    setPositions((current) => {
-      if (!Object.keys(current).length) return current
-
-      const next = Object.fromEntries(
-        Object.entries(current).map(([id, pos]) => [
-          id,
-          clampNodeToCanvas(
-            {
-              x: pos.x * scaleX,
-              y: pos.y * scaleY,
-            },
-            canvasSize.width,
-            canvasSize.height,
-          ),
-        ]),
-      )
-      const separated = resolvePositionCollisions(
-        next,
-        Object.keys(next),
-        canvasSize.width,
-        canvasSize.height,
-      )
-      saveWarehousePositions(separated)
-      return separated
-    })
-
-    prevCanvasSizeRef.current = canvasSize
-  }, [canvasSize.width, canvasSize.height])
-
-  useEffect(() => {
     if (!structureIds.length) return
 
     const saved = loadWarehousePositions()
     const hasAllPositions = structureIds.every((id) => saved[id])
-    const nextPositions = resolvePositionCollisions(
-      hasAllPositions
-        ? structureIds.reduce((acc, id) => {
-            acc[id] = saved[id]
-            return acc
-          }, {})
-        : buildCircularLayout(structureIds, canvasSize.width, canvasSize.height),
-      structureIds,
-      canvasSize.width,
-      canvasSize.height,
-    )
+    const nextPositions = hasAllPositions
+      ? structureIds.reduce((acc, id) => {
+          acc[id] = clampNodeToWorld(saved[id])
+          return acc
+        }, {})
+      : buildCircularLayout(structureIds, canvasSize.width, canvasSize.height)
 
     setPositions(nextPositions)
-    if (hasAllPositions) {
+    if (!hasAllPositions) {
       saveWarehousePositions(nextPositions)
     }
   }, [structureIds, canvasSize.width, canvasSize.height])
 
-  const handleFitView = useCallback(() => {
-    setViewport(computeFitViewport(positions, canvasSize.width, canvasSize.height))
+  const applyFitView = useCallback(() => {
+    if (!Object.keys(positions).length || canvasSize.width < 1) return
+    setViewport(
+      computeFitViewport(positions, canvasSize.width, canvasSize.height, 64, MIN_ZOOM),
+    )
   }, [positions, canvasSize.width, canvasSize.height])
+
+  useEffect(() => {
+    if (!enableViewportControls || canvasSize.width < 1 || !Object.keys(positions).length) return
+    applyFitView()
+  }, [enableViewportControls, applyFitView, canvasSize.width, canvasSize.height, structureIds.length])
+
+  const handleFitView = useCallback(() => {
+    applyFitView()
+  }, [applyFitView])
 
   const handleResetLayout = useCallback(() => {
     const next = buildCircularLayout(structureIds, canvasSize.width, canvasSize.height)
     setPositions(next)
     saveWarehousePositions(next)
-    setViewport(computeFitViewport(next, canvasSize.width, canvasSize.height))
+    setViewport(computeFitViewport(next, canvasSize.width, canvasSize.height, 64, MIN_ZOOM))
   }, [structureIds, canvasSize.width, canvasSize.height])
 
   const handleZoom = useCallback(
@@ -409,7 +372,9 @@ export const Warehouse2DMap = ({
       if (!rect) return
       const pointerX = rect.width / 2
       const pointerY = rect.height / 2
-      setViewport((prev) => zoomViewportAtPoint(prev, pointerX, pointerY, factor))
+      setViewport((prev) =>
+        zoomViewportAtPoint(prev, pointerX, pointerY, factor, MIN_ZOOM),
+      )
     },
     [],
   )
@@ -422,17 +387,11 @@ export const Warehouse2DMap = ({
   }, [handleFitView, handleResetLayout, handleZoom, onFitViewRef, onResetLayoutRef, onZoomInRef, onZoomOutRef])
   useEffect(() => {
     if (!enableViewportControls && Object.keys(positions).length && canvasSize.width > 0) {
-      setViewport(computeFitViewport(positions, canvasSize.width, canvasSize.height))
+      setViewport(
+        computeFitViewport(positions, canvasSize.width, canvasSize.height, 64, MIN_ZOOM),
+      )
     }
   }, [enableViewportControls, positions, canvasSize.width, canvasSize.height])
-
-  useEffect(() => {
-    if (enableViewportControls && Object.keys(positions).length && canvasSize.width > 0) {
-      setViewport(computeFitViewport(positions, canvasSize.width, canvasSize.height))
-    }
-    // Faqat to'liq ekranga o'tganda bir marta moslashtirish
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enableViewportControls])
 
   const handleDragStart = useCallback(
     (event, structureId) => {
@@ -461,20 +420,13 @@ export const Warehouse2DMap = ({
         const dx = (event.clientX - drag.startX) / viewport.scale
         const dy = (event.clientY - drag.startY) / viewport.scale
 
-        setPositions((prev) => {
-          const target = adjustDragPosition(
-            drag.structureId,
-            { x: drag.originX + dx, y: drag.originY + dy },
-            prev,
-            canvasSize.width,
-            canvasSize.height,
-          )
-
-          return {
-            ...prev,
-            [drag.structureId]: target,
-          }
-        })
+        setPositions((prev) => ({
+          ...prev,
+          [drag.structureId]: clampNodeToWorld({
+            x: drag.originX + dx,
+            y: drag.originY + dy,
+          }),
+        }))
         return
       }
 
@@ -495,14 +447,8 @@ export const Warehouse2DMap = ({
     if (drag?.pointerId === event.pointerId) {
       dragRef.current = null
       setPositions((prev) => {
-        const separated = resolvePositionCollisions(
-          prev,
-          structureIds,
-          canvasSize.width,
-          canvasSize.height,
-        )
-        saveWarehousePositions(separated)
-        return separated
+        saveWarehousePositions(prev)
+        return prev
       })
     }
 
@@ -510,11 +456,12 @@ export const Warehouse2DMap = ({
     if (pan?.pointerId === event.pointerId) {
       panRef.current = null
     }
-  }, [canvasSize.height, canvasSize.width, structureIds])
+  }, [canvasSize.height, canvasSize.width])
 
   const handleCanvasPanStart = useCallback(
     (event) => {
       if (!enableViewportControls) return
+      if (dragRef.current) return
       if (event.button !== 0 && event.button !== 1) return
       panRef.current = {
         startX: event.clientX,
@@ -539,7 +486,9 @@ export const Warehouse2DMap = ({
       const pointerY = event.clientY - rect.top
       const factor = event.deltaY > 0 ? 0.92 : 1.08
 
-      setViewport((prev) => zoomViewportAtPoint(prev, pointerX, pointerY, factor))
+      setViewport((prev) =>
+        zoomViewportAtPoint(prev, pointerX, pointerY, factor, MIN_ZOOM),
+      )
     },
     [enableViewportControls],
   )
@@ -584,7 +533,7 @@ export const Warehouse2DMap = ({
             flex: 1,
             minHeight: 0,
             height: canvasHeight,
-            bgcolor: YANDEX_MAP.background,
+            bgcolor: mapPalette.background,
             borderColor: alpha(theme.palette.divider, 0.4),
           }}
         >          <Box
@@ -605,16 +554,17 @@ export const Warehouse2DMap = ({
             <Box
               sx={{
                 position: 'absolute',
-                inset: 0,
+                left: 0,
+                top: 0,
                 transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})`,
                 transformOrigin: '0 0',
               }}
             >
-              <WarehouseMapBackground
-                width={Math.max(canvasSize.width / viewport.scale, canvasSize.width)}
-                height={Math.max(canvasSize.height / viewport.scale, canvasSize.height)}
-                seed={2}
+              <WarehouseMapInfiniteLayer
+                baseSeed={2}
                 variant="2d"
+                viewport={viewport}
+                canvasSize={canvasSize}
               />
 
               {transferLinks.map(({ key, geometry, transferCount }) => (                <ConnectionRope key={key} pathD={geometry.pathD} transferCount={transferCount} />

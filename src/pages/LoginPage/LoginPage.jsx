@@ -8,7 +8,6 @@ import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import { AppContainer } from '@/shared/components/layout/AppContainer'
 import { ThemeToggle } from '@/shared/components/ThemeToggle'
 import { useLoginMutation } from '@/features/auth/api/authApi'
 import { setCredentials } from '@/features/auth/model/authSlice'
@@ -90,6 +89,27 @@ export const LoginPage = () => {
   )
 
   const isLocked = remainingSeconds > 0
+
+  useEffect(() => {
+    const html = document.documentElement
+    const { body } = document
+    const previousHtmlOverflow = html.style.overflow
+    const previousBodyOverflow = body.style.overflow
+    const previousHtmlHeight = html.style.height
+    const previousBodyHeight = body.style.height
+
+    html.style.overflow = 'hidden'
+    body.style.overflow = 'hidden'
+    html.style.height = '100%'
+    body.style.height = '100%'
+
+    return () => {
+      html.style.overflow = previousHtmlOverflow
+      body.style.overflow = previousBodyOverflow
+      html.style.height = previousHtmlHeight
+      body.style.height = previousBodyHeight
+    }
+  }, [])
 
   useEffect(() => {
     const refreshResult = recordLoginPageRefresh()
@@ -233,10 +253,11 @@ export const LoginPage = () => {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        height: '100dvh',
+        width: '100%',
         display: 'flex',
-        alignItems: 'center',
         position: 'relative',
+        overflow: 'hidden',
       }}
     >
       <Box
@@ -267,10 +288,37 @@ export const LoginPage = () => {
         <ThemeToggle sx={{ color: 'text.primary' }} />
       </Box>
 
-      <AppContainer
+      <Box
         sx={{
+          display: { xs: 'none', md: 'flex' },
+          width: '50%',
+          height: '100%',
+          flexShrink: 0,
+          overflow: 'hidden',
+        }}
+      >
+        <Box
+          component="img"
+          src="/login.png"
+          alt="ZAXIRA"
+          sx={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center',
+          }}
+        />
+      </Box>
+
+      <Box
+        sx={{
+          width: { xs: '100%', md: '50%' },
+          height: '100%',
           display: 'flex',
+          alignItems: 'center',
           justifyContent: 'center',
+          px: { xs: 2, sm: 4 },
+          overflow: 'hidden',
         }}
       >
         <Box
@@ -279,7 +327,7 @@ export const LoginPage = () => {
           onSubmit={handleSubmit}
           sx={{
             width: '100%',
-            maxWidth: 280,
+            maxWidth: 320,
             display: 'flex',
             flexDirection: 'column',
             gap: 1.5,
@@ -351,7 +399,7 @@ export const LoginPage = () => {
           Kirish
         </Button>
         </Box>
-      </AppContainer>
+      </Box>
     </Box>
   )
 }

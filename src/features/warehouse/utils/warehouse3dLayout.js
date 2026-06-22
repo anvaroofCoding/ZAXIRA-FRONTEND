@@ -121,6 +121,9 @@ export const getSceneBounds = (structureIds, positions, heights) => {
   }
 }
 
+/** @deprecated pan is no longer clamped */
+export const clampIsoViewTransform = (transform) => transform
+
 export const getLocationStackPaths = (cx, cy, buildingHeight, locations, maxLocQty) => {
   if (!locations?.length) return []
 

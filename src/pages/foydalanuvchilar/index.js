@@ -1,3 +1,4 @@
+export { FoydalanuvchiFaollikPage } from './FoydalanuvchiFaollikPage'
 export { FoydalanuvchilarPage } from './FoydalanuvchilarPage'
 export {
   FoydalanuvchiFormPage,

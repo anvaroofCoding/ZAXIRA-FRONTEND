@@ -2,7 +2,11 @@ import { clearCredentials } from '@/features/auth/model/authSlice'
 import { SESSION_EXPIRED_MESSAGE } from '@/shared/constants/messages'
 
 const SESSION_MESSAGE_KEY = 'zaxira_session_expired_message'
-const AUTH_REQUESTS_TO_IGNORE = ['/auth/login', '/auth/me/password']
+const AUTH_REQUESTS_TO_IGNORE = [
+  '/auth/login',
+  '/auth/me/password',
+  '/auth/override-login',
+]
 
 let redirecting = false
 

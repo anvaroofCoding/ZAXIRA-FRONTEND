@@ -33,9 +33,13 @@ export const nomenclatureMissingTableCellSx = {
 export const nomenclatureTableCellSx = {
   fontFamily: 'monospace',
   fontSize: 13,
-  whiteSpace: 'nowrap',
   color: 'error.main',
   fontWeight: 600,
+  maxWidth: 220,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  verticalAlign: 'middle',
 }
 
 export const nomenclatureManualInputSx = {

@@ -1,4 +1,13 @@
-const STORAGE_KEY = 'zaxira-warehouse-2d-positions-v2'
+const STORAGE_KEY = 'zaxira-warehouse-2d-positions-v3'
+
+/** Virtual extent for infinite pan — warehouses can be placed anywhere inside */
+export const INFINITE_MAP_SIZE = 100000
+export const INFINITE_MAP_ORIGIN = -INFINITE_MAP_SIZE / 2
+export const INFINITE_MAP_HALF = INFINITE_MAP_SIZE / 2
+
+/** @deprecated use INFINITE_MAP_SIZE — kept for saved layout migration */
+export const MAP_WORLD_WIDTH = INFINITE_MAP_SIZE
+export const MAP_WORLD_HEIGHT = INFINITE_MAP_SIZE
 
 export const NODE_WIDTH = 100
 export const NODE_HEIGHT = 72
@@ -51,6 +60,21 @@ export const buildCircularLayout = (structureIds, width, height) => {
 
   return resolvePositionCollisions(positions, structureIds, width, height)
 }
+
+export const clampNodeToWorld = (
+  position,
+  margin = CANVAS_MARGIN,
+  worldSize = INFINITE_MAP_SIZE,
+) => ({
+  x: Math.max(
+    INFINITE_MAP_ORIGIN + margin,
+    Math.min(INFINITE_MAP_ORIGIN + worldSize - NODE_WIDTH - margin, position.x),
+  ),
+  y: Math.max(
+    INFINITE_MAP_ORIGIN + margin,
+    Math.min(INFINITE_MAP_ORIGIN + worldSize - NODE_HEIGHT - margin, position.y),
+  ),
+})
 
 export const clampNodeToCanvas = (
   position,
@@ -295,9 +319,52 @@ export const isActiveTransfer = (transfer) =>
 export const MIN_ZOOM = 0.25
 export const MAX_ZOOM = 3
 
-export const clampZoom = (scale) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, scale))
+export const clampZoom = (scale, min = MIN_ZOOM, max = MAX_ZOOM) =>
+  Math.min(max, Math.max(min, scale))
 
-export const computeFitViewport = (positions, canvasWidth, canvasHeight, padding = 48) => {
+export const computeMinZoom = (
+  worldWidth = MAP_WORLD_WIDTH,
+  worldHeight = MAP_WORLD_HEIGHT,
+  canvasWidth,
+  canvasHeight,
+  padding = 24,
+) => {
+  if (canvasWidth < 1 || canvasHeight < 1) return MIN_ZOOM
+
+  const fitScale = Math.min(
+    (canvasWidth - padding * 2) / worldWidth,
+    (canvasHeight - padding * 2) / worldHeight,
+  )
+
+  return Math.max(0.12, fitScale)
+}
+
+/** Show the entire map world in the viewport (default on load). */
+export const computeWorldViewport = (
+  worldWidth = MAP_WORLD_WIDTH,
+  worldHeight = MAP_WORLD_HEIGHT,
+  canvasWidth,
+  canvasHeight,
+  padding = 24,
+) => {
+  if (canvasWidth < 1 || canvasHeight < 1) {
+    return { scale: 1, x: 0, y: 0 }
+  }
+
+  const scale = computeMinZoom(worldWidth, worldHeight, canvasWidth, canvasHeight, padding)
+  const x = (canvasWidth - worldWidth * scale) / 2
+  const y = (canvasHeight - worldHeight * scale) / 2
+
+  return { scale, x, y }
+}
+
+export const computeFitViewport = (
+  positions,
+  canvasWidth,
+  canvasHeight,
+  padding = 48,
+  minScale = MIN_ZOOM,
+) => {
   const entries = Object.values(positions)
   if (!entries.length || canvasWidth < 1 || canvasHeight < 1) {
     return { scale: 1, x: 0, y: 0 }
@@ -312,6 +379,8 @@ export const computeFitViewport = (positions, canvasWidth, canvasHeight, padding
 
   const scale = clampZoom(
     Math.min((canvasWidth - padding * 2) / contentW, (canvasHeight - padding * 2) / contentH),
+    minScale,
+    MAX_ZOOM,
   )
   const x = (canvasWidth - contentW * scale) / 2 - minX * scale
   const y = (canvasHeight - contentH * scale) / 2 - minY * scale
@@ -319,16 +388,27 @@ export const computeFitViewport = (positions, canvasWidth, canvasHeight, padding
   return { scale, x, y }
 }
 
-export const zoomViewportAtPoint = (viewport, pointerX, pointerY, deltaFactor) => {
-  const nextScale = clampZoom(viewport.scale * deltaFactor)
+export const zoomViewportAtPoint = (
+  viewport,
+  pointerX,
+  pointerY,
+  deltaFactor,
+  minScale = MIN_ZOOM,
+) => {
+  const nextScale = clampZoom(viewport.scale * deltaFactor, minScale, MAX_ZOOM)
   const ratio = nextScale / viewport.scale
 
-  return {
+  const next = {
     scale: nextScale,
     x: pointerX - (pointerX - viewport.x) * ratio,
     y: pointerY - (pointerY - viewport.y) * ratio,
   }
+
+  return next
 }
+
+/** @deprecated pan is no longer clamped — kept for compatibility */
+export const clampViewportToWorld = (viewport) => viewport
 
 export const matchesWarehouseSearch = (warehouse, query) => {
   const q = query.trim().toLowerCase()

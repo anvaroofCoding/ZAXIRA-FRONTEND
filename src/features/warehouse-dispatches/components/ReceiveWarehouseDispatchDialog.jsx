@@ -41,14 +41,24 @@ import { dispatchCodeSx } from '@/features/warehouse-dispatches/utils/dispatchCo
 import { downloadAuthenticatedFile } from '@/shared/utils/downloadFile'
 import { getDispatchStatusChipProps } from '@/features/warehouse-dispatches/utils/dispatchStatusDisplay'
 import {
-  getItemNomenclatureCode,
   NOMENCLATURE_COLUMN_LABEL,
   nomenclatureManualInputSx,
-  nomenclatureTableCellSx,
 } from '@/features/warehouse/utils/itemNomenclature'
+import { NomenclatureTableCell } from '@/features/warehouse/components/NomenclatureTableCell'
+import { isTransferDispatch } from '@/features/warehouse-dispatches/utils/dispatchContext'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 import { WAREHOUSE_RECEIPT_PAGE_PATH } from '@/features/permissions/constants'
 import { usePermissions } from '@/shared/hooks/usePermissions'
+
+const receiptTableSx = {
+  tableLayout: 'fixed',
+  width: '100%',
+  '& .MuiTableCell-root': {
+    px: 2,
+    py: 1.25,
+    verticalAlign: 'middle',
+  },
+}
 
 const REJECT_REASON = 'Kelmadi'
 
@@ -121,6 +131,7 @@ export const ReceiveWarehouseDispatchDialog = ({
 
   const [receiveDispatch, { isLoading }] = useReceiveWarehouseDispatchMutation()
   const dispatch = detailQuery.data
+  const isTransfer = dispatch ? isTransferDispatch(dispatch) : false
 
   const pendingItems = useMemo(
     () => dispatch?.items?.filter((item) => item.quantityPending > 0) ?? [],
@@ -391,7 +402,7 @@ export const ReceiveWarehouseDispatchDialog = ({
                     <DispatchNakladnoyTable dispatch={dispatch} />
                   </Box>
 
-                  {dispatch.purchaseRequestId ? (
+                  {dispatch.purchaseRequestId && !isTransfer ? (
                     <DispatchIshonchnomaFilesBlock
                       purchaseRequestId={dispatch.purchaseRequestId}
                       ishonchnoma={dispatch.ishonchnoma}
@@ -399,12 +410,18 @@ export const ReceiveWarehouseDispatchDialog = ({
                   ) : null}
 
                   {hasLocations ? (
-                    <Box sx={{ mt: 2, maxWidth: 420 }}>
+                    <Box sx={{ mt: 2.5, maxWidth: 420 }}>
                       <FormControl
                         size="small"
                         fullWidth
                         required
                         disabled={locationsQuery.isLoading || !canInteractWithReceipt}
+                        sx={{
+                          '& .MuiInputLabel-root': {
+                            bgcolor: 'background.paper',
+                            px: 0.5,
+                          },
+                        }}
                       >
                         <InputLabel id="warehouse-location-select">Ombor joyi</InputLabel>
                         <Select
@@ -435,23 +452,23 @@ export const ReceiveWarehouseDispatchDialog = ({
                         Qabul qilinmagan tovarlar
                       </Typography>
                       <TableContainer component={Paper} variant="outlined">
-                        <Table size="small">
+                        <Table size="small" sx={receiptTableSx}>
                           <TableHead>
                             <TableRow>
-                              <TableCell>Tovar</TableCell>
+                              <TableCell sx={{ minWidth: 160 }}>Tovar</TableCell>
                               {showItemNomenclatureColumn ? (
-                                <TableCell width={180}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
+                                <TableCell width={200}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
                               ) : null}
-                              <TableCell width={90} align="right">
+                              <TableCell width={96} align="right">
                                 Jo‘natilgan
                               </TableCell>
-                              <TableCell width={80} align="right">
+                              <TableCell width={88} align="right">
                                 Qolgan
                               </TableCell>
-                              <TableCell width={100} align="center">
+                              <TableCell width={108} align="center">
                                 Qabul
                               </TableCell>
-                              <TableCell width={100} align="center">
+                              <TableCell width={108} align="center">
                                 Kelmadi
                               </TableCell>
                               {canReceiveItems ? (
@@ -480,13 +497,22 @@ export const ReceiveWarehouseDispatchDialog = ({
                               return (
                                 <TableRow key={item.itemIndex} hover>
                                   <TableCell>
-                                    <Typography variant="body2" fontWeight={600}>
+                                    <Typography
+                                      variant="body2"
+                                      fontWeight={600}
+                                      sx={{
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                      }}
+                                      title={item.name}
+                                    >
                                       {item.name}
                                     </Typography>
                                   </TableCell>
                                   {showItemNomenclatureColumn ? (
-                                    <TableCell>
-                                      {requireItemNomenclature ? (
+                                    requireItemNomenclature ? (
+                                      <TableCell>
                                         <TextField
                                           size="small"
                                           required
@@ -501,12 +527,10 @@ export const ReceiveWarehouseDispatchDialog = ({
                                           error={!itemNomenclature && (receivedFilled || rejectedFilled)}
                                           sx={nomenclatureManualInputSx}
                                         />
-                                      ) : (
-                                        <Typography variant="body2" sx={nomenclatureTableCellSx}>
-                                          {getItemNomenclatureCode(item)}
-                                        </Typography>
-                                      )}
-                                    </TableCell>
+                                      </TableCell>
+                                    ) : (
+                                      <NomenclatureTableCell item={item} />
+                                    )
                                   ) : null}
                                   <TableCell align="right">{item.quantityDispatched} ta</TableCell>
                                   <TableCell align="right">
@@ -608,12 +632,12 @@ export const ReceiveWarehouseDispatchDialog = ({
                         Qabul qilingan tovarlar
                       </Typography>
                       <TableContainer component={Paper} variant="outlined">
-                        <Table size="small">
+                        <Table size="small" sx={receiptTableSx}>
                           <TableHead>
                             <TableRow>
-                              <TableCell>Tovar</TableCell>
+                              <TableCell sx={{ minWidth: 160 }}>Tovar</TableCell>
                               {showItemNomenclatureColumn ? (
-                                <TableCell width={180}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
+                                <TableCell width={200}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
                               ) : null}
                               <TableCell width={120} align="right">
                                 Qabul
@@ -628,7 +652,16 @@ export const ReceiveWarehouseDispatchDialog = ({
                               <TableRow key={item.itemIndex}>
                                 <TableCell>
                                   <Stack spacing={0.5}>
-                                    <Typography variant="body2" fontWeight={600}>
+                                    <Typography
+                                      variant="body2"
+                                      fontWeight={600}
+                                      sx={{
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                      }}
+                                      title={item.name}
+                                    >
                                       {item.name}
                                     </Typography>
                                     {item.rejectReason ? (
@@ -650,11 +683,7 @@ export const ReceiveWarehouseDispatchDialog = ({
                                   </Stack>
                                 </TableCell>
                                 {showItemNomenclatureColumn ? (
-                                  <TableCell>
-                                    <Typography variant="body2" sx={nomenclatureTableCellSx}>
-                                      {getItemNomenclatureCode(item)}
-                                    </Typography>
-                                  </TableCell>
+                                  <NomenclatureTableCell item={item} />
                                 ) : null}
                                 <TableCell align="right">{item.quantityReceived} ta</TableCell>
                                 <TableCell align="right">{item.quantityRejected} ta</TableCell>

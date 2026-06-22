@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useGetCurrentUserQuery } from '@/features/auth/api/authApi'
+import { useDeviceTelemetryReporter } from '@/features/auth/hooks/useDeviceTelemetryReporter'
 import { selectAccessToken, setUser } from '@/features/auth/model/authSlice'
 import { usePurchaseRequestRealtime } from '@/features/purchase-requests/hooks/usePurchaseRequestRealtime'
 import { useAppDispatch } from '@/shared/hooks/useAppDispatch'
@@ -12,6 +13,7 @@ export const AuthBootstrap = ({ children }) => {
 
   usePurchaseRequestRealtime()
   useRealtimeToasts()
+  useDeviceTelemetryReporter()
   const { data, isSuccess } = useGetCurrentUserQuery(undefined, {
     skip: !token,
   })

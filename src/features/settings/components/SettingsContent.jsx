@@ -9,6 +9,7 @@ import Typography from '@mui/material/Typography'
 import { ThemeColorPicker } from '@/features/settings/components/ThemeColorPicker'
 import { StatusColorPicker } from '@/features/settings/components/StatusColorPicker'
 import { InternetSpeedCard } from '@/features/settings/components/InternetSpeedCard'
+import { DeviceCompatibilityCard } from '@/features/settings/components/DeviceCompatibilityCard'
 import { useUserPreferences } from '@/shared/hooks/useUserPreferences'
 
 const SettingRow = ({ title, description, checked, onChange }) => (
@@ -35,6 +36,8 @@ export const SettingsContent = () => {
       <ThemeColorPicker />
 
       <InternetSpeedCard embedded />
+
+      <DeviceCompatibilityCard embedded />
 
       <Box>
         <Typography variant="subtitle1" gutterBottom>

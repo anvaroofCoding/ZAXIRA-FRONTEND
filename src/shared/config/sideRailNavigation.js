@@ -2,6 +2,7 @@ import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined'
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined'
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined'
+import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined'
 import ChecklistOutlinedIcon from '@mui/icons-material/ChecklistOutlined'
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined'
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined'
@@ -29,6 +30,11 @@ export const SIDE_RAIL_ITEMS = [
   { label: 'Arizalar yuborish', path: '/xaridlar/arizalar-yuborish', icon: SendOutlinedIcon, dividerBefore: true },
   { label: 'Arizalarni tasdiqlash', path: '/xaridlar/arizalarni-tasdiqlash', icon: FactCheckOutlinedIcon },
   { label: 'Arizalar tarixi', path: '/xaridlar/arizalar-tarixi', icon: HistoryOutlinedIcon },
+  {
+    label: 'Sotib olish statistikasi',
+    path: '/xaridlar/sotib-olish-statistikasi',
+    icon: BarChartOutlinedIcon,
+  },
 
   {
     label: 'Sotib olinadigan maxsulotlar',

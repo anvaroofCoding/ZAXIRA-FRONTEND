@@ -49,7 +49,10 @@ export const usersApi = baseApi.injectEndpoints({
         method: 'PATCH',
         body,
       }),
-      invalidatesTags: [API_TAGS.USER],
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: API_TAGS.USER, id },
+        API_TAGS.USER,
+      ],
     }),
     deleteUser: builder.mutation({
       query: (id) => ({
@@ -65,6 +68,15 @@ export const usersApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: [API_TAGS.USER],
     }),
+    getUserActivity: builder.query({
+      query: ({ userId, page = 1, limit = 50 } = {}) => ({
+        url: `/users/${userId}/faollik`,
+        params: { page, limit },
+      }),
+    }),
+    getUserLastDevice: builder.query({
+      query: (userId) => `/users/${userId}/oxirgi-qurilma`,
+    }),
   }),
 })
 
@@ -77,4 +89,6 @@ export const {
   useUpdateUserMutation,
   useDeleteUserMutation,
   usePermanentDeleteUserMutation,
+  useGetUserActivityQuery,
+  useGetUserLastDeviceQuery,
 } = usersApi

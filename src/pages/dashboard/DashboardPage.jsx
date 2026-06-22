@@ -216,6 +216,7 @@ export const DashboardPage = () => {
   const hasExpensePermission = canCreate('/omborlar/chiqim-qilish')
   const canAccessExpense = canAccess('/omborlar/chiqim-qilish')
   const hasDashboardAccess = canAccess('/dashboard')
+  const canUseAnalytics = canCreate('/dashboard')
   const canViewProducts = canAccess('/dashboard/maxsulotlar')
   const canViewWarehouses2D = canAccess(WAREHOUSES_2D_PAGE_PATH)
   const canImportProducts = canAccess(TAVAR_IMPORT_PAGE_PATH)
@@ -232,7 +233,21 @@ export const DashboardPage = () => {
   const [structureId, setStructureId] = useState(defaultStructureId)
   const [offsetDays, setOffsetDays] = useState(0)
 
+  const viewerStructureLabel =
+    user?.structure?.shortName ||
+    user?.structure?.fullName ||
+    'Tuzilma biriktirilmagan'
+
+  const analyticsStructureId = canUseAnalytics
+    ? structureId || (isSuperAdmin ? 'all' : viewerStructureId || 'all')
+    : viewerStructureId
+
   useEffect(() => {
+    if (!canUseAnalytics && viewerStructureId) {
+      setStructureId(viewerStructureId)
+      return
+    }
+
     if (!structureId) {
       setStructureId(viewerStructureId || structureOptions[0]?.id || 'all')
       return
@@ -242,10 +257,18 @@ export const DashboardPage = () => {
     if (!exists) {
       setStructureId(structureOptions[0]?.id || viewerStructureId || 'all')
     }
-  }, [isSuperAdmin, structureId, structureOptions, viewerStructureId])
+  }, [
+    canUseAnalytics,
+    isSuperAdmin,
+    structureId,
+    structureOptions,
+    viewerStructureId,
+  ])
 
-  const scopeParam = structureId || 'all'
-  const canQuery = Boolean(hasDashboardAccess)
+  const scopeParam = analyticsStructureId || 'all'
+  const canQuery = Boolean(
+    hasDashboardAccess && (canUseAnalytics ? scopeParam : viewerStructureId),
+  )
 
   const summaryQuery = useGetDashboardSummaryQuery(
     { structureId: scopeParam },
@@ -369,42 +392,49 @@ export const DashboardPage = () => {
             ) : null}
           </Stack>
 
-          <FormControl
-            size="small"
-            sx={{
-              minWidth: { xs: '100%', sm: 220, md: 260 },
-              flexShrink: 0,
-            }}
-          >
-            <InputLabel id="dashboard-structure-label">Analitika</InputLabel>
-            <Select
-              labelId="dashboard-structure-label"
-              label="Analitika"
-              value={structureId}
-              onChange={(e) => {
-                if (hasDashboardAccess) {
-                  setStructureId(e.target.value)
-                }
+          {hasDashboardAccess ? (
+            <FormControl
+              size="small"
+              disabled={!canUseAnalytics}
+              sx={{
+                minWidth: { xs: '100%', sm: 220, md: 260 },
+                flexShrink: 0,
               }}
-              disabled={!hasDashboardAccess}
             >
-              <MenuItem value="all">Barchasi</MenuItem>
-              {structureOptions.map((s) => (
-                <MenuItem key={s.id} value={s.id}>
-                  {s.shortName}
-                </MenuItem>
-              ))}
-              {!isSuperAdmin && !structureOptions.length ? (
-                <MenuItem value={viewerStructureId || ''}>
-                  {user?.structure?.shortName || user?.structure?.fullName || 'Tuzilma biriktirilmagan'}
-                </MenuItem>
-              ) : null}
-            </Select>
-          </FormControl>
+              <InputLabel id="dashboard-structure-label">Analitika</InputLabel>
+              <Select
+                labelId="dashboard-structure-label"
+                label="Analitika"
+                value={canUseAnalytics ? structureId : (viewerStructureId || '')}
+                disabled={!canUseAnalytics}
+                onChange={(e) => setStructureId(e.target.value)}
+              >
+                {canUseAnalytics ? (
+                  <MenuItem value="all">Barchasi</MenuItem>
+                ) : (
+                  <MenuItem value={viewerStructureId || ''}>
+                    {viewerStructureLabel}
+                  </MenuItem>
+                )}
+                {canUseAnalytics
+                  ? structureOptions.map((s) => (
+                      <MenuItem key={s.id} value={s.id}>
+                        {s.shortName}
+                      </MenuItem>
+                    ))
+                  : null}
+                {canUseAnalytics && !isSuperAdmin && !structureOptions.length ? (
+                  <MenuItem value={viewerStructureId || ''}>
+                    {viewerStructureLabel}
+                  </MenuItem>
+                ) : null}
+              </Select>
+            </FormControl>
+          ) : null}
         </Stack>
       </Stack>
 
-      {!canQuery ? (
+      {!hasDashboardAccess ? (
         <Alert severity="warning" sx={{ mb: 2 }}>
           Sizga tuzilma biriktirilmagan. Dashboard ma’lumotlarini ko‘rish uchun admin tuzilma
           biriktirishi kerak.
@@ -418,7 +448,8 @@ export const DashboardPage = () => {
       ) : null}
 
       {/* Summary row */}
-      <Grid container spacing={2} sx={{ mb: 2, width: '100%', alignItems: 'stretch' }}>
+      {canQuery ? (
+        <Grid container spacing={2} sx={{ mb: 2, width: '100%', alignItems: 'stretch' }}>
         <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           {isSummaryBootLoading ? (
             <DashboardSummaryCardSkeleton />
@@ -458,10 +489,12 @@ export const DashboardPage = () => {
             />
           )}
         </Grid>
-      </Grid>
+        </Grid>
+      ) : null}
 
       {/* Analytics row */}
-      <Box sx={{ width: '100%' }}>
+      {canQuery ? (
+        <Box sx={{ width: '100%' }}>
         <Stack
           direction="row"
           spacing={0.25}
@@ -549,7 +582,8 @@ export const DashboardPage = () => {
             </Box>
           </ChartCard>
         )}
-      </Box>
+        </Box>
+      ) : null}
 
       {canViewWarehouses2D ? (
         <Box sx={{ mt: 3, width: '100%' }}>

@@ -119,6 +119,7 @@ export const {
   useGetActiveStocktakeQuery,
   useGetStocktakesQuery,
   useGetStocktakeByIdQuery,
+  useLazyGetStocktakeByIdQuery,
   useLazySearchStocktakeLinesQuery,
   useCreateStocktakeMutation,
   useUpdateStocktakeLineMutation,

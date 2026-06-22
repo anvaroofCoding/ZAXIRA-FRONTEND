@@ -70,6 +70,7 @@ export const CompletePurchaseForm = ({ requestId, onCancel, onSuccess }) => {
 
   const user = useAppSelector(selectAuthUser)
   const canUploadIshonchnoma = hasPageAction(user, ISHONCHNOMA_PAGE_PATH, 'create')
+  const canUpdateIshonchnoma = hasPageAction(user, ISHONCHNOMA_PAGE_PATH, 'update')
 
   const [completePurchase, { isLoading: isPurchasing }] = useCompletePurchaseMutation()
   const [markItemsUnavailable, { isLoading: isMarkingUnavailable }] =
@@ -908,6 +909,7 @@ export const CompletePurchaseForm = ({ requestId, onCancel, onSuccess }) => {
                 <RequestIshonchnomaSection
                   request={liveRequest}
                   canUpload={canUploadIshonchnoma}
+                  canUpdateUpload={canUpdateIshonchnoma}
                   autoOpenBatchId={autoOpenIshonchnomaBatchId}
                   onAutoOpenHandled={() => setAutoOpenIshonchnomaBatchId(null)}
                 />

@@ -16,8 +16,8 @@ import {
   getIsoConnectionPath,
   getSceneBounds,
 } from '@/features/warehouse/utils/warehouse3dLayout'
-import { WarehouseMapBackground } from '@/features/warehouse/components/WarehouseMapBackground'
-import { YANDEX_MAP } from '@/features/warehouse/utils/warehouseMapTheme'
+import { WarehouseMapInfiniteFloor } from '@/features/warehouse/components/WarehouseMapBackground'
+import { useWarehouseMapPalette } from '@/features/warehouse/hooks/useWarehouseMapPalette'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
@@ -85,6 +85,7 @@ const IsoBuilding = ({
   onSelect,
 }) => {
   const theme = useTheme()
+  const { palette: mapPalette } = useWarehouseMapPalette()
   const cx = position.x + BUILDING_WIDTH / 2
   const cy = position.y + BUILDING_DEPTH / 2
   const faces = getIsoBoxFaces(cx, cy, BUILDING_WIDTH, BUILDING_DEPTH, height)
@@ -92,13 +93,13 @@ const IsoBuilding = ({
   const primary = theme.palette.primary.main
   const primaryDark = theme.palette.primary.dark
 
-  const stroke = selected ? primaryDark : YANDEX_MAP.buildingStroke
+  const stroke = selected ? primaryDark : mapPalette.buildingStroke
   const strokeWidth = selected ? 1.4 : 0.5
 
-  const topFill = selected ? primary : highlighted ? alpha(primary, 0.35) : YANDEX_MAP.buildingTop
-  const leftFill = selected ? primaryDark : highlighted ? alpha(primaryDark, 0.45) : YANDEX_MAP.buildingSideLeft
-  const rightFill = selected ? primary : highlighted ? alpha(primary, 0.55) : YANDEX_MAP.buildingSideRight
-  const labelFill = selected ? theme.palette.primary.contrastText : YANDEX_MAP.text
+  const topFill = selected ? primary : highlighted ? alpha(primary, 0.35) : mapPalette.buildingTop
+  const leftFill = selected ? primaryDark : highlighted ? alpha(primaryDark, 0.45) : mapPalette.buildingSideLeft
+  const rightFill = selected ? primary : highlighted ? alpha(primary, 0.55) : mapPalette.buildingSideRight
+  const labelFill = selected ? theme.palette.primary.contrastText : mapPalette.text
   const opacity = dimmed ? 0.38 : 1
   const shortName =
     warehouse.structure.shortName.length > 12
@@ -159,6 +160,7 @@ export const Warehouse3DMap = ({
   enableViewportControls = false,
 }) => {
   const theme = useTheme()
+  const { palette: mapPalette } = useWarehouseMapPalette()
   const containerRef = useRef(null)
   const panRef = useRef(null)
 
@@ -258,9 +260,11 @@ export const Warehouse3DMap = ({
     const scale = clampViewScale(
       Math.min((canvasSize.width - 80) / sceneW, (canvasSize.height - 80) / sceneH),
     )
-    const x = (canvasSize.width - sceneW * scale) / 2
-    const y = (canvasSize.height - sceneH * scale) / 2
-    setViewTransform({ scale, x, y })
+    setViewTransform({
+      scale,
+      x: (canvasSize.width - sceneW * scale) / 2,
+      y: (canvasSize.height - sceneH * scale) / 2,
+    })
   }, [sceneBounds, canvasSize.width, canvasSize.height])
 
   useEffect(() => {
@@ -389,7 +393,7 @@ export const Warehouse3DMap = ({
             flex: 1,
             minHeight: 0,
             height: canvasHeight,
-            bgcolor: YANDEX_MAP.background,
+            bgcolor: mapPalette.background,
             borderColor: alpha(theme.palette.divider, 0.4),
           }}
         >
@@ -407,29 +411,35 @@ export const Warehouse3DMap = ({
               '&:active': enableViewportControls ? { cursor: 'grabbing' } : undefined,
             }}
           >
-            <WarehouseMapBackground
-              width={canvasSize.width}
-              height={canvasSize.height}
-              seed={3}
-              variant="3d"
-            />
-
             <svg width="100%" height="100%" viewBox={svgViewBox} style={{ display: 'block', position: 'relative', zIndex: 1 }}>
               <defs>
                 <filter id="iso-shadow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.12" />
+                  <feDropShadow
+                    dx="0"
+                    dy="2"
+                    stdDeviation="2"
+                    floodOpacity={theme.palette.mode === 'dark' ? 0.28 : 0.12}
+                  />
                 </filter>
               </defs>
 
               <g
                 transform={`translate(${viewTransform.x}, ${viewTransform.y}) scale(${viewTransform.scale}) translate(${-sceneBounds.minX}, ${-sceneBounds.minY})`}
               >
+                <WarehouseMapInfiniteFloor
+                  baseSeed={3}
+                  variant="3d"
+                  viewTransform={viewTransform}
+                  sceneBounds={sceneBounds}
+                  canvasSize={canvasSize}
+                />
+
                 {transferLinks.map(({ key, geometry, transferCount }) => (
                   <g key={key}>
                     <path
                       d={geometry.pathD}
                       fill="none"
-                      stroke={YANDEX_MAP.road}
+                      stroke={mapPalette.road}
                       strokeWidth={5}
                       strokeLinecap="round"
                     />

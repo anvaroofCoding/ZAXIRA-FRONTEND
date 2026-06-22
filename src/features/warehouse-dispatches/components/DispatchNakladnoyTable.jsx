@@ -1,3 +1,4 @@
+import Box from '@mui/material/Box'
 import Grid from '@mui/material/Grid'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
@@ -9,56 +10,65 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import { PurchaseRequestItemCharacteristicsCell } from '@/features/purchase-requests/components/PurchaseRequestItemCharacteristicsCell'
+import { NomenclatureTableCell } from '@/features/warehouse/components/NomenclatureTableCell'
 import { dispatchCodeSx } from '@/features/warehouse-dispatches/utils/dispatchCodeDisplay'
-import {
-  getItemNomenclatureCode,
-  NOMENCLATURE_COLUMN_LABEL,
-  nomenclatureTableCellSx,
-} from '@/features/warehouse/utils/itemNomenclature'
+import { getDispatchRequestLabel } from '@/features/warehouse-dispatches/utils/dispatchContext'
+import { NOMENCLATURE_COLUMN_LABEL } from '@/features/warehouse/utils/itemNomenclature'
 import { formatDateTime } from '@/shared/utils/formatDate'
 
 const MetaItem = ({ label, value }) => (
-  <Stack spacing={0.25}>
-    <Typography variant="caption" color="text.secondary">
+  <Stack spacing={0.5} sx={{ minWidth: 0 }}>
+    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
       {label}
     </Typography>
-    <Typography variant="body2" fontWeight={600}>
+    <Typography
+      variant="body2"
+      fontWeight={600}
+      sx={{
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      }}
+      title={value}
+    >
       {value}
     </Typography>
   </Stack>
 )
 
-const formatStructureDisplay = (structure, mode = 'full') => {
-  if (!structure) return '—'
-  if (mode === 'short') {
-    return structure.shortName || structure.fullName || '—'
-  }
-  const shortName = structure.shortName || '—'
-  const fullName = structure.fullName || '—'
-  return `${shortName} — ${fullName}`
-}
-
-export const DispatchNakladnoyTable = ({ dispatch, structureNameMode = 'short' }) => {
+export const DispatchNakladnoyTable = ({ dispatch }) => {
   if (!dispatch) {
     return null
   }
 
   const items = dispatch.items ?? []
   const showCharacteristics = items.some((item) => item.characteristics?.trim())
+  const requestLabel = getDispatchRequestLabel(dispatch)
 
   return (
     <Paper variant="outlined" sx={{ overflow: 'hidden' }}>
-      <BoxHeader dispatch={dispatch} structureNameMode={structureNameMode} />
+      <BoxHeader dispatch={dispatch} requestLabel={requestLabel} />
 
       <TableContainer>
-        <Table size="small">
+        <Table
+          size="small"
+          sx={{
+            tableLayout: 'fixed',
+            width: '100%',
+            '& .MuiTableCell-root': {
+              px: 2,
+              py: 1.25,
+              verticalAlign: 'middle',
+            },
+          }}
+        >
           <TableHead>
             <TableRow>
-              <TableCell width={48}>T/R</TableCell>
-              <TableCell>Tovar</TableCell>
-              {showCharacteristics ? <TableCell>Xususiyat</TableCell> : null}
-              <TableCell width={160}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
-              <TableCell width={90} align="right">
+              <TableCell width={56}>T/R</TableCell>
+              <TableCell sx={{ minWidth: 160 }}>Tovar</TableCell>
+              {showCharacteristics ? <TableCell width={140}>Xususiyat</TableCell> : null}
+              <TableCell width={200}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
+              <TableCell width={96} align="right">
                 Soni
               </TableCell>
             </TableRow>
@@ -69,7 +79,16 @@ export const DispatchNakladnoyTable = ({ dispatch, structureNameMode = 'short' }
                 <TableRow key={item.itemIndex ?? index}>
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>
-                    <Typography variant="body2" fontWeight={600}>
+                    <Typography
+                      variant="body2"
+                      fontWeight={600}
+                      sx={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                      title={item.name}
+                    >
                       {item.name}
                     </Typography>
                   </TableCell>
@@ -81,9 +100,7 @@ export const DispatchNakladnoyTable = ({ dispatch, structureNameMode = 'short' }
                       />
                     </TableCell>
                   ) : null}
-                  <TableCell sx={nomenclatureTableCellSx}>
-                    {getItemNomenclatureCode(item)}
-                  </TableCell>
+                  <NomenclatureTableCell item={item} />
                   <TableCell align="right">{item.quantityDispatched} ta</TableCell>
                 </TableRow>
               ))
@@ -103,7 +120,7 @@ export const DispatchNakladnoyTable = ({ dispatch, structureNameMode = 'short' }
   )
 }
 
-const BoxHeader = ({ dispatch, structureNameMode = 'short' }) => (
+const BoxHeader = ({ dispatch, requestLabel }) => (
   <Stack
     spacing={2}
     sx={{
@@ -123,41 +140,18 @@ const BoxHeader = ({ dispatch, structureNameMode = 'short' }) => (
       </Typography>
     </Stack>
 
-    <Grid container spacing={2}>
-      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-        <MetaItem label="Ariza" value={dispatch.requestCode || '—'} />
+    <Grid container spacing={3}>
+      <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+        <MetaItem label={requestLabel} value={dispatch.requestCode || '—'} />
       </Grid>
-      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-        <MetaItem
-          label="Qabul qiluvchi"
-          value={formatStructureDisplay(dispatch.targetStructure, structureNameMode)}
-        />
-      </Grid>
-      {dispatch.sourceStructure ? (
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <MetaItem
-            label="Jo‘natuvchi"
-            value={formatStructureDisplay(dispatch.sourceStructure, structureNameMode)}
-          />
-        </Grid>
-      ) : null}
-      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-        <MetaItem label="Jo‘natilgan sana" value={formatDateTime(dispatch.dispatchedAt)} />
-      </Grid>
-      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+      <Grid size={{ xs: 12, sm: 6, md: 4 }}>
         <MetaItem
           label="Rejalashtirilgan kelish"
           value={formatDateTime(dispatch.plannedArrivalAt)}
         />
       </Grid>
-      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+      <Grid size={{ xs: 12, sm: 6, md: 4 }}>
         <MetaItem label="Holat" value={dispatch.statusLabel || '—'} />
-      </Grid>
-      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-        <MetaItem
-          label="Jo‘natuvchi xodim"
-          value={dispatch.dispatchedBy?.displayName || dispatch.dispatchedBy?.login || '—'}
-        />
       </Grid>
     </Grid>
   </Stack>

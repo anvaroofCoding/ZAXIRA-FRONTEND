@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -7,7 +7,6 @@ import Checkbox from '@mui/material/Checkbox'
 import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
 import FormControl from '@mui/material/FormControl'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
@@ -22,12 +21,9 @@ import {
   createEmptyPermissions,
   hasGrantedWarehousePermission,
   normalizePermissions,
-  pickGrantedPermissions,
-  setPageAccess,
+  serializePermissionsForApi,
   stripWarehousePermissions,
 } from '@/features/permissions/utils/permissions'
-
-const DASHBOARD_PATH = '/dashboard'
 
 const buildFormState = (mode, initialUser) => ({
   login: mode === 'edit' ? (initialUser?.login ?? '') : '',
@@ -41,7 +37,9 @@ const buildPermissionsState = (catalog, mode, initialUser) => {
   if (!catalog) return {}
 
   if (mode === 'edit' && initialUser) {
-    return normalizePermissions(catalog, initialUser.permissions)
+    return normalizePermissions(catalog, initialUser.permissions, {
+      applyLegacy: false,
+    })
   }
 
   return createEmptyPermissions(catalog)
@@ -140,8 +138,17 @@ const UserFormFields = ({
   const [permissions, setPermissions] = useState(() =>
     buildPermissionsState(catalog, mode, initialUser),
   )
+  const permissionsRef = useRef(permissions)
+  permissionsRef.current = permissions
+
+  const handlePermissionsChange = (updater) => {
+    setPermissions((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      permissionsRef.current = next
+      return next
+    })
+  }
   const [error, setError] = useState('')
-  const dashboardChecked = Boolean(permissions?.[DASHBOARD_PATH]?.access)
 
   const selectedStructure = useMemo(
     () => activeStructures.find((item) => item.id === form.structureId) ?? null,
@@ -154,10 +161,34 @@ const UserFormFields = ({
     return selectedStructure.hasWarehouse === true ? 'allowed' : 'blocked'
   }, [showStructureField, selectedStructure])
 
+  const permissionsSeedRef = useRef(null)
+
   useEffect(() => {
-    if (warehousePermissionMode === 'allowed') return
-    setPermissions((prev) => stripWarehousePermissions(prev))
-  }, [warehousePermissionMode])
+    if (!catalog) return
+    if (mode === 'edit' && !initialUser?.id) return
+
+    const seedKey = mode === 'edit' ? `edit:${initialUser.id}` : 'create'
+    if (permissionsSeedRef.current === seedKey) return
+
+    permissionsSeedRef.current = seedKey
+    const next = buildPermissionsState(catalog, mode, initialUser)
+    permissionsRef.current = next
+    setPermissions(next)
+  }, [catalog, mode, initialUser?.id])
+
+  useEffect(() => {
+    if (mode === 'edit' && !initialUser) return
+    setForm(buildFormState(mode, initialUser))
+  }, [mode, initialUser?.id])
+
+  useEffect(() => {
+    if (warehousePermissionMode !== 'blocked') return
+    setPermissions((prev) => {
+      const next = stripWarehousePermissions(prev)
+      permissionsRef.current = next
+      return next
+    })
+  }, [warehousePermissionMode, form.structureId])
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -193,9 +224,7 @@ const UserFormFields = ({
     const payload = {
       displayName: form.displayName.trim() || login,
       position: form.position.trim(),
-      permissions: pickGrantedPermissions(
-        normalizePermissions(catalog, permissions),
-      ),
+      permissions: serializePermissionsForApi(catalog, permissionsRef.current),
       ...(showStructureField ? { structureId: form.structureId } : {}),
     }
 
@@ -331,25 +360,6 @@ const UserFormFields = ({
           <Typography variant="subtitle1" fontWeight={600} gutterBottom>
             Sahifa va amallar ruxsatlari
           </Typography>
-          {!catalogLoading && catalog ? (
-            <Stack spacing={0.5} alignItems="flex-start">
-              <FormControlLabel
-                sx={{ mb: 1 }}
-                control={
-                  <Checkbox
-                    checked={dashboardChecked}
-                    disabled={loading}
-                    onChange={(event) =>
-                      setPermissions(
-                        setPageAccess(permissions, DASHBOARD_PATH, event.target.checked),
-                      )
-                    }
-                  />
-                }
-                label="Dashboard ruxsati"
-              />
-            </Stack>
-          ) : null}
 
           {catalogLoading || !catalog ? (
             <TableSkeleton rows={8} columns={5} />
@@ -357,7 +367,7 @@ const UserFormFields = ({
             <PermissionTreeTable
               catalog={catalog}
               permissions={permissions}
-              onChange={setPermissions}
+              onChange={handlePermissionsChange}
               disabled={loading}
               warehousePermissionMode={warehousePermissionMode}
             />

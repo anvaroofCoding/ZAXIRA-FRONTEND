@@ -1,8 +1,13 @@
 import {
-  DISABLED_PAGE_ACTIONS,
+  DASHBOARD_PAGE_PATH,
+  GRANULAR_PERMISSION_PATHS,
   ISHONCHNOMA_PAGE_PATH,
+  PRODUCTS_PAGE_PATH,
   PURCHASING_QUEUE_PAGE_PATH,
   RECEIPT_PAGE_PATHS,
+  STRUCTURES_PAGE_PATH,
+  COMMISSIONS_PAGE_PATH,
+  UNAVAILABLE_PAGE_ACTIONS,
   USERS_PAGE_PATH,
   WAREHOUSES_2D_LEGACY_PAGE_PATH,
   WAREHOUSES_2D_PAGE_PATH,
@@ -10,7 +15,7 @@ import {
 } from '@/features/permissions/constants'
 import { NAV_ITEMS } from '@/shared/config/navigation'
 
-const disabledActionsForPath = (path) => DISABLED_PAGE_ACTIONS[path] ?? []
+const unavailableActionsForPath = (path) => UNAVAILABLE_PAGE_ACTIONS[path] ?? []
 
 const RECEIPT_PAGE_PATH_SET = new Set(RECEIPT_PAGE_PATHS)
 
@@ -20,20 +25,27 @@ const getEnabledActionKeys = (path) =>
   PERMISSION_ACTION_KEYS.filter((key) => !isPageActionDisabled(path, key))
 
 const isLegacyStrippedActions = (path, actions) => {
+  if (GRANULAR_PERMISSION_PATHS.has(path)) {
+    return false
+  }
+
   const enabledActionKeys = getEnabledActionKeys(path)
   if (!enabledActionKeys.length) return false
   return enabledActionKeys.every((key) => actions?.[key] === false)
 }
 
+export const isPageActionUnavailable = (path, actionKey) =>
+  unavailableActionsForPath(path).includes(actionKey)
+
 export const isPageActionDisabled = (path, actionKey) =>
-  disabledActionsForPath(path).includes(actionKey)
+  isPageActionUnavailable(path, actionKey)
 
 export const isAccessOnlyPage = (path) =>
   PERMISSION_ACTION_KEYS.every((key) => isPageActionDisabled(path, key))
 
 const sanitizePageActions = (path, actions = {}) => {
   const next = { ...actions }
-  disabledActionsForPath(path).forEach((key) => {
+  unavailableActionsForPath(path).forEach((key) => {
     next[key] = false
   })
   return next
@@ -145,7 +157,8 @@ export const createFullPermissions = (catalog) => {
   }, {})
 }
 
-export const normalizePermissions = (catalog, input) => {
+export const normalizePermissions = (catalog, input, options = {}) => {
+  const { applyLegacy = false } = options
   const base = createEmptyPermissions(catalog)
   const paths = getAllPathsFromCatalog(catalog)
   const source = { ...input }
@@ -158,15 +171,25 @@ export const normalizePermissions = (catalog, input) => {
     const current = input?.[path]
     const access = Boolean(current?.access)
 
-    let actions = access
-      ? {
+    let actions = createDefaultActions(false)
+
+    if (access) {
+      if (GRANULAR_PERMISSION_PATHS.has(path)) {
+        actions = {
+          create: Boolean(current?.actions?.create),
+          update: Boolean(current?.actions?.update),
+          delete: Boolean(current?.actions?.delete),
+        }
+      } else {
+        actions = {
           create: current?.actions?.create ?? true,
           update: current?.actions?.update ?? true,
           delete: current?.actions?.delete ?? true,
         }
-      : createDefaultActions(false)
+      }
+    }
 
-    if (access && isLegacyStrippedActions(path, current?.actions)) {
+    if (applyLegacy && access && isLegacyStrippedActions(path, current?.actions)) {
       actions = createDefaultActions(true)
     }
 
@@ -183,25 +206,7 @@ export const normalizePermissions = (catalog, input) => {
   return syncDerivedPermissions(base)
 }
 
-const syncDerivedPermissions = (permissions) => {
-  const purchasing = permissions[PURCHASING_QUEUE_PAGE_PATH]
-
-  if (!purchasing?.access) {
-    return permissions
-  }
-
-  return {
-    ...permissions,
-    [ISHONCHNOMA_PAGE_PATH]: sanitizePagePermission(ISHONCHNOMA_PAGE_PATH, {
-      access: true,
-      actions: {
-        create: purchasing.actions.create,
-        update: purchasing.actions.create,
-        delete: false,
-      },
-    }),
-  }
-}
+const syncDerivedPermissions = (permissions) => permissions
 
 export const getGroupPaths = (group) => group.pages.map((page) => page.path)
 
@@ -217,7 +222,7 @@ export const getGroupActionState = (permissions, paths, actionKey) => {
   const eligiblePaths = paths.filter((path) => !isPageActionDisabled(path, actionKey))
 
   if (!eligiblePaths.length) {
-    return { checked: false, indeterminate: false, disabled: true }
+    return { unavailable: true }
   }
 
   const enabledCount = eligiblePaths.filter(
@@ -235,6 +240,16 @@ export const setGroupAccess = (permissions, paths, access) => {
   const next = { ...permissions }
 
   paths.forEach((path) => {
+    if (GRANULAR_PERMISSION_PATHS.has(path)) {
+      next[path] = sanitizePagePermission(path, {
+        access,
+        actions: access
+          ? { create: false, update: false, delete: false }
+          : createDefaultActions(false),
+      })
+      return
+    }
+
     next[path] = sanitizePagePermission(
       path,
       createDefaultPagePermission(access, access),
@@ -250,7 +265,34 @@ export const setGroupAction = (permissions, paths, actionKey, enabled) => {
   paths.forEach((path) => {
     const current = next[path] ?? createDefaultPagePermission(false, false)
 
-    if (!current.access || isPageActionDisabled(path, actionKey)) {
+    if (isPageActionDisabled(path, actionKey)) {
+      return
+    }
+
+    if (!enabled && !current.access) {
+      if (!current.actions?.[actionKey]) {
+        return
+      }
+
+      next[path] = sanitizePagePermission(path, {
+        ...current,
+        actions: {
+          ...current.actions,
+          [actionKey]: false,
+        },
+      })
+      return
+    }
+
+    if (!current.access && enabled) {
+      next[path] = sanitizePagePermission(path, {
+        access: true,
+        actions: {
+          create: actionKey === 'create',
+          update: actionKey === 'update',
+          delete: actionKey === 'delete',
+        },
+      })
       return
     }
 
@@ -271,6 +313,45 @@ export const setPageAccess = (permissions, path, access) => ({
   [path]: sanitizePagePermission(path, createDefaultPagePermission(access, access)),
 })
 
+export const setDashboardPageAccess = (permissions, access) => ({
+  ...permissions,
+  [DASHBOARD_PAGE_PATH]: sanitizePagePermission(DASHBOARD_PAGE_PATH, {
+    access,
+    actions: access
+      ? { create: false, update: false, delete: false }
+      : createDefaultActions(false),
+  }),
+})
+
+export const setProductsPageAccess = (permissions, access) => ({
+  ...permissions,
+  [PRODUCTS_PAGE_PATH]: sanitizePagePermission(PRODUCTS_PAGE_PATH, {
+    access,
+    actions: access
+      ? { create: false, update: false, delete: false }
+      : createDefaultActions(false),
+  }),
+})
+
+export const setScopedPageAccess = (permissions, path, access) => ({
+  ...permissions,
+  [path]: sanitizePagePermission(path, {
+    access,
+    actions: access
+      ? { create: false, update: false, delete: false }
+      : createDefaultActions(false),
+  }),
+})
+
+export const setUsersPageAccess = (permissions, access) =>
+  setScopedPageAccess(permissions, USERS_PAGE_PATH, access)
+
+export const setStructuresPageAccess = (permissions, access) =>
+  setScopedPageAccess(permissions, STRUCTURES_PAGE_PATH, access)
+
+export const setCommissionsPageAccess = (permissions, access) =>
+  setScopedPageAccess(permissions, COMMISSIONS_PAGE_PATH, access)
+
 export const setPageAction = (permissions, path, actionKey, enabled) => {
   if (isPageActionDisabled(path, actionKey)) {
     return permissions
@@ -279,7 +360,34 @@ export const setPageAction = (permissions, path, actionKey, enabled) => {
   const current = permissions[path] ?? createDefaultPagePermission(false, false)
 
   if (!current.access) {
-    return permissions
+    if (!enabled) {
+      if (!current.actions?.[actionKey]) {
+        return permissions
+      }
+
+      return {
+        ...permissions,
+        [path]: sanitizePagePermission(path, {
+          ...current,
+          actions: {
+            ...current.actions,
+            [actionKey]: false,
+          },
+        }),
+      }
+    }
+
+    return {
+      ...permissions,
+      [path]: sanitizePagePermission(path, {
+        access: true,
+        actions: {
+          create: actionKey === 'create',
+          update: actionKey === 'update',
+          delete: actionKey === 'delete',
+        },
+      }),
+    }
   }
 
   return {
@@ -305,20 +413,25 @@ export const pickGrantedPermissions = (permissions) =>
     ),
   )
 
-const INVERTARIZATSIYA_PATHS = new Set([
-  '/invertarizatsiya',
-  '/invertarizatsiya/invertarizatsiya-qilish',
-  '/invertarizatsiya/barcha-invertarizatsiyalar',
-])
+/** API ga barcha sahifalarni aniq access/actions bilan yuborish (olib tashlashlar ham saqlanadi) */
+export const serializePermissionsForApi = (catalog, permissions, options = {}) => {
+  const normalized = normalizePermissions(catalog, permissions, {
+    applyLegacy: false,
+    ...options,
+  })
 
-/** /omborlar/chiqim-tarixi — alohida ruxsat yo‘q; Chiqim bilan bir xil */
+  return Object.fromEntries(
+    Object.entries(normalized).filter(([path]) => !isAlwaysAllowedPath(path)),
+  )
+}
+
 const CHIQIM_HISTORY_PATH = '/omborlar/chiqim-tarixi'
 const ASOSIY_VOSITALAR_PATH = '/omborlar/asosiy-vositalar'
 const DASHBOARD_CALENDAR_PATH = '/dashboard/kalendar'
 
 const resolvePermissionLookupPaths = (path) => {
   if (path === ISHONCHNOMA_PAGE_PATH) {
-    return [ISHONCHNOMA_PAGE_PATH, PURCHASING_QUEUE_PAGE_PATH]
+    return [ISHONCHNOMA_PAGE_PATH]
   }
   if (
     path.startsWith(`${PURCHASING_QUEUE_PAGE_PATH}/`) &&
@@ -342,10 +455,7 @@ const resolvePermissionLookupPaths = (path) => {
   if (path === WAREHOUSES_2D_PAGE_PATH || path === WAREHOUSES_2D_LEGACY_PAGE_PATH) {
     return [WAREHOUSES_2D_PAGE_PATH, WAREHOUSES_2D_LEGACY_PAGE_PATH]
   }
-  if (!INVERTARIZATSIYA_PATHS.has(path)) {
-    return [path]
-  }
-  return Array.from(INVERTARIZATSIYA_PATHS)
+  return [path]
 }
 
 export const hasPageAccess = (user, path) => {

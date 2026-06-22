@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import AddIcon from '@mui/icons-material/Add'
+import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
+import CircularProgress from '@mui/material/CircularProgress'
 import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
+import IconButton from '@mui/material/IconButton'
 import Paper from '@mui/material/Paper'
+import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
@@ -19,6 +24,7 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TablePagination from '@mui/material/TablePagination'
 import TableRow from '@mui/material/TableRow'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { CreateStocktakeDialog } from '@/features/invertarizatsiya/components/CreateStocktakeDialog'
 import { StocktakeSessionPanel } from '@/features/invertarizatsiya/components/StocktakeSessionPanel'
@@ -26,7 +32,9 @@ import {
   useGetActiveStocktakeQuery,
   useGetStocktakeByIdQuery,
   useGetStocktakesQuery,
+  useLazyGetStocktakeByIdQuery,
 } from '@/features/invertarizatsiya/api/stocktakesApi'
+import { exportStocktakeToExcel } from '@/features/invertarizatsiya/utils/exportStocktakeToExcel'
 import { filterStocktakeLines, STOCKTAKE_TABS } from '@/features/invertarizatsiya/utils/stocktakeLineFilters'
 import {
   getItemNomenclatureCode,
@@ -64,8 +72,11 @@ export const InvertarizatsiyaPage = () => {
   const navigate = useNavigate()
   const pageMeta = useMemo(() => resolvePageMeta(location.pathname), [location.pathname])
 
-  const { user, canCreate, canAccess } = usePermissions()
+  const { user, canCreate, canAccess, canUpdate, canDelete } = usePermissions()
+  const canAccessProcess = canAccess(INVERTARIZATSIYA_PAGE_PATH)
   const canStart = canCreate(INVERTARIZATSIYA_PAGE_PATH)
+  const canEditSession = canUpdate(INVERTARIZATSIYA_PAGE_PATH)
+  const canCancelSession = canDelete(INVERTARIZATSIYA_PAGE_PATH)
   const canViewHistory = canAccess(INVERTARIZATSIYA_TARIX_PAGE_PATH)
   const defaultStructureId = user?.structureId ?? ''
 
@@ -74,6 +85,14 @@ export const InvertarizatsiyaPage = () => {
   useEffect(() => {
     setTab(pageMeta.tab)
   }, [pageMeta.tab])
+
+  useEffect(() => {
+    if (tab === 'jarayon' && !canAccessProcess && canViewHistory) {
+      setTab('tarix')
+    } else if (tab === 'tarix' && !canViewHistory && canAccessProcess) {
+      setTab('jarayon')
+    }
+  }, [tab, canAccessProcess, canViewHistory])
   const [createOpen, setCreateOpen] = useState(false)
   const [sessionOverride, setSessionOverride] = useState(undefined)
 
@@ -81,10 +100,12 @@ export const InvertarizatsiyaPage = () => {
   const [historyRowsPerPage, setHistoryRowsPerPage] = useState(10)
   const [detailId, setDetailId] = useState('')
   const [detailTab, setDetailTab] = useState('hammasi')
+  const [exportingId, setExportingId] = useState('')
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
 
   const activeQuery = useGetActiveStocktakeQuery(undefined, {
     refetchOnMountOrArgChange: true,
-    skip: tab !== 'jarayon',
+    skip: tab !== 'jarayon' || !canAccessProcess,
   })
 
   const historyQuery = useGetStocktakesQuery(
@@ -93,6 +114,7 @@ export const InvertarizatsiyaPage = () => {
   )
 
   const detailQuery = useGetStocktakeByIdQuery(detailId, { skip: !detailId })
+  const [fetchStocktakeById] = useLazyGetStocktakeByIdQuery()
 
   const session =
     sessionOverride !== undefined ? sessionOverride : activeQuery.data ?? null
@@ -116,6 +138,28 @@ export const InvertarizatsiyaPage = () => {
       return
     }
     setSessionOverride(next)
+  }
+
+  const handleExportStocktake = async (stocktakeOrId) => {
+    const id = typeof stocktakeOrId === 'string' ? stocktakeOrId : stocktakeOrId?.id
+    if (!id || exportingId) return
+
+    setExportingId(id)
+    try {
+      let stocktake = typeof stocktakeOrId === 'object' && stocktakeOrId?.lines ? stocktakeOrId : null
+      if (!stocktake) {
+        stocktake = await fetchStocktakeById(id).unwrap()
+      }
+      exportStocktakeToExcel(stocktake)
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: getApiErrorMessage(error, 'Excel yuklab olishda xatolik'),
+        severity: 'error',
+      })
+    } finally {
+      setExportingId('')
+    }
   }
 
   return (
@@ -150,11 +194,15 @@ export const InvertarizatsiyaPage = () => {
             )
           }}
         >
-          <Tab value="jarayon" label="Jarayon" />
-          <Tab value="tarix" label="Tarix" />
+          {canAccessProcess ? <Tab value="jarayon" label="Jarayon" /> : null}
+          {canViewHistory ? <Tab value="tarix" label="Tarix" /> : null}
         </Tabs>
 
-        {tab === 'jarayon' ? (
+        {!canAccessProcess && !canViewHistory ? (
+          <Alert severity="warning">Sizda invertarizatsiya sahifalariga ruxsat yo‘q.</Alert>
+        ) : null}
+
+        {tab === 'jarayon' && canAccessProcess ? (
           <Stack spacing={2}>
             {!canStart ? (
               <Alert severity="warning">Sizda invertarizatsiya yaratish uchun ruxsat yo‘q.</Alert>
@@ -173,7 +221,12 @@ export const InvertarizatsiyaPage = () => {
               ) : null}
 
               {session ? (
-                <StocktakeSessionPanel session={session} onSessionChange={handleSessionChange} />
+                <StocktakeSessionPanel
+                  session={session}
+                  onSessionChange={handleSessionChange}
+                  canEdit={canEditSession}
+                  canCancel={canCancelSession}
+                />
               ) : canStart ? (
                 <Alert severity="info">
                   Faol invertarizatsiya yo‘q. Boshlash uchun «Yaratish» tugmasini bosing.
@@ -181,7 +234,7 @@ export const InvertarizatsiyaPage = () => {
               ) : null}
             </QuerySkeleton>
           </Stack>
-        ) : (
+        ) : tab === 'tarix' && canViewHistory ? (
           <QuerySkeleton
             isLoading={historyQuery.isLoading}
             isFetching={historyQuery.isFetching}
@@ -208,11 +261,15 @@ export const InvertarizatsiyaPage = () => {
                       <TableCell align="right">Kam</TableCell>
                       <TableCell align="right">Ko‘p</TableCell>
                       <TableCell>Sana</TableCell>
+                      <TableCell width={56} align="center">
+                        Excel
+                      </TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {historyItems.map((item) => {
                       const chip = statusChip(item.status)
+                      const isExporting = exportingId === item.id
                       return (
                         <TableRow
                           key={item.id}
@@ -232,6 +289,24 @@ export const InvertarizatsiyaPage = () => {
                           <TableCell align="right">{item.summary?.kam ?? 0}</TableCell>
                           <TableCell align="right">{item.summary?.ko_p ?? 0}</TableCell>
                           <TableCell>{formatDateTime(item.createdAt)}</TableCell>
+                          <TableCell align="center" onClick={(event) => event.stopPropagation()}>
+                            <Tooltip title="Excel yuklab olish">
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  aria-label="Excel yuklab olish"
+                                  disabled={Boolean(exportingId)}
+                                  onClick={() => handleExportStocktake(item.id)}
+                                >
+                                  {isExporting ? (
+                                    <CircularProgress size={18} />
+                                  ) : (
+                                    <FileDownloadOutlinedIcon fontSize="small" />
+                                  )}
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                          </TableCell>
                         </TableRow>
                       )
                     })}
@@ -253,7 +328,7 @@ export const InvertarizatsiyaPage = () => {
               </TableContainer>
             )}
           </QuerySkeleton>
-        )}
+        ) : null}
       </Stack>
 
       <CreateStocktakeDialog
@@ -301,13 +376,15 @@ export const InvertarizatsiyaPage = () => {
                       <TableCell width={140}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
                       <TableCell align="right">Kitobda</TableCell>
                       <TableCell align="right">Sanaldi</TableCell>
+                      <TableCell align="right">Ko‘p</TableCell>
+                      <TableCell align="right">Kam</TableCell>
                       <TableCell align="right">Farq</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {!detailLines.length ? (
                       <TableRow>
-                        <TableCell colSpan={5}>
+                        <TableCell colSpan={7}>
                           <Typography variant="body2" color="text.secondary">
                             Tovar yo‘q
                           </Typography>
@@ -322,7 +399,15 @@ export const InvertarizatsiyaPage = () => {
                           </TableCell>
                           <TableCell align="right">{line.bookQuantity}</TableCell>
                           <TableCell align="right">{line.countedQuantity}</TableCell>
-                          <TableCell align="right">{line.diff}</TableCell>
+                          <TableCell align="right" sx={{ color: line.excessQuantity > 0 ? 'error.main' : 'inherit', fontWeight: line.excessQuantity > 0 ? 700 : 400 }}>
+                            {line.excessQuantity > 0 ? `+${line.excessQuantity}` : '—'}
+                          </TableCell>
+                          <TableCell align="right" sx={{ color: line.shortageQuantity > 0 ? 'warning.main' : 'inherit', fontWeight: line.shortageQuantity > 0 ? 700 : 400 }}>
+                            {line.shortageQuantity > 0 ? `-${line.shortageQuantity}` : '—'}
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>
+                            {line.diff > 0 ? `+${line.diff}` : line.diff}
+                          </TableCell>
                         </TableRow>
                       ))
                     )}
@@ -332,7 +417,42 @@ export const InvertarizatsiyaPage = () => {
             </Stack>
           ) : null}
         </DialogContent>
+        {detail ? (
+          <DialogActions sx={{ px: 3, py: 2, justifyContent: 'space-between' }}>
+            <Button
+              variant="outlined"
+              startIcon={
+                exportingId === detail.id ? (
+                  <CircularProgress size={16} />
+                ) : (
+                  <FileDownloadOutlinedIcon />
+                )
+              }
+              disabled={Boolean(exportingId)}
+              onClick={() => handleExportStocktake(detail)}
+            >
+              Excel
+            </Button>
+            <Button onClick={() => setDetailId('')}>Yopish</Button>
+          </DialogActions>
+        ) : null}
       </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          variant="filled"
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   )
 }

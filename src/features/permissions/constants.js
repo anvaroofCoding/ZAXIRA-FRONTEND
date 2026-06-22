@@ -11,7 +11,9 @@ export const PERMISSION_COLUMNS = [
 
 /** Vaqtinchalik (ticket) — faqat «Kirish» qoldiriladi */
 export const PURCHASE_APPROVAL_PAGE_PATH = '/xaridlar/arizalarni-tasdiqlash'
+export const DASHBOARD_PAGE_PATH = '/dashboard'
 export const PURCHASE_HISTORY_PAGE_PATH = '/xaridlar/arizalar-tarixi'
+export const PURCHASE_STATISTICS_PAGE_PATH = '/xaridlar/sotib-olish-statistikasi'
 export const PURCHASED_ITEMS_PAGE_PATH = '/xarid-qilish/xarid-qilingan-tavarlar'
 export const PURCHASING_QUEUE_PAGE_PATH = '/xarid-qilish/sotib-olinadigan-tavarlar'
 export const WAREHOUSE_RECEIPT_PAGE_PATH = '/xarid-qilish/xaridni-qabul-qilish'
@@ -26,6 +28,21 @@ export const TRANSFER_PAGE_PATH = '/transfer/transfer-qilish'
 export const TRANSFER_RECEIPT_PAGE_PATH = '/transfer/transferni-qabul-qilish'
 export const TRANSFER_HISTORY_PAGE_PATH = '/transfer/transferlar-tarixi'
 export const USERS_PAGE_PATH = '/royxatga-olish/foydalanuvchilar'
+export const STRUCTURES_PAGE_PATH = '/royxatga-olish/tuzilmalar'
+export const COMMISSIONS_PAGE_PATH = '/royxatga-olish/komissiya-azolari'
+
+/** Kirish va amallar alohida boshqariladigan sahifalar — legacy auto-enable qo‘llanmaydi */
+export const GRANULAR_PERMISSION_PATHS = new Set([
+  DASHBOARD_PAGE_PATH,
+  PRODUCTS_PAGE_PATH,
+  ISHONCHNOMA_PAGE_PATH,
+  '/invertarizatsiya/invertarizatsiya-qilish',
+  '/invertarizatsiya/barcha-invertarizatsiyalar',
+  '/invertarizatsiya/boshqaruv',
+  USERS_PAGE_PATH,
+  STRUCTURES_PAGE_PATH,
+  COMMISSIONS_PAGE_PATH,
+])
 
 /** Qabul qilish sahifalari — Kirish ruxsati qabul qilish uchun yetarli */
 export const RECEIPT_PAGE_PATHS = [
@@ -49,7 +66,10 @@ export const WAREHOUSE_PERMISSION_SELECT_STRUCTURE_MESSAGE =
   'Avval tarkibiy tuzilmani tanlang'
 
 export const WAREHOUSE_PERMISSION_GROUP_KEY = 'omborlar'
-export const DISABLED_PAGE_ACTIONS = {
+
+/** Saytda mavjud bo‘lmagan amallar — UI da chiziqcha (—), API da doim false */
+export const UNAVAILABLE_PAGE_ACTIONS = {
+  [DASHBOARD_PAGE_PATH]: ['update', 'delete'],
   [PURCHASE_APPROVAL_PAGE_PATH]: ['update', 'delete'],
   [PURCHASE_HISTORY_PAGE_PATH]: ['create', 'update', 'delete'],
   [PURCHASED_ITEMS_PAGE_PATH]: ['create', 'update', 'delete'],
@@ -66,31 +86,7 @@ export const DISABLED_PAGE_ACTIONS = {
   [TRANSFER_HISTORY_PAGE_PATH]: ['create', 'delete'],
 }
 
-export const DISABLED_PAGE_ACTION_TICKETS = {
-  [PURCHASE_APPROVAL_PAGE_PATH]:
-    "Ticket: Arizalarni tasdiqlash sahifasida Tahrirlash va O'chirish vaqtincha o'chirilgan",
-  [PURCHASE_HISTORY_PAGE_PATH]:
-    "Ticket: Arizalar tarixi sahifasida Jo'natish, Tahrirlash va O'chirish vaqtincha o'chirilgan",
-  [PURCHASED_ITEMS_PAGE_PATH]:
-    "Ticket: Xarid qilingan maxsulotlar sahifasida Jo'natish, Tahrirlash va O'chirish vaqtincha o'chirilgan",
-  [PURCHASING_QUEUE_PAGE_PATH]:
-    "Ticket: Sotib olinadigan maxsulotlar sahifasida Tahrirlash va O'chirish vaqtincha o'chirilgan",
-  [WAREHOUSE_RECEIPT_PAGE_PATH]:
-    "Ticket: Xaridni qabul qilish sahifasida Tahrirlash va O'chirish vaqtincha o'chirilgan",
-  [OTHER_WAREHOUSES_PAGE_PATH]:
-    "Ticket: Boshqa omborlar sahifasida Jo'natish, Tahrirlash va O'chirish vaqtincha o'chirilgan",
-  [WAREHOUSES_2D_PAGE_PATH]:
-    'Faqat ko‘rish ruxsati: sahifaga kirish bo‘lsa, barcha ma’lumotlarni ko‘rish mumkin',
-  [WAREHOUSE_EXPENSE_PAGE_PATH]:
-    "Ticket: Chiqim qilish sahifasida Tahrirlash vaqtincha o'chirilgan",
-  [TAVAR_IMPORT_PAGE_PATH]:
-    "Tavar import qilish sahifasida faqat Kirish va Jo'natish (import) ruxsatlari qo'llaniladi",
-  [PRODUCTS_PAGE_PATH]:
-    "Ticket: Maxsulotlar sahifasida Jo'natish va Tahrirlash vaqtincha o'chirilgan. Arxivlash — O'chirish ruxsati orqali",
-  [TRANSFER_PAGE_PATH]:
-    "Ticket: Transfer qilish sahifasida Jo'natish, Tahrirlash va O'chirish vaqtincha o'chirilgan",
-  [TRANSFER_RECEIPT_PAGE_PATH]:
-    "Ticket: Transferni qabul qilish sahifasida Tahrirlash va O'chirish vaqtincha o'chirilgan",
-  [TRANSFER_HISTORY_PAGE_PATH]:
-    "Ticket: Transferlar tarixi sahifasida Jo'natish va O'chirish vaqtincha o'chirilgan. Bekor qilish — Tahrirlash ruxsati orqali",
-}
+/** @deprecated UNAVAILABLE_PAGE_ACTIONS nomidan foydalaning */
+export const DISABLED_PAGE_ACTIONS = UNAVAILABLE_PAGE_ACTIONS
+
+export const DISABLED_PAGE_ACTION_TICKETS = {}

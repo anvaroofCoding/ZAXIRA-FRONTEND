@@ -1,6 +1,7 @@
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import BuildCircleOutlinedIcon from '@mui/icons-material/BuildCircleOutlined'
+import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined'
 import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined'
 import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined'
 import ShoppingCartCheckoutOutlinedIcon from '@mui/icons-material/ShoppingCartCheckoutOutlined'
@@ -51,6 +52,14 @@ const EVENT_META = {
   fixed_asset_discard: {
     color: 'text.secondary',
     icon: BuildCircleOutlinedIcon,
+  },
+  stocktake_increase: {
+    color: 'success.main',
+    icon: FactCheckOutlinedIcon,
+  },
+  stocktake_decrease: {
+    color: 'warning.main',
+    icon: FactCheckOutlinedIcon,
   },
 }
 

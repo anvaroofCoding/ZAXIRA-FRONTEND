@@ -19,17 +19,18 @@ import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
-import {
-  mapControlButtonSx,
-  mapControlSurfaceSx,
-  YANDEX_MAP,
-} from '@/features/warehouse/utils/warehouseMapTheme'
+import { useWarehouseMapPalette } from '@/features/warehouse/hooks/useWarehouseMapPalette'
+import { WAREHOUSE_DETAIL_PANEL_WIDTH } from '@/features/warehouse/components/WarehouseDetailPanel'
 
-const ControlStack = ({ children, sx }) => (
+const MAP_EDGE_GAP = 12
+const MAP_TOOLBAR_WIDTH = 48
+const MAP_TOOLBAR_GAP = 16
+
+const ControlStack = ({ children, surfaceSx, sx }) => (
   <Stack
     spacing={0}
     sx={{
-      ...mapControlSurfaceSx,
+      ...surfaceSx,
       overflow: 'hidden',
       ...sx,
     }}
@@ -38,7 +39,7 @@ const ControlStack = ({ children, sx }) => (
   </Stack>
 )
 
-const ControlBtn = ({ title, onClick, disabled, active, children }) => (
+const ControlBtn = ({ title, onClick, disabled, active, children, buttonSx, theme }) => (
   <Tooltip title={title} placement="left">
     <span>
       <IconButton
@@ -46,10 +47,10 @@ const ControlBtn = ({ title, onClick, disabled, active, children }) => (
         onClick={onClick}
         disabled={disabled}
         sx={{
-          ...mapControlButtonSx,
+          ...buttonSx,
           borderRadius: 0,
-          bgcolor: active ? alpha('#1976d2', 0.12) : 'transparent',
-          color: active ? 'primary.main' : YANDEX_MAP.text,
+          bgcolor: active ? alpha(theme.palette.primary.main, 0.14) : 'transparent',
+          color: active ? 'primary.main' : 'text.primary',
           fontWeight: 700,
           fontSize: '0.7rem',
         }}
@@ -77,188 +78,240 @@ export const WarehouseMapFloatingControls = ({
   showResetLayout = false,
   activeTransferCount = 0,
   warehouseCount = 0,
-}) => (
-  <>
-    <Stack
-      direction="row"
-      spacing={1}
-      useFlexGap
-      sx={{
-        position: 'absolute',
+}) => {
+  const { palette, theme, controlSurfaceSx, controlButtonSx } = useWarehouseMapPalette()
+  const detailPanelOpen = Boolean(selectedWarehouseId)
+
+  const toolbarRight = detailPanelOpen
+    ? MAP_EDGE_GAP + WAREHOUSE_DETAIL_PANEL_WIDTH + MAP_TOOLBAR_GAP
+    : MAP_EDGE_GAP
+
+  const topBarRight = toolbarRight + MAP_TOOLBAR_WIDTH + MAP_TOOLBAR_GAP
+
+  return (
+    <>
+      <Stack
+        direction="row"
+        spacing={1}
+        useFlexGap
+        sx={{
+          position: 'absolute',
         top: 12,
         left: 12,
-        right: 72,
-        zIndex: 12,
-        flexWrap: 'wrap',
+        right: topBarRight,
+        zIndex: 8,
+          flexWrap: 'wrap',
         alignItems: 'center',
         pointerEvents: 'none',
+        transition: 'right 0.25s ease',
         '& > *': { pointerEvents: 'auto' },
-      }}
-    >
-      <Box
-        sx={{
-          ...mapControlSurfaceSx,
-          display: 'flex',
-          alignItems: 'center',
-          px: 1.5,
-          py: 0.25,
-          minWidth: { xs: 160, sm: 220 },
-          maxWidth: 280,
         }}
       >
-        <TextField
-          size="small"
-          placeholder="Ombor qidirish..."
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          variant="standard"
-          fullWidth
-          slotProps={{
-            input: {
-              disableUnderline: true,
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" sx={{ color: YANDEX_MAP.textMuted }} />
-                </InputAdornment>
-              ),
-              sx: { fontSize: '0.875rem', py: 0.75 },
-            },
-          }}
-        />
-      </Box>
-
-      <Box sx={{ ...mapControlSurfaceSx, px: 1, py: 0.25, minWidth: { xs: 140, sm: 180 } }}>
-        <FormControl size="small" fullWidth variant="standard">
-          <Select
-            value={selectedWarehouseId || ''}
-            onChange={(e) => onSelectWarehouse(e.target.value)}
-            displayEmpty
-            disableUnderline
-            disabled={!warehouseOptions.length}
-            sx={{ fontSize: '0.875rem', py: 0.5 }}
-          >
-            <MenuItem value="">Barcha omborlar</MenuItem>
-            {warehouseOptions.map((entry) => (
-              <MenuItem key={entry.structure.id} value={entry.structure.id}>
-                {entry.structure.shortName}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Box>
-
-      <Box
-        sx={{
-          ...mapControlSurfaceSx,
-          px: 1.5,
-          py: 0.75,
-          display: { xs: 'none', sm: 'flex' },
-          gap: 1.5,
-        }}
-      >
-        <Typography variant="caption" color="text.secondary">
-          Omborlar: <strong>{warehouseCount}</strong>
-        </Typography>
-        <Typography
-          variant="caption"
-          color={activeTransferCount ? 'warning.main' : 'text.secondary'}
-        >
-          Faol: <strong>{activeTransferCount}</strong>
-        </Typography>
-      </Box>
-    </Stack>
-
-    <Box
-      sx={{
-        position: 'absolute',
-        right: 12,
-        top: '50%',
-        transform: 'translateY(-50%)',
-        zIndex: 12,
-      }}
-    >
-      <ControlStack>
-        <ControlBtn title="Kattalashtirish" onClick={onZoomIn}>
-          <AddIcon fontSize="small" />
-        </ControlBtn>
-        <Divider />
-        <ControlBtn title="Kichiklashtirish" onClick={onZoomOut}>
-          <RemoveIcon fontSize="small" />
-        </ControlBtn>
-        <Divider />
-        <ControlBtn title="Barchasini ko'rish" onClick={onFitView}>
-          <FilterCenterFocusIcon fontSize="small" />
-        </ControlBtn>
-        {showResetLayout ? (
-          <>
-            <Divider />
-            <ControlBtn title="Joylashuvni tiklash" onClick={onResetLayout}>
-              <RestartAltIcon fontSize="small" />
-            </ControlBtn>
-          </>
-        ) : null}
-        <Divider />
-        <ControlBtn
-          title="2D ko'rinish"
-          active={viewMode === '2d'}
-          onClick={() => onViewModeChange('2d')}
-        >
-          <ViewModuleIcon fontSize="small" />
-        </ControlBtn>
-        <Divider />
-        <ControlBtn
-          title="3D ko'rinish"
-          active={viewMode === '3d'}
-          onClick={() => onViewModeChange('3d')}
-        >
-          <ViewInArIcon fontSize="small" />
-        </ControlBtn>
-        <Divider />
-        <ControlBtn
-          title={isFullscreen ? 'Kichiklashtirish' : 'Butun ekran'}
-          onClick={onToggleFullscreen}
-        >
-          {isFullscreen ? <CloseFullscreenIcon fontSize="small" /> : <FullscreenIcon fontSize="small" />}
-        </ControlBtn>
-      </ControlStack>
-    </Box>
-
-    <Stack
-      direction="row"
-      spacing={0.75}
-      useFlexGap
-      sx={{
-        position: 'absolute',
-        bottom: 12,
-        left: 12,
-        zIndex: 12,
-        flexWrap: 'wrap',
-        pointerEvents: 'none',
-        '& > *': { pointerEvents: 'auto' },
-      }}
-    >
-      {[
-        { color: '#ed6c02', label: 'Faol transfer' },
-        { color: '#2e7d32', label: 'Yakunlangan' },
-        { color: '#d32f2f', label: 'Bekor' },
-      ].map((item) => (
         <Box
-          key={item.label}
           sx={{
-            ...mapControlSurfaceSx,
-            px: 1.25,
-            py: 0.5,
+            ...controlSurfaceSx,
             display: 'flex',
             alignItems: 'center',
-            gap: 0.75,
+            px: 1.5,
+            py: 0.25,
+            minWidth: { xs: 160, sm: 220 },
+            maxWidth: 280,
           }}
         >
-          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: item.color }} />
+          <TextField
+            size="small"
+            placeholder="Ombor qidirish..."
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            variant="standard"
+            fullWidth
+            slotProps={{
+              input: {
+                disableUnderline: true,
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" sx={{ color: palette.textMuted }} />
+                  </InputAdornment>
+                ),
+                sx: { fontSize: '0.875rem', py: 0.75, color: 'text.primary' },
+              },
+            }}
+          />
+        </Box>
+
+        <Box
+          sx={{
+            ...controlSurfaceSx,
+            display: 'flex',
+            alignItems: 'center',
+            px: 1.5,
+            py: 0.25,
+            minWidth: { xs: 160, sm: 200 },
+            maxWidth: 280,
+          }}
+        >
+          <FormControl size="small" fullWidth variant="standard">
+            <Select
+              value={selectedWarehouseId || ''}
+              onChange={(e) => onSelectWarehouse(e.target.value)}
+              displayEmpty
+              disableUnderline
+              disabled={!warehouseOptions.length}
+              sx={{
+                fontSize: '0.875rem',
+                width: '100%',
+                color: 'text.primary',
+                '& .MuiSelect-select': {
+                  py: 0.75,
+                  pl: 0,
+                  pr: '28px !important',
+                  display: 'flex',
+                  alignItems: 'center',
+                },
+                '& .MuiSelect-icon': {
+                  right: 0,
+                  color: palette.textMuted,
+                },
+              }}
+            >
+              <MenuItem value="">Barcha omborlar</MenuItem>
+              {warehouseOptions.map((entry) => (
+                <MenuItem key={entry.structure.id} value={entry.structure.id}>
+                  {entry.structure.shortName}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+
+        <Box
+          sx={{
+            ...controlSurfaceSx,
+            px: 1.5,
+            py: 0.75,
+            display: { xs: 'none', sm: 'flex' },
+            gap: 1.5,
+          }}
+        >
           <Typography variant="caption" color="text.secondary">
-            {item.label}
+            Omborlar: <strong>{warehouseCount}</strong>
+          </Typography>
+          <Typography
+            variant="caption"
+            color={activeTransferCount ? 'warning.main' : 'text.secondary'}
+          >
+            Faol: <strong>{activeTransferCount}</strong>
           </Typography>
         </Box>
-      ))}
-    </Stack>
-  </>
-)
+      </Stack>
+
+      <Box
+        sx={{
+          position: 'absolute',
+          right: toolbarRight,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          zIndex: 8,
+          transition: 'right 0.25s ease',
+        }}
+      >
+        <ControlStack surfaceSx={controlSurfaceSx}>
+          <ControlBtn title="Kattalashtirish" onClick={onZoomIn} buttonSx={controlButtonSx} theme={theme}>
+            <AddIcon fontSize="small" />
+          </ControlBtn>
+          <Divider />
+          <ControlBtn title="Kichiklashtirish" onClick={onZoomOut} buttonSx={controlButtonSx} theme={theme}>
+            <RemoveIcon fontSize="small" />
+          </ControlBtn>
+          <Divider />
+          <ControlBtn title="Barchasini ko'rish" onClick={onFitView} buttonSx={controlButtonSx} theme={theme}>
+            <FilterCenterFocusIcon fontSize="small" />
+          </ControlBtn>
+          {showResetLayout ? (
+            <>
+              <Divider />
+              <ControlBtn
+                title="Joylashuvni tiklash"
+                onClick={onResetLayout}
+                buttonSx={controlButtonSx}
+                theme={theme}
+              >
+                <RestartAltIcon fontSize="small" />
+              </ControlBtn>
+            </>
+          ) : null}
+          <Divider />
+          <ControlBtn
+            title="2D ko'rinish"
+            active={viewMode === '2d'}
+            onClick={() => onViewModeChange('2d')}
+            buttonSx={controlButtonSx}
+            theme={theme}
+          >
+            <ViewModuleIcon fontSize="small" />
+          </ControlBtn>
+          <Divider />
+          <ControlBtn
+            title="3D ko'rinish"
+            active={viewMode === '3d'}
+            onClick={() => onViewModeChange('3d')}
+            buttonSx={controlButtonSx}
+            theme={theme}
+          >
+            <ViewInArIcon fontSize="small" />
+          </ControlBtn>
+          <Divider />
+          <ControlBtn
+            title={isFullscreen ? 'Kichiklashtirish' : 'Butun ekran'}
+            onClick={onToggleFullscreen}
+            buttonSx={controlButtonSx}
+            theme={theme}
+          >
+            {isFullscreen ? <CloseFullscreenIcon fontSize="small" /> : <FullscreenIcon fontSize="small" />}
+          </ControlBtn>
+        </ControlStack>
+      </Box>
+
+      <Stack
+        direction="row"
+        spacing={1}
+        useFlexGap
+        sx={{
+          position: 'absolute',
+        bottom: 12,
+        left: 12,
+        right: detailPanelOpen ? MAP_EDGE_GAP + WAREHOUSE_DETAIL_PANEL_WIDTH + MAP_TOOLBAR_GAP : 12,
+        zIndex: 8,
+        transition: 'right 0.25s ease',
+          flexWrap: 'wrap',
+          rowGap: 1,
+          pointerEvents: 'none',
+          '& > *': { pointerEvents: 'auto' },
+        }}
+      >
+        {[
+          { color: 'warning.main', label: 'Faol transfer' },
+          { color: 'success.main', label: 'Yakunlangan' },
+          { color: 'error.main', label: 'Bekor' },
+        ].map((item) => (
+          <Box
+            key={item.label}
+            sx={{
+              ...controlSurfaceSx,
+              px: 1.25,
+              py: 0.5,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.75,
+            }}
+          >
+            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: item.color }} />
+            <Typography variant="caption" color="text.secondary">
+              {item.label}
+            </Typography>
+          </Box>
+        ))}
+      </Stack>
+    </>
+  )
+}

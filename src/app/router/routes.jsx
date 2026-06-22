@@ -33,6 +33,10 @@ const { ArizalarTarixiPage } = lazyImport(
   () => import('@/pages/xaridlar/ArizalarTarixiPage'),
   'ArizalarTarixiPage',
 )
+const { SotibOlishStatistikasiPage } = lazyImport(
+  () => import('@/pages/xaridlar/SotibOlishStatistikasiPage'),
+  'SotibOlishStatistikasiPage',
+)
 
 const { SotibOlinadiganTovarlarPage } = lazyImport(
   () => import('@/pages/xarid-qilish/SotibOlinadiganTovarlarPage'),
@@ -109,6 +113,10 @@ const { FoydalanuvchilarPage } = lazyImport(
 const { FoydalanuvchiYaratishPage } = lazyImport(
   () => import('@/pages/foydalanuvchilar'),
   'FoydalanuvchiYaratishPage',
+)
+const { FoydalanuvchiFaollikPage } = lazyImport(
+  () => import('@/pages/foydalanuvchilar'),
+  'FoydalanuvchiFaollikPage',
 )
 const { FoydalanuvchiTahrirlashPage } = lazyImport(
   () => import('@/pages/foydalanuvchilar'),
@@ -213,6 +221,10 @@ export const routes = [
             Component: ArizalarTarixiPage,
           },
           {
+            path: 'xaridlar/sotib-olish-statistikasi',
+            Component: SotibOlishStatistikasiPage,
+          },
+          {
             path: 'xarid-qilish',
             element: <Navigate to="/xarid-qilish/sotib-olinadigan-tavarlar" replace />,
           },
@@ -299,6 +311,10 @@ export const routes = [
           {
             path: 'royxatga-olish/foydalanuvchilar/yangi',
             Component: FoydalanuvchiYaratishPage,
+          },
+          {
+            path: 'royxatga-olish/foydalanuvchilar/:userId/faollik',
+            Component: FoydalanuvchiFaollikPage,
           },
           {
             path: 'royxatga-olish/foydalanuvchilar/:userId/tahrirlash',

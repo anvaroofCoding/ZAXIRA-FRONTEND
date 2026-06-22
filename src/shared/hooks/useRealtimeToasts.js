@@ -29,7 +29,7 @@ export const useRealtimeToasts = () => {
     const onNotificationCreated = (payload) => {
       dispatch(notificationsApi.util.invalidateTags([API_TAGS.NOTIFICATION]))
 
-      if (payload?.type === 'PERMISSIONS_GRANTED') {
+      if (payload?.type === 'PERMISSIONS_GRANTED' || payload?.type === 'PERMISSIONS_UPDATED') {
         dispatch(
           authApi.endpoints.getCurrentUser.initiate(undefined, {
             subscribe: false,
@@ -50,10 +50,17 @@ export const useRealtimeToasts = () => {
       const message = payload?.message?.trim()
       const toastMessage = [title, message].filter(Boolean).join(' — ') || 'Yangi bildirishnoma'
 
+      const toastSeverity =
+        payload?.type === 'DEVICE_COMPATIBILITY'
+          ? payload?.entityId === 'pass' || payload?.title?.includes('mos keldi')
+            ? 'success'
+            : 'warning'
+          : 'info'
+
       dispatch(
         showNotification({
           message: toastMessage,
-          severity: 'info',
+          severity: toastSeverity,
         }),
       )
     }

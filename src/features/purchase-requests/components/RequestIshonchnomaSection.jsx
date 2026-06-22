@@ -35,7 +35,8 @@ const buildBatchItems = (batch, items) => {
 
 export const RequestIshonchnomaSection = ({
   request,
-  canUpload = true,
+  canUpload = false,
+  canUpdateUpload = false,
   autoOpenBatchId = null,
   onAutoOpenHandled,
 }) => {
@@ -123,6 +124,7 @@ export const RequestIshonchnomaSection = ({
         emptyMessage="Xarid partiyalari topilmadi"
         onUpload={handleUpload}
         canUpload={canUpload}
+        canUpdateUpload={canUpdateUpload}
       />
 
       <IshonchnomaUploadDialog

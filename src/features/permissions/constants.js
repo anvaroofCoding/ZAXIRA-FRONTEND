@@ -25,6 +25,7 @@ export const PRODUCTS_PAGE_PATH = '/dashboard/maxsulotlar'
 export const TRANSFER_PAGE_PATH = '/transfer/transfer-qilish'
 export const TRANSFER_RECEIPT_PAGE_PATH = '/transfer/transferni-qabul-qilish'
 export const TRANSFER_HISTORY_PAGE_PATH = '/transfer/transferlar-tarixi'
+export const USERS_PAGE_PATH = '/royxatga-olish/foydalanuvchilar'
 
 /** Qabul qilish sahifalari — Kirish ruxsati qabul qilish uchun yetarli */
 export const RECEIPT_PAGE_PATHS = [

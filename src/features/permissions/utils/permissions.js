@@ -3,6 +3,7 @@ import {
   ISHONCHNOMA_PAGE_PATH,
   PURCHASING_QUEUE_PAGE_PATH,
   RECEIPT_PAGE_PATHS,
+  USERS_PAGE_PATH,
   WAREHOUSES_2D_LEGACY_PAGE_PATH,
   WAREHOUSES_2D_PAGE_PATH,
   WAREHOUSE_PERMISSION_PATHS,
@@ -324,6 +325,9 @@ const resolvePermissionLookupPaths = (path) => {
     path.endsWith('/xarid-qilish')
   ) {
     return [PURCHASING_QUEUE_PAGE_PATH]
+  }
+  if (path.startsWith(`${USERS_PAGE_PATH}/`)) {
+    return [USERS_PAGE_PATH]
   }
   if (
     path === CHIQIM_HISTORY_PATH ||

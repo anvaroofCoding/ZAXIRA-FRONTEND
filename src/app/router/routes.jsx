@@ -106,6 +106,14 @@ const { FoydalanuvchilarPage } = lazyImport(
   () => import('@/pages/foydalanuvchilar'),
   'FoydalanuvchilarPage',
 )
+const { FoydalanuvchiYaratishPage } = lazyImport(
+  () => import('@/pages/foydalanuvchilar'),
+  'FoydalanuvchiYaratishPage',
+)
+const { FoydalanuvchiTahrirlashPage } = lazyImport(
+  () => import('@/pages/foydalanuvchilar'),
+  'FoydalanuvchiTahrirlashPage',
+)
 const { TuzilmalarPage } = lazyImport(
   () => import('@/pages/tuzilmalar'),
   'TuzilmalarPage',
@@ -287,6 +295,14 @@ export const routes = [
           {
             path: 'sozlamalar',
             Component: SozlamalarPage,
+          },
+          {
+            path: 'royxatga-olish/foydalanuvchilar/yangi',
+            Component: FoydalanuvchiYaratishPage,
+          },
+          {
+            path: 'royxatga-olish/foydalanuvchilar/:userId/tahrirlash',
+            Component: FoydalanuvchiTahrirlashPage,
           },
           {
             path: 'royxatga-olish/foydalanuvchilar',

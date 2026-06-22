@@ -1,7 +1,7 @@
 const STORAGE_KEY = 'zaxira-warehouse-2d-positions-v2'
 
-export const NODE_WIDTH = 96
-export const NODE_HEIGHT = 88
+export const NODE_WIDTH = 100
+export const NODE_HEIGHT = 72
 export const MIN_NODE_GAP = 48
 export const CANVAS_MARGIN = 12
 

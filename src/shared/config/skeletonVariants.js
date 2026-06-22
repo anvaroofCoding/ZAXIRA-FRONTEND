@@ -9,6 +9,7 @@ const TABLE_ROUTE_PATTERNS = [
 export const SKELETON_VARIANTS = {
   dashboard: 'dashboard',
   users: 'users',
+  usersForm: 'usersForm',
   structures: 'structures',
   commissions: 'commissions',
   purchaseRequestsSubmit: 'purchaseRequestsSubmit',
@@ -23,6 +24,14 @@ export const SKELETON_VARIANTS = {
 export const resolveSkeletonVariant = (pathname) => {
   if (pathname === '/dashboard' || pathname.endsWith('/dashboard')) {
     return SKELETON_VARIANTS.dashboard
+  }
+
+  if (
+    pathname.includes('/royxatga-olish/foydalanuvchilar/yangi') ||
+    (pathname.includes('/royxatga-olish/foydalanuvchilar/') &&
+      pathname.endsWith('/tahrirlash'))
+  ) {
+    return SKELETON_VARIANTS.usersForm
   }
 
   if (pathname.includes('/royxatga-olish/foydalanuvchilar')) {

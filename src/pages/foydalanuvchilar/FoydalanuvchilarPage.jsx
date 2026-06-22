@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import AddIcon from '@mui/icons-material/Add'
 import SearchIcon from '@mui/icons-material/Search'
 import Alert from '@mui/material/Alert'
@@ -17,29 +18,26 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useGetStructuresQuery } from '@/features/structures/api/structuresApi'
 import { PermanentDeleteDialog } from '@/features/users/components/PermanentDeleteDialog'
-import { UserFormDialog } from '@/features/users/components/UserFormDialog'
 import { UsersPageSkeleton } from '@/features/users/components/UsersPageSkeleton'
 import { UsersTable } from '@/features/users/components/UsersTable'
 import {
-  useCreateUserMutation,
   useDeleteUserMutation,
-  useGetPermissionCatalogQuery,
   useGetUsersQuery,
   usePermanentDeleteUserMutation,
   useUpdateUserMutation,
 } from '@/features/users/api/usersApi'
+import { USERS_PAGE_PATH } from '@/features/permissions/constants'
 import { hasPageAction } from '@/features/permissions/utils/permissions'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { usePermissions } from '@/shared/hooks/usePermissions'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
-const PAGE_PATH = '/royxatga-olish/foydalanuvchilar'
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
 
 export const FoydalanuvchilarPage = () => {
+  const navigate = useNavigate()
   const { user: authUser } = usePermissions()
-  const [dialog, setDialog] = useState({ open: false, mode: 'create', user: null })
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
   const [search, setSearch] = useState('')
   const [structureFilter, setStructureFilter] = useState('')
@@ -54,7 +52,6 @@ export const FoydalanuvchilarPage = () => {
     setPage(0)
   }, [debouncedSearch, structureFilter])
 
-  const catalogQuery = useGetPermissionCatalogQuery()
   const structuresQuery = useGetStructuresQuery()
   const usersQuery = useGetUsersQuery({
     page: page + 1,
@@ -63,12 +60,10 @@ export const FoydalanuvchilarPage = () => {
     structureId: structureFilter,
   })
 
-  const [createUser, createState] = useCreateUserMutation()
-  const [updateUser, updateState] = useUpdateUserMutation()
   const [deleteUser] = useDeleteUserMutation()
+  const [updateUser] = useUpdateUserMutation()
   const [permanentDeleteUser, permanentDeleteState] = usePermanentDeleteUserMutation()
 
-  const catalog = catalogQuery.data
   const structures = useMemo(() => structuresQuery.data ?? [], [structuresQuery.data])
   const structuresForFilter = useMemo(
     () => [...structures].sort((a, b) => a.fullName.localeCompare(b.fullName, 'uz')),
@@ -81,45 +76,22 @@ export const FoydalanuvchilarPage = () => {
     authUser?.isSuperAdmin || authUser?.role === 'SUPER_ADMIN'
 
   const canCreate =
-    isSuperAdmin || hasPageAction(authUser, PAGE_PATH, 'create')
+    isSuperAdmin || hasPageAction(authUser, USERS_PAGE_PATH, 'create')
   const canUpdate =
-    isSuperAdmin || hasPageAction(authUser, PAGE_PATH, 'update')
+    isSuperAdmin || hasPageAction(authUser, USERS_PAGE_PATH, 'update')
   const canDelete =
-    isSuperAdmin || hasPageAction(authUser, PAGE_PATH, 'delete')
-
-  const isSaving = createState.isLoading || updateState.isLoading
+    isSuperAdmin || hasPageAction(authUser, USERS_PAGE_PATH, 'delete')
 
   const showSnackbar = (message, severity = 'success') => {
     setSnackbar({ open: true, message, severity })
   }
 
   const handleOpenCreate = () => {
-    setDialog({ open: true, mode: 'create', user: null })
+    navigate(`${USERS_PAGE_PATH}/yangi`)
   }
 
   const handleOpenEdit = (user) => {
-    setDialog({ open: true, mode: 'edit', user })
-  }
-
-  const handleCloseDialog = () => {
-    if (isSaving) return
-    setDialog({ open: false, mode: 'create', user: null })
-  }
-
-  const handleSubmit = async (payload) => {
-    try {
-      if (dialog.mode === 'create') {
-        await createUser(payload).unwrap()
-        showSnackbar('Foydalanuvchi qo‘shildi')
-      } else {
-        await updateUser({ id: dialog.user.id, ...payload }).unwrap()
-        showSnackbar('Foydalanuvchi yangilandi')
-      }
-      handleCloseDialog()
-    } catch (error) {
-      const message = getApiErrorMessage(error, 'Saqlashda xatolik')
-      throw new Error(message, { cause: error })
-    }
+    navigate(`${USERS_PAGE_PATH}/${user.id}/tahrirlash`)
   }
 
   const handleDeactivate = async (user) => {
@@ -291,19 +263,6 @@ export const FoydalanuvchilarPage = () => {
           )}
         </Box>
       </QuerySkeleton>
-
-      <UserFormDialog
-        open={dialog.open}
-        mode={dialog.mode}
-        initialUser={dialog.user}
-        catalog={catalog}
-        catalogLoading={catalogQuery.isLoading}
-        structures={structures}
-        structuresLoading={structuresQuery.isLoading}
-        loading={isSaving}
-        onClose={handleCloseDialog}
-        onSubmit={handleSubmit}
-      />
 
       <PermanentDeleteDialog
         open={Boolean(permanentTarget)}

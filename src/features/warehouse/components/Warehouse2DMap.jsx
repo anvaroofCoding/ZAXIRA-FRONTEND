@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import LocalShippingIcon from '@mui/icons-material/LocalShipping'
-import WarehouseOutlinedIcon from '@mui/icons-material/WarehouseOutlined'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Chip from '@mui/material/Chip'
 import Paper from '@mui/material/Paper'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { alpha, useTheme } from '@mui/material/styles'
 import { getTransfer2DMarkerColor } from '@/features/warehouse-dispatches/utils/dispatchStatusDisplay'
 import { Transfer2DDetailDialog } from '@/features/warehouse/components/Transfer2DDetailDialog'
+import { WarehouseMapBackground } from '@/features/warehouse/components/WarehouseMapBackground'
 import { useWarehouseMapData } from '@/features/warehouse/hooks/useWarehouseMapData'
+import { YANDEX_MAP } from '@/features/warehouse/utils/warehouseMapTheme'
 import {
   adjustDragPosition,
   buildCircularLayout,
@@ -39,8 +39,6 @@ const ConnectionRope = ({ pathD, transferCount }) => {
   const theme = useTheme()
   const bounds = useMemo(() => getPathBounds(pathD, 8), [pathD])
   const lineMain = theme.palette.primary.main
-  const lineDark = theme.palette.primary.dark
-  const lineLight = theme.palette.primary.light
   const mid = useMemo(() => {
     if (!pathD) return null
     const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path')
@@ -68,28 +66,11 @@ const ConnectionRope = ({ pathD, transferCount }) => {
         zIndex: 1,
       }}
     >
-      <path d={pathD} fill="none" stroke={alpha(lineDark, 0.28)} strokeWidth={5} strokeLinecap="round" />
-      <path
-        d={pathD}
-        fill="none"
-        stroke={lineDark}
-        strokeWidth={3}
-        strokeLinecap="round"
-        strokeDasharray="2 5"
-        opacity={0.5}
-      />
-      <path d={pathD} fill="none" stroke={lineMain} strokeWidth={2} strokeLinecap="round" />
-      <path
-        d={pathD}
-        fill="none"
-        stroke={alpha(lineLight, 0.8)}
-        strokeWidth={0.8}
-        strokeLinecap="round"
-        strokeDasharray="8 12"
-      />
+      <path d={pathD} fill="none" stroke={alpha(YANDEX_MAP.road, 0.9)} strokeWidth={6} strokeLinecap="round" />
+      <path d={pathD} fill="none" stroke={alpha(lineMain, 0.85)} strokeWidth={2.5} strokeLinecap="round" strokeDasharray="6 8" />
       {transferCount > 1 && mid ? (
         <>
-          <circle cx={mid.x} cy={mid.y} r={10} fill={theme.palette.background.paper} stroke={lineDark} strokeWidth={1} />
+          <circle cx={mid.x} cy={mid.y} r={10} fill={theme.palette.background.paper} stroke={lineMain} strokeWidth={1} />
           <text
             x={mid.x}
             y={mid.y + 3.5}
@@ -211,42 +192,13 @@ const WarehouseNode = ({
   onSelect,
 }) => {
   const theme = useTheme()
+  const primary = theme.palette.primary.main
+  const primaryDark = theme.palette.primary.dark
 
-  const nodeContent = (
-    <>
-      <WarehouseOutlinedIcon
-        sx={{ color: selected ? 'primary.contrastText' : undefined }}
-        color={selected ? 'inherit' : 'action'}
-      />
-      <Typography
-        variant="caption"
-        fontWeight={700}
-        color={selected ? 'primary.contrastText' : 'text.primary'}
-        sx={{
-          textAlign: 'center',
-          lineHeight: 1.2,
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-        }}
-      >
-        {warehouse.structure.shortName}
-      </Typography>
-      {selected ? (
-        <Typography
-          variant="caption"
-          fontWeight={700}
-          color="primary.contrastText"
-          sx={{ fontSize: '0.68rem' }}
-        >
-          {warehouse.totalQuantity} ta
-        </Typography>
-      ) : (
-        <Chip size="small" label={`${warehouse.totalQuantity} ta`} sx={{ height: 20, fontSize: '0.68rem' }} />
-      )}
-    </>
-  )
+  const shortName =
+    warehouse.structure.shortName.length > 14
+      ? `${warehouse.structure.shortName.slice(0, 13)}…`
+      : warehouse.structure.shortName
 
   return (
     <Box
@@ -269,44 +221,59 @@ const WarehouseNode = ({
         userSelect: 'none',
         zIndex: selected ? 5 : 4,
         opacity: dimmed ? 0.38 : 1,
-        transition: 'opacity 0.2s ease, box-shadow 0.2s ease',
+        transition: 'opacity 0.2s ease, filter 0.2s ease',
         '&:active': { cursor: 'grabbing' },
       }}
     >
-      <Paper
-        elevation={selected ? 4 : 1}
-        variant="outlined"
+      <Box
         sx={{
           width: '100%',
           height: '100%',
+          borderRadius: '6px',
+          bgcolor: selected ? primary : highlighted ? alpha(primary, 0.2) : YANDEX_MAP.buildingTop,
+          border: '1px solid',
+          borderColor: selected
+            ? primaryDark
+            : isViewerWarehouse
+              ? primary
+              : highlighted
+                ? alpha(primary, 0.6)
+                : YANDEX_MAP.buildingStroke,
+          boxShadow: selected
+            ? `0 0 0 3px ${alpha(primary, 0.35)}, 0 4px 14px ${alpha(primary, 0.45)}`
+            : '0 2px 6px rgba(0,0,0,0.1)',
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 0.5,
-          px: 1,
-          borderWidth: selected ? 2 : isViewerWarehouse ? 2 : 1,
-          borderColor: selected
-            ? 'primary.dark'
-            : isViewerWarehouse
-              ? 'primary.main'
-              : highlighted
-                ? 'primary.light'
-                : 'divider',
-          bgcolor: selected ? 'primary.main' : 'background.paper',
-          color: selected ? 'primary.contrastText' : undefined,
-          transition: 'box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease',
+          px: 0.75,
+          transition: 'background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
           '&:hover': {
-            boxShadow: theme.shadows[selected ? 6 : 4],
+            boxShadow: selected
+              ? `0 0 0 3px ${alpha(primary, 0.35)}, 0 6px 18px ${alpha(primary, 0.5)}`
+              : '0 3px 10px rgba(0,0,0,0.14)',
           },
         }}
       >
-        {nodeContent}
-      </Paper>
+        <Typography
+          variant="caption"
+          fontWeight={600}
+          sx={{
+            textAlign: 'center',
+            lineHeight: 1.25,
+            color: selected ? theme.palette.primary.contrastText : YANDEX_MAP.text,
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            fontSize: '0.72rem',
+          }}
+        >
+          {shortName}
+        </Typography>
+      </Box>
     </Box>
   )
 }
-
 export const Warehouse2DMap = ({
   viewerStructureId = '',
   embedded = false,
@@ -317,8 +284,9 @@ export const Warehouse2DMap = ({
   onSelectTransfer,
   onFitViewRef,
   onResetLayoutRef,
-  canvasHeight: canvasHeightProp,
-  hideTransferDialog = false,
+  onZoomInRef,
+  onZoomOutRef,
+  canvasHeight: canvasHeightProp,  hideTransferDialog = false,
   enableViewportControls = false,
 }) => {
   const theme = useTheme()
@@ -435,11 +403,23 @@ export const Warehouse2DMap = ({
     setViewport(computeFitViewport(next, canvasSize.width, canvasSize.height))
   }, [structureIds, canvasSize.width, canvasSize.height])
 
+  const handleZoom = useCallback(
+    (factor) => {
+      const rect = canvasRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const pointerX = rect.width / 2
+      const pointerY = rect.height / 2
+      setViewport((prev) => zoomViewportAtPoint(prev, pointerX, pointerY, factor))
+    },
+    [],
+  )
+
   useEffect(() => {
     if (onFitViewRef) onFitViewRef.current = handleFitView
     if (onResetLayoutRef) onResetLayoutRef.current = handleResetLayout
-  }, [handleFitView, handleResetLayout, onFitViewRef, onResetLayoutRef])
-
+    if (onZoomInRef) onZoomInRef.current = () => handleZoom(1.15)
+    if (onZoomOutRef) onZoomOutRef.current = () => handleZoom(0.87)
+  }, [handleFitView, handleResetLayout, handleZoom, onFitViewRef, onResetLayoutRef, onZoomInRef, onZoomOutRef])
   useEffect(() => {
     if (!enableViewportControls && Object.keys(positions).length && canvasSize.width > 0) {
       setViewport(computeFitViewport(positions, canvasSize.width, canvasSize.height))
@@ -604,16 +584,10 @@ export const Warehouse2DMap = ({
             flex: 1,
             minHeight: 0,
             height: canvasHeight,
-            bgcolor: alpha(theme.palette.primary.main, 0.02),
-            backgroundImage: `
-              linear-gradient(${alpha(theme.palette.divider, 0.35)} 1px, transparent 1px),
-              linear-gradient(90deg, ${alpha(theme.palette.divider, 0.35)} 1px, transparent 1px)
-            `,
-            backgroundSize: `${28 * viewport.scale}px ${28 * viewport.scale}px`,
-            backgroundPosition: `${viewport.x}px ${viewport.y}px`,
+            bgcolor: YANDEX_MAP.background,
+            borderColor: alpha(theme.palette.divider, 0.4),
           }}
-        >
-          <Box
+        >          <Box
             ref={canvasRef}
             onPointerDown={enableViewportControls ? handleCanvasPanStart : undefined}
             onPointerMove={handlePointerMove}
@@ -636,8 +610,14 @@ export const Warehouse2DMap = ({
                 transformOrigin: '0 0',
               }}
             >
-              {transferLinks.map(({ key, geometry, transferCount }) => (
-                <ConnectionRope key={key} pathD={geometry.pathD} transferCount={transferCount} />
+              <WarehouseMapBackground
+                width={Math.max(canvasSize.width / viewport.scale, canvasSize.width)}
+                height={Math.max(canvasSize.height / viewport.scale, canvasSize.height)}
+                seed={2}
+                variant="2d"
+              />
+
+              {transferLinks.map(({ key, geometry, transferCount }) => (                <ConnectionRope key={key} pathD={geometry.pathD} transferCount={transferCount} />
               ))}
 
               {transferMarkers.map(({ transfer, pathD, delay, reversed }) => (
@@ -677,29 +657,6 @@ export const Warehouse2DMap = ({
                 )
               })}
             </Box>
-
-            {enableViewportControls ? (
-              <Box
-                sx={{
-                  position: 'absolute',
-                  bottom: 10,
-                  left: 10,
-                  px: 1,
-                  py: 0.5,
-                  borderRadius: 1,
-                  bgcolor: alpha(theme.palette.background.paper, 0.92),
-                  border: 1,
-                  borderColor: 'divider',
-                  zIndex: 7,
-                  pointerEvents: 'none',
-                }}
-              >
-                <Typography variant="caption" color="text.secondary">
-                  Zoom: {Math.round(viewport.scale * 100)}% · Bo&apos;sh joyni sudrab ko&apos;chiring · Omborni
-                  sudrab joylashtiring
-                </Typography>
-              </Box>
-            ) : null}
           </Box>
         </Paper>
       )}

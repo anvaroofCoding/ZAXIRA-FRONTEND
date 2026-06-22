@@ -4,6 +4,7 @@ import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import PrintIcon from '@mui/icons-material/Print'
+import FileDownloadIcon from '@mui/icons-material/FileDownload'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -34,6 +35,7 @@ import {
   useGetWarehouseInventoryByLocationQuery,
   useGetWarehouseInventoryItemHistoryQuery,
   useGetWarehouseLocationsQuery,
+  useLazyGetWarehouseInventoryByLocationQuery,
   useUpdateWarehouseInventoryNomenclatureMutation,
   useUpdateWarehouseLocationMutation,
 } from '@/features/warehouse/api/warehouseApi'
@@ -54,6 +56,10 @@ import {
   nomenclatureTableCellSx,
 } from '@/features/warehouse/utils/itemNomenclature'
 import { printBarcodeLabels } from '@/shared/utils/printBarcodeLabels'
+import {
+  exportWarehouseInventoryToExcel,
+  fetchAllWarehouseInventoryItems,
+} from '@/features/warehouse/utils/exportWarehouseInventoryToExcel'
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
 
@@ -129,9 +135,11 @@ export const MeningOmborimPage = () => {
     skip: !selectedLocationId,
     refetchOnMountOrArgChange: true,
   })
+  const [fetchInventoryForExport] = useLazyGetWarehouseInventoryByLocationQuery()
 
   const inventoryItems = inventoryQuery.data?.items ?? []
   const inventoryTotal = inventoryQuery.data?.total ?? 0
+  const [exportingExcel, setExportingExcel] = useState(false)
 
   const [detailItem, setDetailItem] = useState(null)
   const [nomenclatureInput, setNomenclatureInput] = useState('')
@@ -298,6 +306,36 @@ export const MeningOmborimPage = () => {
     }
   }
 
+  const handleExportExcel = async () => {
+    if (!selectedLocationId || exportingExcel) return
+
+    setPageError('')
+    setExportingExcel(true)
+
+    try {
+      const items = await fetchAllWarehouseInventoryItems(fetchInventoryForExport, {
+        locationId: selectedLocationId,
+        search,
+        total: inventoryTotal,
+      })
+
+      if (!items.length) {
+        setPageError('Eksport qilish uchun tovar topilmadi')
+        return
+      }
+
+      exportWarehouseInventoryToExcel({
+        items,
+        locationName: selectedLocation?.name,
+        search,
+      })
+    } catch (e) {
+      setPageError(getApiErrorMessage(e, 'Excel yuklab olishda xatolik'))
+    } finally {
+      setExportingExcel(false)
+    }
+  }
+
   return (
     <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Box
@@ -396,25 +434,36 @@ export const MeningOmborimPage = () => {
                   skeleton={<InventorySkeleton />}
                 >
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <TextField
-                      size="small"
-                      placeholder="Qidiruv"
-                      value={search}
-                      onChange={(e) => {
-                        setSearch(e.target.value)
-                        setPage(0)
-                      }}
-                      fullWidth
-                      slotProps={{
-                        input: {
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <SearchIcon fontSize="small" color="action" />
-                            </InputAdornment>
-                          ),
-                        },
-                      }}
-                    />
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="stretch">
+                      <TextField
+                        size="small"
+                        placeholder="Qidiruv"
+                        value={search}
+                        onChange={(e) => {
+                          setSearch(e.target.value)
+                          setPage(0)
+                        }}
+                        fullWidth
+                        slotProps={{
+                          input: {
+                            startAdornment: (
+                              <InputAdornment position="start">
+                                <SearchIcon fontSize="small" color="action" />
+                              </InputAdornment>
+                            ),
+                          },
+                        }}
+                      />
+                      <Button
+                        variant="outlined"
+                        startIcon={<FileDownloadIcon />}
+                        onClick={handleExportExcel}
+                        disabled={!inventoryTotal || exportingExcel || inventoryQuery.isFetching}
+                        sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}
+                      >
+                        {exportingExcel ? 'Yuklanmoqda...' : 'Excel'}
+                      </Button>
+                    </Stack>
 
                     {!inventoryItems.length && !inventoryQuery.isFetching ? (
                       <Paper variant="outlined" sx={{ py: 6, textAlign: 'center' }}>

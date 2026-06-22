@@ -204,6 +204,7 @@ export const {
   useUpdateWarehouseLocationMutation,
   useDeleteWarehouseLocationMutation,
   useGetWarehouseInventoryByLocationQuery,
+  useLazyGetWarehouseInventoryByLocationQuery,
   useGetWarehouseInventoryItemHistoryQuery,
   useUpdateWarehouseInventoryNomenclatureMutation,
   useGetAllWarehousesOverviewQuery,

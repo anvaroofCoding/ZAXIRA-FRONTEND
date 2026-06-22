@@ -2,7 +2,6 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
-import Typography from '@mui/material/Typography'
 import { alpha, useTheme } from '@mui/material/styles'
 import { getTransfer2DMarkerColor } from '@/features/warehouse-dispatches/utils/dispatchStatusDisplay'
 import { Transfer2DDetailDialog } from '@/features/warehouse/components/Transfer2DDetailDialog'
@@ -16,9 +15,9 @@ import {
   getIsoBoxFaces,
   getIsoConnectionPath,
   getSceneBounds,
-  GRID_SPACING,
-  worldToIso,
 } from '@/features/warehouse/utils/warehouse3dLayout'
+import { WarehouseMapBackground } from '@/features/warehouse/components/WarehouseMapBackground'
+import { YANDEX_MAP } from '@/features/warehouse/utils/warehouseMapTheme'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 
@@ -90,23 +89,21 @@ const IsoBuilding = ({
   const cy = position.y + BUILDING_DEPTH / 2
   const faces = getIsoBoxFaces(cx, cy, BUILDING_WIDTH, BUILDING_DEPTH, height)
 
-  const stroke = selected ? theme.palette.primary.dark : alpha(theme.palette.divider, 0.6)
-  const strokeWidth = selected ? 1.2 : 0.6
+  const primary = theme.palette.primary.main
+  const primaryDark = theme.palette.primary.dark
 
-  const topFill = selected
-    ? theme.palette.primary.main
-    : highlighted
-      ? theme.palette.primary.light
-      : alpha(theme.palette.primary.main, 0.55)
-  const leftFill = selected
-    ? theme.palette.primary.dark
-    : alpha(theme.palette.primary.dark, dimmed ? 0.25 : 0.65)
-  const rightFill = selected
-    ? theme.palette.primary.main
-    : alpha(theme.palette.primary.main, dimmed ? 0.2 : 0.45)
-  const labelFill = theme.palette.getContrastText(topFill)
-  const quantityFill = selected ? theme.palette.primary.contrastText : theme.palette.text.secondary
-  const opacity = dimmed ? 0.35 : 1
+  const stroke = selected ? primaryDark : YANDEX_MAP.buildingStroke
+  const strokeWidth = selected ? 1.4 : 0.5
+
+  const topFill = selected ? primary : highlighted ? alpha(primary, 0.35) : YANDEX_MAP.buildingTop
+  const leftFill = selected ? primaryDark : highlighted ? alpha(primaryDark, 0.45) : YANDEX_MAP.buildingSideLeft
+  const rightFill = selected ? primary : highlighted ? alpha(primary, 0.55) : YANDEX_MAP.buildingSideRight
+  const labelFill = selected ? theme.palette.primary.contrastText : YANDEX_MAP.text
+  const opacity = dimmed ? 0.38 : 1
+  const shortName =
+    warehouse.structure.shortName.length > 12
+      ? `${warehouse.structure.shortName.slice(0, 11)}…`
+      : warehouse.structure.shortName
 
   return (
     <g
@@ -116,32 +113,31 @@ const IsoBuilding = ({
         onSelect(warehouse.structure.id)
       }}
     >
+      {selected ? (
+        <polygon
+          points={faces.top}
+          fill="none"
+          stroke={primary}
+          strokeWidth={4}
+          opacity={0.35}
+          style={{ filter: 'blur(2px)' }}
+        />
+      ) : null}
+
       <polygon points={faces.left} fill={leftFill} stroke={stroke} strokeWidth={strokeWidth} />
       <polygon points={faces.right} fill={rightFill} stroke={stroke} strokeWidth={strokeWidth} />
-      <polygon points={faces.top} fill={topFill} stroke={stroke} strokeWidth={selected ? 1.6 : 0.8} />
+      <polygon points={faces.top} fill={topFill} stroke={stroke} strokeWidth={selected ? 1.8 : 0.6} />
 
       <text
         x={faces.center.x}
         y={faces.center.y + 4}
         textAnchor="middle"
         fontSize={11}
-        fontWeight={700}
+        fontWeight={600}
         fill={labelFill}
         style={{ pointerEvents: 'none', userSelect: 'none' }}
       >
-        {warehouse.structure.shortName.length > 10
-          ? `${warehouse.structure.shortName.slice(0, 9)}…`
-          : warehouse.structure.shortName}
-      </text>
-      <text
-        x={faces.baseCenter.x}
-        y={faces.baseCenter.y + 14}
-        textAnchor="middle"
-        fontSize={10}
-        fill={quantityFill}
-        style={{ pointerEvents: 'none', userSelect: 'none' }}
-      >
-        {warehouse.totalQuantity} ta
+        {shortName}
       </text>
     </g>
   )
@@ -156,6 +152,8 @@ export const Warehouse3DMap = ({
   selectedTransferId = '',
   onSelectTransfer,
   onFitViewRef,
+  onZoomInRef,
+  onZoomOutRef,
   canvasHeight: canvasHeightProp,
   hideTransferDialog = false,
   enableViewportControls = false,
@@ -180,7 +178,7 @@ export const Warehouse3DMap = ({
     canvasHeightProp ??
     (embedded ? { xs: 460, sm: 540, md: 620 } : { xs: 'calc(100vh - 220px)', md: 'calc(100vh - 200px)' })
 
-  const { positions: gridPositions, bounds: gridBounds } = useMemo(
+  const { positions: gridPositions } = useMemo(
     () => buildWarehouseGrid3D(structureIds),
     [structureIds],
   )
@@ -277,9 +275,31 @@ export const Warehouse3DMap = ({
     }
   }, [enableViewportControls, applyFitView])
 
+  const applyZoom = useCallback(
+    (factor) => {
+      const rect = containerRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const pointerX = rect.width / 2
+      const pointerY = rect.height / 2
+
+      setViewTransform((prev) => {
+        const nextScale = clampViewScale(prev.scale * factor)
+        const ratio = nextScale / prev.scale
+        return {
+          scale: nextScale,
+          x: pointerX - (pointerX - prev.x) * ratio,
+          y: pointerY - (pointerY - prev.y) * ratio,
+        }
+      })
+    },
+    [],
+  )
+
   useEffect(() => {
     if (onFitViewRef) onFitViewRef.current = applyFitView
-  }, [applyFitView, onFitViewRef])
+    if (onZoomInRef) onZoomInRef.current = () => applyZoom(1.15)
+    if (onZoomOutRef) onZoomOutRef.current = () => applyZoom(0.87)
+  }, [applyFitView, applyZoom, onFitViewRef, onZoomInRef, onZoomOutRef])
 
   const handleWheel = useCallback(
     (event) => {
@@ -369,11 +389,8 @@ export const Warehouse3DMap = ({
             flex: 1,
             minHeight: 0,
             height: canvasHeight,
-            bgcolor: alpha(theme.palette.primary.main, 0.03),
-            backgroundImage: `
-              radial-gradient(${alpha(theme.palette.primary.main, 0.06)} 1px, transparent 1px)
-            `,
-            backgroundSize: '24px 24px',
+            bgcolor: YANDEX_MAP.background,
+            borderColor: alpha(theme.palette.divider, 0.4),
           }}
         >
           <Box
@@ -390,65 +407,39 @@ export const Warehouse3DMap = ({
               '&:active': enableViewportControls ? { cursor: 'grabbing' } : undefined,
             }}
           >
-            <svg width="100%" height="100%" viewBox={svgViewBox} style={{ display: 'block' }}>
+            <WarehouseMapBackground
+              width={canvasSize.width}
+              height={canvasSize.height}
+              seed={3}
+              variant="3d"
+            />
+
+            <svg width="100%" height="100%" viewBox={svgViewBox} style={{ display: 'block', position: 'relative', zIndex: 1 }}>
               <defs>
                 <filter id="iso-shadow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.15" />
+                  <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.12" />
                 </filter>
               </defs>
 
               <g
                 transform={`translate(${viewTransform.x}, ${viewTransform.y}) scale(${viewTransform.scale}) translate(${-sceneBounds.minX}, ${-sceneBounds.minY})`}
               >
-                {Array.from({ length: gridBounds.cols + 1 }).map((_, i) => {
-                  const x = i * GRID_SPACING
-                  const start = worldToIso(x, 0, 0)
-                  const end = worldToIso(x, gridBounds.rows * GRID_SPACING, 0)
-                  return (
-                    <line
-                      key={`v-${i}`}
-                      x1={start.x}
-                      y1={start.y}
-                      x2={end.x}
-                      y2={end.y}
-                      stroke={alpha(theme.palette.divider, 0.35)}
-                      strokeWidth={0.5}
-                    />
-                  )
-                })}
-                {Array.from({ length: gridBounds.rows + 1 }).map((_, i) => {
-                  const y = i * GRID_SPACING
-                  const start = worldToIso(0, y, 0)
-                  const end = worldToIso(gridBounds.cols * GRID_SPACING, y, 0)
-                  return (
-                    <line
-                      key={`h-${i}`}
-                      x1={start.x}
-                      y1={start.y}
-                      x2={end.x}
-                      y2={end.y}
-                      stroke={alpha(theme.palette.divider, 0.35)}
-                      strokeWidth={0.5}
-                    />
-                  )
-                })}
-
                 {transferLinks.map(({ key, geometry, transferCount }) => (
                   <g key={key}>
                     <path
                       d={geometry.pathD}
                       fill="none"
-                      stroke={alpha(theme.palette.primary.dark, 0.35)}
-                      strokeWidth={4}
+                      stroke={YANDEX_MAP.road}
+                      strokeWidth={5}
                       strokeLinecap="round"
                     />
                     <path
                       d={geometry.pathD}
                       fill="none"
-                      stroke={theme.palette.primary.main}
-                      strokeWidth={1.5}
+                      stroke={alpha(theme.palette.primary.main, 0.75)}
+                      strokeWidth={2}
                       strokeLinecap="round"
-                      strokeDasharray="4 6"
+                      strokeDasharray="5 7"
                     />
                     {transferCount > 1 ? (
                       <text
@@ -502,27 +493,6 @@ export const Warehouse3DMap = ({
                 ))}
               </g>
             </svg>
-
-            {enableViewportControls ? (
-              <Box
-                sx={{
-                  position: 'absolute',
-                  bottom: 10,
-                  left: 10,
-                  px: 1,
-                  py: 0.5,
-                  borderRadius: 1,
-                  bgcolor: alpha(theme.palette.background.paper, 0.92),
-                  border: 1,
-                  borderColor: 'divider',
-                }}
-              >
-                <Typography variant="caption" color="text.secondary">
-                  Zoom: {Math.round(viewTransform.scale * 100)}% · Sudrab ko&apos;chiring · G&apos;ildirak bilan
-                  kattalashtiring
-                </Typography>
-              </Box>
-            ) : null}
           </Box>
         </Paper>
       )}

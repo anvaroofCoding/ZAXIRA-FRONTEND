@@ -13,6 +13,8 @@ import Dialog from '@mui/material/Dialog'
 import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
 import { useGetTashkentWeatherQuery } from '@/features/weather/api/weatherApi'
 import {
   formatForecastDayLabel,
@@ -26,41 +28,69 @@ import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 const DETAIL_URL = 'https://open-meteo.com/en/docs'
 
 const MetricItem = ({ icon: Icon, label, value }) => (
-  <Stack spacing={0.5} sx={{ alignItems: 'center', flex: 1, minWidth: 0 }}>
-    <Icon sx={{ fontSize: 18, color: 'text.secondary' }} />
-    <Typography variant="caption" color="text.secondary">
+  <Stack spacing={0.5} sx={{ alignItems: 'center', flex: 1, minWidth: 0, px: { xs: 0.25, sm: 0.5 } }}>
+    <Icon sx={{ fontSize: { xs: 16, sm: 18 }, color: 'text.secondary' }} />
+    <Typography
+      variant="caption"
+      color="text.secondary"
+      sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, textAlign: 'center', lineHeight: 1.2 }}
+    >
       {label}
     </Typography>
-    <Typography variant="body2" fontWeight={700}>
+    <Typography
+      variant="body2"
+      fontWeight={700}
+      sx={{
+        fontSize: { xs: '0.72rem', sm: '0.875rem' },
+        textAlign: 'center',
+        lineHeight: 1.25,
+        wordBreak: 'break-word',
+      }}
+    >
       {value}
     </Typography>
   </Stack>
 )
 
 const ForecastRow = ({ dayLabel, max, min, Icon }) => (
-  <Stack
-    direction="row"
-    spacing={1.5}
+  <Box
     sx={{
+      display: 'grid',
+      gridTemplateColumns: 'minmax(0, 1fr) auto auto auto',
       alignItems: 'center',
+      columnGap: { xs: 0.75, sm: 1.25 },
       py: 0.75,
     }}
   >
-    <Typography variant="body2" sx={{ width: 92, flexShrink: 0 }}>
+    <Typography
+      variant="body2"
+      sx={{
+        minWidth: 0,
+        fontSize: { xs: '0.8rem', sm: '0.875rem' },
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      }}
+    >
       {dayLabel}
     </Typography>
-    <Icon sx={{ fontSize: 22, color: 'warning.main' }} />
-    <Box sx={{ flex: 1 }} />
-    <Typography variant="body2" fontWeight={700}>
+    <Icon sx={{ fontSize: { xs: 20, sm: 22 }, color: 'warning.main', justifySelf: 'center' }} />
+    <Typography variant="body2" fontWeight={700} sx={{ justifySelf: 'end' }}>
       {formatTemperature(max)}
     </Typography>
-    <Typography variant="body2" color="text.secondary" sx={{ width: 28, textAlign: 'right' }}>
+    <Typography
+      variant="body2"
+      color="text.secondary"
+      sx={{ justifySelf: 'end', minWidth: { xs: 24, sm: 28 }, textAlign: 'right' }}
+    >
       {formatTemperature(min)}
     </Typography>
-  </Stack>
+  </Box>
 )
 
 export const WeatherModal = ({ open, onClose }) => {
+  const theme = useTheme()
+  const isCompact = useMediaQuery(theme.breakpoints.down('md'))
   const weatherQuery = useGetTashkentWeatherQuery(undefined, {
     skip: !open,
     refetchOnMountOrArgChange: true,
@@ -120,45 +150,76 @@ export const WeatherModal = ({ open, onClose }) => {
     <Dialog
       open={open}
       onClose={onClose}
+      fullScreen={isCompact}
       maxWidth="xs"
       fullWidth
       scroll="paper"
       slotProps={{
         paper: {
           sx: {
-            borderRadius: 4,
+            borderRadius: isCompact ? 0 : 4,
             overflow: 'hidden',
+            width: '100%',
+            maxWidth: isCompact ? '100%' : 444,
+            m: isCompact ? 0 : undefined,
+            pt: isCompact ? 'env(safe-area-inset-top, 0px)' : undefined,
+            pb: isCompact ? 'env(safe-area-inset-bottom, 0px)' : undefined,
           },
         },
       }}
     >
-      <Box sx={{ px: 3, pt: 3, pb: 2.5 }}>
-        <Stack spacing={2.5}>
+      <Box
+        sx={{
+          px: { xs: 2, sm: 3 },
+          pt: { xs: 2, sm: 3 },
+          pb: { xs: 2.5, sm: 2.5 },
+          maxWidth: '100%',
+          overflow: 'hidden',
+        }}
+      >
+        <Stack sx={{ gap: { xs: 2, sm: 2.5 } }}>
           <Stack spacing={0.5}>
             <Stack
               direction="row"
-              sx={{ justifyContent: 'space-between', alignItems: 'center' }}
+              sx={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}
             >
-              <Typography variant="body2" color="text.secondary">
-                Bugun
-              </Typography>
-              <CalendarMonthOutlinedIcon
-                sx={{ color: 'text.secondary', fontSize: 22, flexShrink: 0 }}
-              />
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Bugun
+                </Typography>
+                <Typography
+                  variant="h5"
+                  fontWeight={800}
+                  sx={{
+                    lineHeight: 1.2,
+                    fontSize: { xs: '1.35rem', sm: '1.5rem' },
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {weatherView?.dateLabel ?? '—'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {weatherView?.dayLabel ?? '—'}
+                </Typography>
+              </Box>
+
+              <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
+                <CalendarMonthOutlinedIcon
+                  sx={{ color: 'text.secondary', fontSize: 22 }}
+                />
+              </Stack>
             </Stack>
-            <Typography variant="h5" fontWeight={800} sx={{ lineHeight: 1.2 }}>
-              {weatherView?.dateLabel ?? '—'}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {weatherView?.dayLabel ?? '—'}
-            </Typography>
           </Stack>
 
-          <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-            <Typography variant="body1" fontWeight={600}>
+          <Stack
+            direction="row"
+            spacing={0.75}
+            sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}
+          >
+            <Typography variant="body1" fontWeight={600} sx={{ fontSize: { xs: '0.95rem', sm: '1rem' } }}>
               Toshkent, O‘zbekiston
             </Typography>
-            <LocationOnOutlinedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+            <LocationOnOutlinedIcon sx={{ fontSize: 18, color: 'text.secondary', flexShrink: 0 }} />
           </Stack>
 
           {weatherQuery.isLoading ? (
@@ -178,11 +239,11 @@ export const WeatherModal = ({ open, onClose }) => {
 
           {weatherView && CurrentIcon ? (
             <>
-              <Stack spacing={1} sx={{ alignItems: 'center', py: 1 }}>
+              <Stack spacing={1} sx={{ alignItems: 'center', py: { xs: 0.5, sm: 1 } }}>
                 <Box
                   sx={{
-                    width: 96,
-                    height: 96,
+                    width: { xs: 80, sm: 96 },
+                    height: { xs: 80, sm: 96 },
                     borderRadius: '50%',
                     display: 'grid',
                     placeItems: 'center',
@@ -190,24 +251,38 @@ export const WeatherModal = ({ open, onClose }) => {
                       'linear-gradient(180deg, rgba(255, 193, 7, 0.18) 0%, rgba(33, 150, 243, 0.08) 100%)',
                   }}
                 >
-                  <CurrentIcon sx={{ fontSize: 56, color: 'warning.main' }} />
+                  <CurrentIcon sx={{ fontSize: { xs: 48, sm: 56 }, color: 'warning.main' }} />
                 </Box>
-                <Typography variant="h2" fontWeight={800} sx={{ lineHeight: 1 }}>
+                <Typography
+                  variant="h2"
+                  fontWeight={800}
+                  sx={{
+                    lineHeight: 1,
+                    fontSize: { xs: '2.5rem', sm: '3.75rem' },
+                  }}
+                >
                   {weatherView.temperature}
                 </Typography>
-                <Typography variant="body1" color="text.secondary">
+                <Typography
+                  variant="body1"
+                  color="text.secondary"
+                  sx={{ textAlign: 'center', px: 1, fontSize: { xs: '0.95rem', sm: '1rem' } }}
+                >
                   {weatherView.currentMeta.label}
                 </Typography>
               </Stack>
 
               <Stack
                 direction="row"
-                spacing={1}
                 sx={{
-                  px: 1,
+                  gap: { xs: 0.5, sm: 1 },
+                  px: { xs: 0.5, sm: 1 },
                   py: 1.5,
                   borderRadius: 2,
                   bgcolor: 'action.hover',
+                  width: '100%',
+                  maxWidth: '100%',
+                  overflow: 'hidden',
                 }}
               >
                 <MetricItem

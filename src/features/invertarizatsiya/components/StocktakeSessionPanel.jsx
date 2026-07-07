@@ -22,6 +22,7 @@ import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
+import { BarcodeTableCell } from '@/features/warehouse/components/BarcodeTableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
@@ -400,7 +401,7 @@ export const StocktakeSessionPanel = ({
                     <TableCell sx={nomenclatureTableCellSx}>
                       {getItemNomenclatureCode(line)}
                     </TableCell>
-                    <TableCell sx={{ fontFamily: 'monospace', fontSize: 12 }}>{line.barcode}</TableCell>
+                    <BarcodeTableCell value={line.barcode} productName={line.name} width={140} imageHeight={28} />
                     <TableCell align="right">{line.bookQuantity}</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 700 }}>
                       {line.countedQuantity}

@@ -19,12 +19,14 @@ import { AppLogo } from '@/shared/components/layout/AppLogo'
 import { APP_SIDE_RAIL_WIDTH, appMobileSafePaddingSx } from '@/shared/constants/layout'
 import { selectAuthUser } from '@/features/auth/model/authSlice'
 import { NAV_ITEMS } from '@/shared/config/navigation'
+import { resolveNavIcon } from '@/shared/config/navItemIcons'
 import { useAppSelector } from '@/shared/hooks/useAppSelector'
 import { useGetWarehouseReceiptPendingCountQuery } from '@/features/warehouse-dispatches/api/warehouseDispatchesApi'
 import { hasPageAccess } from '@/features/permissions/utils/permissions'
 import { filterNavByPermissions } from '@/shared/utils/filterNavByPermissions'
 import { MobileNavDrawer } from './MobileNavDrawer'
 import { NavDropdown, navLinkTriggerSx } from './NavDropdown'
+import { NavItemIcon } from './NavItemIcon'
 
 export const AppNavbar = () => {
   const theme = useTheme()
@@ -125,6 +127,7 @@ export const AppNavbar = () => {
                     color="inherit"
                     component={NavLink}
                     to={item.path}
+                    startIcon={<NavItemIcon icon={resolveNavIcon(item)} />}
                     sx={navLinkTriggerSx(theme)}
                   >
                     {item.label}
@@ -134,6 +137,7 @@ export const AppNavbar = () => {
                     key={item.label}
                     label={item.label}
                     items={item.children}
+                    icon={item.icon}
                     badgeCounts={badgeCounts}
                   />
                 ),
@@ -149,6 +153,12 @@ export const AppNavbar = () => {
               gap: 0.25,
               flexShrink: 0,
               ml: 'auto',
+              color: 'primary.contrastText',
+              '& .MuiIconButton-root': { color: 'inherit' },
+              '& .MuiBadge-badge': {
+                bgcolor: 'error.main',
+                color: 'error.contrastText',
+              },
             }}
           >
             <ChatNavButton />

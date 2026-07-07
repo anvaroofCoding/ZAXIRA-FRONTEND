@@ -58,6 +58,12 @@ export const createAppTheme = (
         defaultProps: {
           disableElevation: true,
         },
+        styleOverrides: {
+          root: {
+            textTransform: 'none',
+            fontWeight: 600,
+          },
+        },
       },
     },
   })

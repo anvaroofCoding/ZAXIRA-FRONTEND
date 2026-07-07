@@ -61,6 +61,8 @@ export const NAV_ITEMS = [
       { label: 'Foydalanuvchilar', path: '/royxatga-olish/foydalanuvchilar' },
       { label: 'Tarkibiy tuzilmalar', path: '/royxatga-olish/tuzilmalar' },
       { label: "Komissiya a'zolari", path: '/royxatga-olish/komissiya-azolari' },
+      { label: 'Birliklar', path: '/royxatga-olish/birliklar' },
+      { label: 'Vazifa berish', path: '/royxatga-olish/vazifa-berish' },
     ],
   },
 ]

@@ -26,7 +26,7 @@ import {
 } from '@/features/product-import/utils/activeSessionsStorage'
 import { useGetWarehouseLocationsQuery } from '@/features/warehouse/api/warehouseApi'
 import { COUNTRIES } from '@/features/purchase-requests/constants/countries'
-import { MEASUREMENT_UNITS } from '@/features/purchase-requests/constants/measurementUnits'
+import { UnitSelectField } from '@/shared/components/inputs/UnitSelectField'
 import { usePermissions } from '@/shared/hooks/usePermissions'
 import { parseUzsInput } from '@/shared/utils/formatUzs'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
@@ -587,24 +587,16 @@ export const ProductImportFormDialog = ({
                       sx={{ flex: 1, minWidth: 0 }}
                     />
 
-                    <TextField
-                      select
+                    <UnitSelectField
                       label="Birlik"
                       value={item.unit}
-                      onChange={(event) =>
-                        handleItemChange(index, 'unit', event.target.value)
+                      onChange={(nextUnit) =>
+                        handleItemChange(index, 'unit', nextUnit)
                       }
                       disabled={loading}
                       required
-                      fullWidth
                       sx={{ flex: 1, minWidth: 0 }}
-                    >
-                      {MEASUREMENT_UNITS.map((unit) => (
-                        <MenuItem key={unit} value={unit}>
-                          {unit}
-                        </MenuItem>
-                      ))}
-                    </TextField>
+                    />
                   </Stack>
 
                   <Autocomplete

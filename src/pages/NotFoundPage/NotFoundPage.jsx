@@ -1,21 +1,29 @@
-import { Link as RouterLink } from 'react-router-dom'
-import Button from '@mui/material/Button'
-import Stack from '@mui/material/Stack'
-import Typography from '@mui/material/Typography'
-import { PageShell } from '@/shared/components/layout/PageShell'
+import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined'
+import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
+import SearchOffOutlinedIcon from '@mui/icons-material/SearchOffOutlined'
+import { useNavigate } from 'react-router-dom'
+import { ErrorPageLayout } from '@/shared/components/feedback/ErrorPageLayout'
 
-export const NotFoundPage = () => (
-  <PageShell>
-    <Stack spacing={2} sx={{ py: 4, alignItems: 'center' }}>
-      <Typography variant="h3" component="h1" fontWeight={700}>
-        404
-      </Typography>
-      <Typography variant="body1" color="text.secondary">
-        Sahifa topilmadi.
-      </Typography>
-      <Button component={RouterLink} to="/" variant="contained">
-        Bosh sahifaga
-      </Button>
-    </Stack>
-  </PageShell>
-)
+export const NotFoundPage = () => {
+  const navigate = useNavigate()
+
+  return (
+    <ErrorPageLayout
+      code="404"
+      title="Sahifa topilmadi"
+      description="Siz qidirayotgan sahifa mavjud emas, ko‘chirilgan yoki o‘chirilgan bo‘lishi mumkin."
+      icon={SearchOffOutlinedIcon}
+      accentColor="primary"
+      primaryAction={{
+        label: 'Bosh sahifaga',
+        to: '/dashboard',
+        startIcon: <HomeOutlinedIcon />,
+      }}
+      secondaryAction={{
+        label: 'Orqaga',
+        onClick: () => navigate(-1),
+        startIcon: <ArrowBackOutlinedIcon />,
+      }}
+    />
+  )
+}

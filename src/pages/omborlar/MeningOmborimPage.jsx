@@ -39,6 +39,7 @@ import {
   useUpdateWarehouseInventoryNomenclatureMutation,
   useUpdateWarehouseLocationMutation,
 } from '@/features/warehouse/api/warehouseApi'
+import { BarcodeTableCell } from '@/features/warehouse/components/BarcodeTableCell'
 import { WarehouseItemHistoryTimeline } from '@/features/warehouse/components/WarehouseItemHistoryTimeline'
 import { usePermissions } from '@/shared/hooks/usePermissions'
 import { QuerySkeleton } from '@/shared/components/feedback/QuerySkeleton'
@@ -508,7 +509,11 @@ export const MeningOmborimPage = () => {
                                 >
                                   {getItemNomenclatureDisplay(item)}
                                 </TableCell>
-                                <TableCell>{item.barcode || barcodeForItem(item)}</TableCell>
+                                <BarcodeTableCell
+                                  value={item.barcode || barcodeForItem(item)}
+                                  productName={item.name}
+                                  width={160}
+                                />
                                 <TableCell align="right">{item.quantity} ta</TableCell>
                               </TableRow>
                             ))}

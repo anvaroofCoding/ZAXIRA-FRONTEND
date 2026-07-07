@@ -15,6 +15,7 @@ import '@/features/invertarizatsiya/api/stocktakesApi'
 import '@/features/product-prices/api/productPricesApi'
 import '@/features/products/api/productsApi'
 import '@/features/notifications/api/notificationsApi'
+import '@/features/tasks/api/tasksApi'
 
 export const store = configureStore({
   reducer: {

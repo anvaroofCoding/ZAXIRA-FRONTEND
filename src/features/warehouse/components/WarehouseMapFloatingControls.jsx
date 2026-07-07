@@ -23,8 +23,17 @@ import { useWarehouseMapPalette } from '@/features/warehouse/hooks/useWarehouseM
 import { WAREHOUSE_DETAIL_PANEL_WIDTH } from '@/features/warehouse/components/WarehouseDetailPanel'
 
 const MAP_EDGE_GAP = 12
-const MAP_TOOLBAR_WIDTH = 48
+const MAP_TOOLBAR_WIDTH = 40
 const MAP_TOOLBAR_GAP = 16
+const MAP_PILL_HEIGHT = 40
+
+const mapPillSx = (controlSurfaceSx) => ({
+  ...controlSurfaceSx,
+  height: MAP_PILL_HEIGHT,
+  display: 'flex',
+  alignItems: 'center',
+  boxSizing: 'border-box',
+})
 
 const ControlStack = ({ children, surfaceSx, sx }) => (
   <Stack
@@ -43,7 +52,6 @@ const ControlBtn = ({ title, onClick, disabled, active, children, buttonSx, them
   <Tooltip title={title} placement="left">
     <span>
       <IconButton
-        size="small"
         onClick={onClick}
         disabled={disabled}
         sx={{
@@ -51,8 +59,6 @@ const ControlBtn = ({ title, onClick, disabled, active, children, buttonSx, them
           borderRadius: 0,
           bgcolor: active ? alpha(theme.palette.primary.main, 0.14) : 'transparent',
           color: active ? 'primary.main' : 'text.primary',
-          fontWeight: 700,
-          fontSize: '0.7rem',
         }}
       >
         {children}
@@ -109,13 +115,10 @@ export const WarehouseMapFloatingControls = ({
       >
         <Box
           sx={{
-            ...controlSurfaceSx,
-            display: 'flex',
-            alignItems: 'center',
+            ...mapPillSx(controlSurfaceSx),
+            flex: '1 1 0',
+            minWidth: 0,
             px: 1.5,
-            py: 0.25,
-            minWidth: { xs: 160, sm: 220 },
-            maxWidth: 280,
           }}
         >
           <TextField
@@ -141,13 +144,10 @@ export const WarehouseMapFloatingControls = ({
 
         <Box
           sx={{
-            ...controlSurfaceSx,
-            display: 'flex',
-            alignItems: 'center',
+            ...mapPillSx(controlSurfaceSx),
+            flex: '1 1 0',
+            minWidth: 0,
             px: 1.5,
-            py: 0.25,
-            minWidth: { xs: 160, sm: 200 },
-            maxWidth: 280,
           }}
         >
           <FormControl size="small" fullWidth variant="standard">
@@ -186,11 +186,12 @@ export const WarehouseMapFloatingControls = ({
 
         <Box
           sx={{
-            ...controlSurfaceSx,
+            ...mapPillSx(controlSurfaceSx),
+            flex: '1 1 0',
+            minWidth: 0,
             px: 1.5,
-            py: 0.75,
-            display: { xs: 'none', sm: 'flex' },
             gap: 1.5,
+            display: { xs: 'none', sm: 'flex' },
           }}
         >
           <Typography variant="caption" color="text.secondary">
@@ -278,13 +279,13 @@ export const WarehouseMapFloatingControls = ({
         useFlexGap
         sx={{
           position: 'absolute',
-        bottom: 12,
-        left: 12,
-        right: detailPanelOpen ? MAP_EDGE_GAP + WAREHOUSE_DETAIL_PANEL_WIDTH + MAP_TOOLBAR_GAP : 12,
-        zIndex: 8,
-        transition: 'right 0.25s ease',
-          flexWrap: 'wrap',
-          rowGap: 1,
+          bottom: 12,
+          left: 12,
+          right: detailPanelOpen ? MAP_EDGE_GAP + WAREHOUSE_DETAIL_PANEL_WIDTH + MAP_TOOLBAR_GAP : 12,
+          zIndex: 8,
+          transition: 'right 0.25s ease',
+          flexWrap: 'nowrap',
+          maxWidth: 480,
           pointerEvents: 'none',
           '& > *': { pointerEvents: 'auto' },
         }}
@@ -297,11 +298,12 @@ export const WarehouseMapFloatingControls = ({
           <Box
             key={item.label}
             sx={{
-              ...controlSurfaceSx,
+              ...mapPillSx(controlSurfaceSx),
+              flex: '1 1 0',
+              minWidth: 0,
+              maxWidth: 160,
               px: 1.25,
-              py: 0.5,
-              display: 'flex',
-              alignItems: 'center',
+              justifyContent: 'center',
               gap: 0.75,
             }}
           >

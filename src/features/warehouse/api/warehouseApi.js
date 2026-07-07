@@ -82,6 +82,7 @@ export const warehouseApi = baseApi.injectEndpoints({
     }),
     getAllWarehousesOverview: builder.query({
       query: () => '/warehouse/all/overview',
+      providesTags: [{ type: API_TAGS.WAREHOUSE_INVENTORY, id: 'ALL_OVERVIEW' }],
     }),
     getWarehouseStructureAnalytics: builder.query({
       query: (structureId) => `/warehouse/all/structures/${structureId}/analytics`,
@@ -96,6 +97,28 @@ export const warehouseApi = baseApi.injectEndpoints({
           ...(search?.trim() ? { search: search.trim() } : {}),
         },
       }),
+      providesTags: (_result, _error, arg) => [
+        {
+          type: API_TAGS.WAREHOUSE_INVENTORY,
+          id: `cross-${arg?.structureId ?? ''}-${arg?.locationId ?? ''}`,
+        },
+        API_TAGS.WAREHOUSE_INVENTORY,
+      ],
+    }),
+    updateCrossWarehouseInventory: builder.mutation({
+      query: ({ structureId, locationId, inventoryId, ...body }) => ({
+        url: `/warehouse/all/locations/${locationId}/inventory/${inventoryId}`,
+        method: 'PATCH',
+        body: { structureId, ...body },
+      }),
+      invalidatesTags: (_result, _error, arg) => [
+        { type: API_TAGS.WAREHOUSE_INVENTORY, id: 'ALL_OVERVIEW' },
+        {
+          type: API_TAGS.WAREHOUSE_INVENTORY,
+          id: `cross-${arg?.structureId ?? ''}-${arg?.locationId ?? ''}`,
+        },
+        API_TAGS.WAREHOUSE_INVENTORY,
+      ],
     }),
     getWarehouseInventoryItemByBarcode: builder.query({
       query: ({ locationId, barcode }) => ({
@@ -187,14 +210,6 @@ export const warehouseApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: [API_TAGS.WAREHOUSE_FIXED_ASSET, API_TAGS.WAREHOUSE_INVENTORY],
     }),
-    discardWarehouseFixedAsset: builder.mutation({
-      query: ({ id, reason }) => ({
-        url: `/warehouse/fixed-assets/${id}/discard`,
-        method: 'POST',
-        body: { reason },
-      }),
-      invalidatesTags: [API_TAGS.WAREHOUSE_FIXED_ASSET],
-    }),
   }),
 })
 
@@ -210,6 +225,7 @@ export const {
   useGetAllWarehousesOverviewQuery,
   useGetWarehouseStructureAnalyticsQuery,
   useGetWarehouseInventoryByAnyLocationQuery,
+  useUpdateCrossWarehouseInventoryMutation,
   useLazyGetWarehouseInventoryItemByBarcodeQuery,
   useLazyGetWarehouseInventoryItemByBarcodeGloballyQuery,
   useGetWarehouseExpenseReasonsQuery,
@@ -219,6 +235,5 @@ export const {
   useDeleteWarehouseExpenseMutation,
   useGetWarehouseFixedAssetsQuery,
   useReturnWarehouseFixedAssetMutation,
-  useDiscardWarehouseFixedAssetMutation,
 } = warehouseApi
 

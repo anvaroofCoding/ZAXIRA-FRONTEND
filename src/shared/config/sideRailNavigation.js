@@ -1,5 +1,6 @@
 import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined'
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined'
+import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined'
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined'
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined'
@@ -18,6 +19,7 @@ import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
 import SendOutlinedIcon from '@mui/icons-material/SendOutlined'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import ShoppingCartCheckoutOutlinedIcon from '@mui/icons-material/ShoppingCartCheckoutOutlined'
+import StraightenOutlinedIcon from '@mui/icons-material/StraightenOutlined'
 import StoreOutlinedIcon from '@mui/icons-material/StoreOutlined'
 import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined'
 import WarehouseOutlinedIcon from '@mui/icons-material/WarehouseOutlined'
@@ -89,6 +91,8 @@ export const SIDE_RAIL_ITEMS = [
   { label: 'Foydalanuvchilar', path: '/royxatga-olish/foydalanuvchilar', icon: PeopleOutlinedIcon, dividerBefore: true },
   { label: 'Tarkibiy tuzilmalar', path: '/royxatga-olish/tuzilmalar', icon: AccountTreeOutlinedIcon },
   { label: "Komissiya a'zolari", path: '/royxatga-olish/komissiya-azolari', icon: GroupsOutlinedIcon },
+  { label: 'Birliklar', path: '/royxatga-olish/birliklar', icon: StraightenOutlinedIcon },
+  { label: 'Vazifa berish', path: '/royxatga-olish/vazifa-berish', icon: AssignmentOutlinedIcon },
 
   { label: 'Sozlamalar', path: '/sozlamalar', icon: SettingsOutlinedIcon, dividerBefore: true },
 ]

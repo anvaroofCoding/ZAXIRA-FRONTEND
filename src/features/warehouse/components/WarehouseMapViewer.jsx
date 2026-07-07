@@ -25,7 +25,7 @@ export const WarehouseMapViewer = ({ viewerStructureId = '', embedded = false })
   const { overviewQuery, transferQuery, warehouses, activeTransferCount } =
     useWarehouseMapData()
 
-  const [viewMode, setViewMode] = useState(VIEW_MODES.MAP_3D)
+  const [viewMode, setViewMode] = useState(VIEW_MODES.MAP_2D)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedWarehouseId, setSelectedWarehouseId] = useState('')

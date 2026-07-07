@@ -30,6 +30,8 @@ export const TRANSFER_HISTORY_PAGE_PATH = '/transfer/transferlar-tarixi'
 export const USERS_PAGE_PATH = '/royxatga-olish/foydalanuvchilar'
 export const STRUCTURES_PAGE_PATH = '/royxatga-olish/tuzilmalar'
 export const COMMISSIONS_PAGE_PATH = '/royxatga-olish/komissiya-azolari'
+export const UNITS_PAGE_PATH = '/royxatga-olish/birliklar'
+export const TASK_ASSIGNMENT_PAGE_PATH = '/royxatga-olish/vazifa-berish'
 
 /** Kirish va amallar alohida boshqariladigan sahifalar — legacy auto-enable qo‘llanmaydi */
 export const GRANULAR_PERMISSION_PATHS = new Set([
@@ -42,6 +44,8 @@ export const GRANULAR_PERMISSION_PATHS = new Set([
   USERS_PAGE_PATH,
   STRUCTURES_PAGE_PATH,
   COMMISSIONS_PAGE_PATH,
+  UNITS_PAGE_PATH,
+  TASK_ASSIGNMENT_PAGE_PATH,
 ])
 
 /** Qabul qilish sahifalari — Kirish ruxsati qabul qilish uchun yetarli */

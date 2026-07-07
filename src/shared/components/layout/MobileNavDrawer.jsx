@@ -5,10 +5,12 @@ import Divider from '@mui/material/Divider'
 import Drawer from '@mui/material/Drawer'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
+import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 import ListSubheader from '@mui/material/ListSubheader'
-import Typography from '@mui/material/Typography'
 import { AppLogo } from '@/shared/components/layout/AppLogo'
+import { NavItemIcon } from '@/shared/components/layout/NavItemIcon'
+import { resolveNavIcon } from '@/shared/config/navItemIcons'
 
 export const MobileNavDrawer = ({ open, onClose, navItems, badgeCounts = {} }) => {
   const location = useLocation()
@@ -48,11 +50,23 @@ export const MobileNavDrawer = ({ open, onClose, navItems, badgeCounts = {} }) =
                 selected={location.pathname === item.path}
                 onClick={handleNavigate}
               >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <NavItemIcon icon={resolveNavIcon(item)} />
+                </ListItemIcon>
                 <ListItemText primary={item.label} />
               </ListItemButton>
             ) : (
               <Box key={item.label}>
-                <ListSubheader sx={{ lineHeight: 2.5, bgcolor: 'transparent' }}>
+                <ListSubheader
+                  sx={{
+                    lineHeight: 2.5,
+                    bgcolor: 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                  }}
+                >
+                  <NavItemIcon icon={resolveNavIcon(item)} />
                   {item.label}
                 </ListSubheader>
                 {item.children.map((child) => {
@@ -65,8 +79,11 @@ export const MobileNavDrawer = ({ open, onClose, navItems, badgeCounts = {} }) =
                       to={child.path}
                       selected={location.pathname === child.path}
                       onClick={handleNavigate}
-                      sx={{ pl: 3 }}
+                      sx={{ pl: 2 }}
                     >
+                      <ListItemIcon sx={{ minWidth: 40 }}>
+                        <NavItemIcon icon={resolveNavIcon(child)} />
+                      </ListItemIcon>
                       <ListItemText
                         primary={
                           badgeCount > 0 ? (

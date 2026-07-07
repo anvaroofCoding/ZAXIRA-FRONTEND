@@ -16,6 +16,8 @@ import { getDispatchRequestLabel } from '@/features/warehouse-dispatches/utils/d
 import { NOMENCLATURE_COLUMN_LABEL } from '@/features/warehouse/utils/itemNomenclature'
 import { formatDateTime } from '@/shared/utils/formatDate'
 
+const EMPTY_TABLE_ROWS = 5
+
 const MetaItem = ({ label, value }) => (
   <Stack spacing={0.5} sx={{ minWidth: 0 }}>
     <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
@@ -65,8 +67,10 @@ export const DispatchNakladnoyTable = ({ dispatch }) => {
           <TableHead>
             <TableRow>
               <TableCell width={56}>T/R</TableCell>
-              <TableCell sx={{ minWidth: 160 }}>Tovar</TableCell>
-              {showCharacteristics ? <TableCell width={140}>Xususiyat</TableCell> : null}
+              <TableCell sx={{ minWidth: 160 }}>Tovar nomi</TableCell>
+              {showCharacteristics ? (
+                <TableCell width={140}>Xususiyatlari</TableCell>
+              ) : null}
               <TableCell width={200}>{NOMENCLATURE_COLUMN_LABEL}</TableCell>
               <TableCell width={96} align="right">
                 Soni
@@ -113,6 +117,15 @@ export const DispatchNakladnoyTable = ({ dispatch }) => {
                 </TableCell>
               </TableRow>
             )}
+            {Array.from({ length: EMPTY_TABLE_ROWS }, (_, index) => (
+              <TableRow key={`empty-${index}`}>
+                <TableCell sx={{ height: 36 }} />
+                <TableCell />
+                {showCharacteristics ? <TableCell /> : null}
+                <TableCell />
+                <TableCell />
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </TableContainer>

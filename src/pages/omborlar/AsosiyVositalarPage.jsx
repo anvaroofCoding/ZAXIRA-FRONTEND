@@ -28,10 +28,10 @@ import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import {
-  useDiscardWarehouseFixedAssetMutation,
   useGetWarehouseFixedAssetsQuery,
   useReturnWarehouseFixedAssetMutation,
 } from '@/features/warehouse/api/warehouseApi'
+import { BarcodeTableCell } from '@/features/warehouse/components/BarcodeTableCell'
 import {
   getItemNomenclatureCode,
   NOMENCLATURE_COLUMN_LABEL,
@@ -62,8 +62,6 @@ export const AsosiyVositalarPage = () => {
   const [serviceFilter, setServiceFilter] = useState(ALL_SERVICES_VALUE)
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(25)
-  const [discardTarget, setDiscardTarget] = useState(null)
-  const [discardReason, setDiscardReason] = useState('')
   const [returnTarget, setReturnTarget] = useState(null)
 
   useQueryParamOpen('search', setSearch)
@@ -94,12 +92,11 @@ export const AsosiyVositalarPage = () => {
   })
 
   const [returnFixedAsset, returnState] = useReturnWarehouseFixedAssetMutation()
-  const [discardFixedAsset, discardState] = useDiscardWarehouseFixedAssetMutation()
 
   const items = fixedAssetsQuery.data?.items ?? []
   const total = fixedAssetsQuery.data?.total ?? 0
   const isReady = !fixedAssetsQuery.isLoading && !fixedAssetsQuery.isUninitialized
-  const isBusy = returnState.isLoading || discardState.isLoading
+  const isBusy = returnState.isLoading
 
   const handleConfirmReturn = async () => {
     if (!returnTarget?.id) return
@@ -109,7 +106,7 @@ export const AsosiyVositalarPage = () => {
       dispatch(
         showNotification({
           severity: 'success',
-          message: `«${returnTarget.name}» skladga qaytarildi`,
+          message: `«${returnTarget.name}» omborga qaytarildi`,
         }),
       )
       setReturnTarget(null)
@@ -117,33 +114,7 @@ export const AsosiyVositalarPage = () => {
       dispatch(
         showNotification({
           severity: 'error',
-          message: getApiErrorMessage(e, 'Skladga qaytarishda xatolik'),
-        }),
-      )
-    }
-  }
-
-  const handleConfirmDiscard = async () => {
-    if (!discardTarget?.id) return
-
-    try {
-      await discardFixedAsset({
-        id: discardTarget.id,
-        reason: discardReason.trim() || undefined,
-      }).unwrap()
-      dispatch(
-        showNotification({
-          severity: 'success',
-          message: `«${discardTarget.name}» hisobdan chiqarildi`,
-        }),
-      )
-      setDiscardTarget(null)
-      setDiscardReason('')
-    } catch (e) {
-      dispatch(
-        showNotification({
-          severity: 'error',
-          message: getApiErrorMessage(e, 'Tovarni unutishda xatolik'),
+          message: getApiErrorMessage(e, 'Omborga qaytarishda xatolik'),
         }),
       )
     }
@@ -183,8 +154,7 @@ export const AsosiyVositalarPage = () => {
         </Box>
 
         <Typography variant="body2" color="text.secondary">
-          Asosiy vosita qilingan tovarlar ro‘yxati. Tovarni skladga qaytarish yoki eskirgan /
-          yaroqsiz bo‘lsa hisobdan chiqarish mumkin.
+          Asosiy vosita qilingan tovarlar ro‘yxati. Tovarni kerak bo‘lsa omborga qaytarish mumkin.
         </Typography>
 
         <Stack
@@ -247,7 +217,7 @@ export const AsosiyVositalarPage = () => {
                   <TableCell width={180}>Xizmat</TableCell>
                   <TableCell width={120}>Chiqim kodi</TableCell>
                   <TableCell width={170}>Sana</TableCell>
-                  <TableCell width={260} align="right">
+                  <TableCell width={180} align="right">
                     Amallar
                   </TableCell>
                 </TableRow>
@@ -268,16 +238,11 @@ export const AsosiyVositalarPage = () => {
                         <Typography variant="body2" fontWeight={700}>
                           {item.name}
                         </Typography>
-                        {item.characteristics ? (
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            {item.characteristics}
-                          </Typography>
-                        ) : null}
                       </TableCell>
                       <TableCell sx={nomenclatureTableCellSx}>
                         {getItemNomenclatureCode(item)}
                       </TableCell>
-                      <TableCell sx={{ fontFamily: 'monospace' }}>{item.barcode}</TableCell>
+                      <BarcodeTableCell value={item.barcode} productName={item.name} width={150} />
                       <TableCell align="right" sx={{ fontWeight: 700 }}>
                         {item.quantity}
                       </TableCell>
@@ -286,28 +251,14 @@ export const AsosiyVositalarPage = () => {
                       <TableCell>{formatDateTime(item.createdAt)}</TableCell>
                       <TableCell align="right">
                         {canManageFixedAssets ? (
-                          <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              disabled={isBusy}
-                              onClick={() => setReturnTarget(item)}
-                            >
-                              Skladga qaytarish
-                            </Button>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              color="warning"
-                              disabled={isBusy}
-                              onClick={() => {
-                                setDiscardTarget(item)
-                                setDiscardReason('')
-                              }}
-                            >
-                              Tovarni unutish
-                            </Button>
-                          </Stack>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            disabled={isBusy}
+                            onClick={() => setReturnTarget(item)}
+                          >
+                            Omborga qaytarish
+                          </Button>
                         ) : (
                           <Typography variant="caption" color="text.secondary">
                             Ruxsat yo‘q
@@ -338,10 +289,10 @@ export const AsosiyVositalarPage = () => {
       </Stack>
 
       <Dialog open={Boolean(returnTarget)} onClose={isBusy ? undefined : () => setReturnTarget(null)}>
-        <DialogTitle>Skladga qaytarish</DialogTitle>
+        <DialogTitle>Omborga qaytarish</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            <strong>{returnTarget?.name}</strong> ({returnTarget?.quantity} dona) skladga
+            <strong>{returnTarget?.name}</strong> ({returnTarget?.quantity} dona) omborga
             qaytarilsinmi? Tovar ombor qoldig‘iga qo‘shiladi.
           </DialogContentText>
         </DialogContent>
@@ -356,48 +307,6 @@ export const AsosiyVositalarPage = () => {
             startIcon={returnState.isLoading ? <CircularProgress size={16} color="inherit" /> : null}
           >
             Qaytarish
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog
-        open={Boolean(discardTarget)}
-        onClose={isBusy ? undefined : () => setDiscardTarget(null)}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>Tovarni unutish</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 0.5 }}>
-            <DialogContentText>
-              <strong>{discardTarget?.name}</strong> ({discardTarget?.quantity} dona) hisobdan
-              chiqarilsinmi? Tovar skladga qaytmaydi — eskirgan yoki yaroqsiz deb belgilanadi.
-            </DialogContentText>
-            <TextField
-              size="small"
-              label="Sabab (ixtiyoriy)"
-              value={discardReason}
-              onChange={(e) => setDiscardReason(e.target.value)}
-              multiline
-              minRows={2}
-              fullWidth
-              disabled={isBusy}
-              placeholder="Masalan: tavar eskirib ketgan"
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDiscardTarget(null)} disabled={isBusy}>
-            Bekor qilish
-          </Button>
-          <Button
-            variant="contained"
-            color="warning"
-            onClick={handleConfirmDiscard}
-            disabled={isBusy}
-            startIcon={discardState.isLoading ? <CircularProgress size={16} color="inherit" /> : null}
-          >
-            Hisobdan chiqarish
           </Button>
         </DialogActions>
       </Dialog>

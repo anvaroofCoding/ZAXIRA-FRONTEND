@@ -8,9 +8,10 @@ export const ThemeToggle = ({ sx }) => {
 
   return (
     <IconButton
+      color="inherit"
       onClick={toggleMode}
       aria-label={mode === 'dark' ? 'Yorug‘ rejim' : 'Qorong‘u rejim'}
-      sx={{ color: 'common.white', ...sx }}
+      sx={sx}
     >
       {mode === 'dark' ? <LightModeOutlinedIcon /> : <DarkModeOutlinedIcon />}
     </IconButton>

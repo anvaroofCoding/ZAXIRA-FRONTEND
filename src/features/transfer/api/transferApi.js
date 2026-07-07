@@ -1,12 +1,21 @@
 import { baseApi } from '@/shared/api/baseApi'
 import { API_TAGS } from '@/shared/constants/apiTags'
 
-const buildListParams = ({ page, limit, search, dateFrom, dateTo, structureId }) => ({
+const buildListParams = ({
+  page,
+  limit,
+  search,
+  dateFrom,
+  dateTo,
+  visibleFrom,
+  structureId,
+}) => ({
   page,
   limit,
   ...(search?.trim() ? { search: search.trim() } : {}),
   ...(dateFrom ? { dateFrom } : {}),
   ...(dateTo ? { dateTo } : {}),
+  ...(visibleFrom ? { visibleFrom } : {}),
   ...(structureId ? { structureId } : {}),
 })
 
@@ -30,11 +39,20 @@ export const transferApi = baseApi.injectEndpoints({
         search = '',
         dateFrom,
         dateTo,
+        visibleFrom,
         structureId,
       } = {}) => ({
         url: '/warehouse-dispatches/receipt/inbox',
         params: {
-          ...buildListParams({ page, limit, search, dateFrom, dateTo, structureId }),
+          ...buildListParams({
+            page,
+            limit,
+            search,
+            dateFrom,
+            dateTo,
+            visibleFrom,
+            structureId,
+          }),
           source: 'transfer',
           scope: 'history',
         },

@@ -10,6 +10,15 @@ import {
   handleSessionExpired,
   shouldHandleSessionExpired,
 } from '@/shared/utils/sessionExpired'
+import { markTasksApiUnavailable } from '@/features/tasks/utils/tasksApiAvailability'
+
+const getRequestUrl = (args) => {
+  if (typeof args === 'string') {
+    return args
+  }
+
+  return args?.url ?? ''
+}
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: env.apiBaseUrl,
@@ -31,6 +40,10 @@ const rawBaseQuery = fetchBaseQuery({
 const baseQuery = async (args, api, extraOptions) => {
   const hadToken = Boolean(selectAccessToken(api.getState()))
   const result = await rawBaseQuery(args, api, extraOptions)
+
+  if (result.error?.status === 404 && getRequestUrl(args).includes('/tasks')) {
+    markTasksApiUnavailable()
+  }
 
   if (shouldHandleSessionExpired(result.error, args, hadToken)) {
     handleSessionExpired(api.dispatch, getApiErrorText(result.error))

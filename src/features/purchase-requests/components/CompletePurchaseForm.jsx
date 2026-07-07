@@ -36,6 +36,7 @@ import { ISHONCHNOMA_PAGE_PATH } from '@/features/permissions/constants'
 import { hasPageAction } from '@/features/permissions/utils/permissions'
 import { selectAuthUser } from '@/features/auth/model/authSlice'
 import { useAppSelector } from '@/shared/hooks/useAppSelector'
+import { UnitSelectField } from '@/shared/components/inputs/UnitSelectField'
 import {
   TAX_ID_LENGTH,
   TAX_ID_TYPE_OPTIONS,
@@ -48,7 +49,6 @@ import {
   getRowUnitTotal,
   newFileRow,
   newLink,
-  resolveUnitOptions,
 } from '@/features/purchase-requests/utils/completePurchaseFormUtils'
 import { enrichBatchContractInfo } from '@/features/purchase-requests/utils/purchaseDisplayUtils'
 import { formatUzs, parseUzsInput } from '@/shared/utils/formatUzs'
@@ -780,22 +780,14 @@ export const CompletePurchaseForm = ({ requestId, onCancel, onSuccess }) => {
                             ) : null}
                           </TableCell>
                           <TableCell sx={{ verticalAlign: 'top', py: 1 }}>
-                            <TextField
-                              select
+                            <UnitSelectField
                               value={row.unit}
-                              onChange={(event) =>
-                                updatePendingRow(rowIndex, { unit: event.target.value })
+                              onChange={(nextUnit) =>
+                                updatePendingRow(rowIndex, { unit: nextUnit })
                               }
-                              size="small"
-                              fullWidth
                               disabled={!row.selected}
-                            >
-                              {resolveUnitOptions(row.unit).map((unit) => (
-                                <MenuItem key={unit} value={unit}>
-                                  {unit}
-                                </MenuItem>
-                              ))}
-                            </TextField>
+                              size="small"
+                            />
                           </TableCell>
                           <TableCell sx={{ verticalAlign: 'top', py: 1 }}>
                             <TextField

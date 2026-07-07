@@ -28,5 +28,15 @@ export const getApiErrorMessage = (error, fallback = 'Xatolik yuz berdi') => {
     return PERMISSION_DENIED_MESSAGE
   }
 
+  if (error?.status === 404) {
+    const notFoundMessage = extracted || (Array.isArray(message) ? message.join(' ') : '')
+    if (notFoundMessage.includes('/tasks')) {
+      return 'Vazifalar moduli serverda yo‘q. ZAXIRA-BACKEND yangi versiyasini 88.88.5.15 serveriga deploy qiling.'
+    }
+    if (notFoundMessage) {
+      return notFoundMessage
+    }
+  }
+
   return fallback
 }

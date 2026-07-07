@@ -33,8 +33,8 @@ import { useGetUsersLookupQuery } from '@/features/users/api/usersApi'
 import { usePermissions } from '@/shared/hooks/usePermissions'
 import { ProductNameAutocomplete } from '@/features/products/components/ProductNameAutocomplete'
 import { COUNTRIES } from '@/features/purchase-requests/constants/countries'
-import { MEASUREMENT_UNITS } from '@/features/purchase-requests/constants/measurementUnits'
 import { PurchasePeriodFields } from '@/features/purchase-requests/components/PurchasePeriodFields'
+import { UnitSelectField } from '@/shared/components/inputs/UnitSelectField'
 import { getLocalActiveSessionById } from '@/features/purchase-requests/utils/activeSessionsStorage'
 import { splitAutocompleteOptionProps } from '@/shared/utils/autocompleteOptionProps'
 import { buildYearOptions } from '@/features/purchase-requests/utils/formatPurchasePeriod'
@@ -783,23 +783,15 @@ export const PurchaseRequestFormDialog = ({
                           sx={{ flex: 1, minWidth: 0 }}
                         />
 
-                        <TextField
-                          select
+                        <UnitSelectField
                           label="Birlik"
                           value={item.unit}
-                          onChange={(event) =>
-                            handleItemChange(index, 'unit', event.target.value)
+                          onChange={(nextUnit) =>
+                            handleItemChange(index, 'unit', nextUnit)
                           }
                           disabled={loading || Boolean(aiLoadingByIndex[index])}
-                          fullWidth
                           sx={{ flex: 1, minWidth: 0 }}
-                        >
-                          {MEASUREMENT_UNITS.map((unit) => (
-                            <MenuItem key={unit} value={unit}>
-                              {unit}
-                            </MenuItem>
-                          ))}
-                        </TextField>
+                        />
                       </Stack>
 
                       <Autocomplete

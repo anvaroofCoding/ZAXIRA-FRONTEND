@@ -20,6 +20,10 @@ const { ForbiddenPage } = lazyImport(
   () => import('@/pages/ForbiddenPage'),
   'ForbiddenPage',
 )
+const { ServerErrorPage } = lazyImport(
+  () => import('@/pages/ServerErrorPage'),
+  'ServerErrorPage',
+)
 
 const { ArizalarYuborishPage } = lazyImport(
   () => import('@/pages/xaridlar/ArizalarYuborishPage'),
@@ -130,6 +134,14 @@ const { KomissiyaAzolariPage } = lazyImport(
   () => import('@/pages/komissiya-azolari'),
   'KomissiyaAzolariPage',
 )
+const { BirliklarPage } = lazyImport(
+  () => import('@/pages/birliklar'),
+  'BirliklarPage',
+)
+const { VazifaBerishPage } = lazyImport(
+  () => import('@/pages/vazifa-berish'),
+  'VazifaBerishPage',
+)
 const { SozlamalarPage } = lazyImport(
   () => import('@/pages/sozlamalar'),
   'SozlamalarPage',
@@ -168,6 +180,10 @@ export const routes = [
   {
     path: '/403',
     Component: ForbiddenPage,
+  },
+  {
+    path: '/500',
+    Component: ServerErrorPage,
   },
   {
     element: <GuestRoute />,
@@ -331,6 +347,14 @@ export const routes = [
           {
             path: 'royxatga-olish/komissiya-azolari',
             Component: KomissiyaAzolariPage,
+          },
+          {
+            path: 'royxatga-olish/birliklar',
+            Component: BirliklarPage,
+          },
+          {
+            path: 'royxatga-olish/vazifa-berish',
+            Component: VazifaBerishPage,
           },
           {
             path: 'foydalanuvchilar',

@@ -1,0 +1,1 @@
+export { VazifaBerishPage } from './VazifaBerishPage'

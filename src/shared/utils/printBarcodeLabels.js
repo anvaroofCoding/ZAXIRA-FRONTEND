@@ -1,4 +1,5 @@
 import JsBarcode from 'jsbarcode'
+import { detectBarcodeFormat } from '@/features/warehouse/utils/barcodeImage'
 
 /** Termal etiket printerlar (Xprinter va h.k.) odatda 203 yoki 300 DPI */
 const THERMAL_DPI_DEFAULT = 203
@@ -32,14 +33,6 @@ const computeModuleWidth = (barcode, innerWidthMm, dpi) => {
   let w = Math.floor(availableDots / modules)
   w = Math.max(2, Math.min(4, w))
   return w
-}
-
-const detectBarcodeFormat = (value) => {
-  const s = String(value ?? '').trim()
-  if (/^\d{13}$/.test(s)) return 'EAN13'
-  if (/^\d{8}$/.test(s)) return 'EAN8'
-  if (/^\d{12}$/.test(s)) return 'UPC'
-  return 'CODE128'
 }
 
 const renderBarcodeDataUrl = (barcode, { moduleWidth, barHeightPx }) => {

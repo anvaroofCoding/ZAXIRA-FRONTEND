@@ -14,9 +14,70 @@ import { DateCalendar } from '@mui/x-date-pickers/DateCalendar'
 import dayjs from 'dayjs'
 import { CalendarEventDay } from '@/features/dashboard/components/CalendarEventDay'
 import { useGetDashboardCalendarQuery } from '@/features/dashboard/api/dashboardApi'
-import { CALENDAR_EVENT_META } from '@/features/dashboard/utils/calendarEventMeta'
+import {
+  CALENDAR_EVENT_META,
+  CALENDAR_EVENT_TYPES,
+} from '@/features/dashboard/utils/calendarEventMeta'
 import { formatDateOnly } from '@/features/purchase-requests/utils/formatPurchaseDeadline'
 import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
+
+const listItemBorderSx = (index, total) => ({
+  borderTop: index === 0 ? 1 : 0,
+  borderBottom: index < total - 1 ? 1 : 0,
+  borderColor: 'divider',
+})
+
+const TaskCalendarEventItem = ({ event, index, total }) => {
+  const dueDateLabel = formatDateOnly(event.dueDate ?? event.date)
+
+  return (
+    <ListItem disablePadding>
+      <Box
+        sx={{
+          width: '100%',
+          px: 2,
+          py: 1.5,
+          bgcolor: 'background.default',
+          ...listItemBorderSx(index, total),
+        }}
+      >
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 1,
+            mb: event.description ? 0.75 : 0,
+          }}
+        >
+          <Typography variant="subtitle2" fontWeight={700} sx={{ minWidth: 0, flex: 1 }}>
+            {event.title}
+          </Typography>
+          <Chip
+            size="small"
+            label={event.overdue ? 'Kechikkan' : `Muddat: ${dueDateLabel}`}
+            color={event.overdue ? 'warning' : 'primary'}
+            variant={event.overdue ? 'outlined' : 'filled'}
+            sx={{ flexShrink: 0, fontWeight: 600 }}
+          />
+        </Stack>
+
+        {event.description ? (
+          <Typography variant="body2" color="text.primary" sx={{ whiteSpace: 'pre-wrap' }}>
+            {event.description}
+          </Typography>
+        ) : null}
+
+        {event.subtitle && event.subtitle !== 'Kutilmoqda' ? (
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+            {event.subtitle}
+          </Typography>
+        ) : null}
+      </Box>
+    </ListItem>
+  )
+}
 
 const CalendarDayEventsPanel = ({ date, events = [], onNavigate }) => {
   const dateLabel = date ? formatDateOnly(date) : '—'
@@ -55,6 +116,17 @@ const CalendarDayEventsPanel = ({ date, events = [], onNavigate }) => {
         ) : (
           <List disablePadding>
             {events.map((event, index) => {
+              if (event.type === CALENDAR_EVENT_TYPES.TASK_DEADLINE) {
+                return (
+                  <TaskCalendarEventItem
+                    key={event.id}
+                    event={event}
+                    index={index}
+                    total={events.length}
+                  />
+                )
+              }
+
               const meta = CALENDAR_EVENT_META[event.type] ?? {
                 label: event.type,
                 color: 'text.secondary',
@@ -69,9 +141,7 @@ const CalendarDayEventsPanel = ({ date, events = [], onNavigate }) => {
                       alignItems: 'flex-start',
                       px: 2,
                       py: 1.5,
-                      borderTop: index === 0 ? 1 : 0,
-                      borderBottom: index < events.length - 1 ? 1 : 0,
-                      borderColor: 'divider',
+                      ...listItemBorderSx(index, events.length),
                       borderRadius: 0,
                       '&:hover': {
                         bgcolor: 'action.hover',
@@ -125,9 +195,28 @@ const CalendarDayEventsPanel = ({ date, events = [], onNavigate }) => {
                         </Stack>
                       }
                       secondary={
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                          {event.subtitle}
-                        </Typography>
+                        <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+                          {event.description ? (
+                            <Typography
+                              variant="body2"
+                              color="text.primary"
+                              sx={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 4,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                whiteSpace: 'pre-wrap',
+                              }}
+                            >
+                              {event.description}
+                            </Typography>
+                          ) : null}
+                          {event.subtitle ? (
+                            <Typography variant="caption" color="text.secondary">
+                              {event.subtitle}
+                            </Typography>
+                          ) : null}
+                        </Stack>
                       }
                     />
                   </ListItemButton>

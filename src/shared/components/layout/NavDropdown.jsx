@@ -7,6 +7,8 @@ import Button from '@mui/material/Button'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import { alpha, useTheme } from '@mui/material/styles'
+import { resolveNavIcon } from '@/shared/config/navItemIcons'
+import { NavItemIcon } from '@/shared/components/layout/NavItemIcon'
 
 export const navTriggerSx = (theme, { isActive = false, isOpen = false } = {}) => ({
   fontWeight: isActive ? 700 : 500,
@@ -28,6 +30,10 @@ export const navTriggerSx = (theme, { isActive = false, isOpen = false } = {}) =
       ? alpha(theme.palette.common.white, 0.2)
       : alpha(theme.palette.common.white, 0.1),
     boxShadow: `inset 0 0 0 1px ${alpha(theme.palette.common.white, 0.18)}`,
+  },
+  '& .MuiButton-startIcon': {
+    mr: 0.5,
+    ml: 0,
   },
   '& .MuiButton-endIcon': {
     ml: 0.25,
@@ -51,7 +57,7 @@ export const navLinkTriggerSx = (theme) => ({
   },
 })
 
-export const NavDropdown = ({ label, items, badgeCounts = {} }) => {
+export const NavDropdown = ({ label, items, badgeCounts = {}, icon }) => {
   const theme = useTheme()
   const navigate = useNavigate()
   const location = useLocation()
@@ -59,6 +65,7 @@ export const NavDropdown = ({ label, items, badgeCounts = {} }) => {
 
   const isOpen = Boolean(anchorEl)
   const isActive = items.some((item) => location.pathname.startsWith(item.path))
+  const triggerIcon = resolveNavIcon({ label, icon })
 
   const handleOpen = (event) => setAnchorEl(event.currentTarget)
   const handleClose = () => setAnchorEl(null)
@@ -75,6 +82,7 @@ export const NavDropdown = ({ label, items, badgeCounts = {} }) => {
         onClick={handleOpen}
         aria-haspopup="menu"
         aria-expanded={isOpen ? 'true' : undefined}
+        startIcon={<NavItemIcon icon={triggerIcon} />}
         endIcon={<KeyboardArrowDownRoundedIcon sx={{ fontSize: 18 }} />}
         sx={navTriggerSx(theme, { isActive, isOpen })}
       >
@@ -114,6 +122,7 @@ export const NavDropdown = ({ label, items, badgeCounts = {} }) => {
         {items.map((item) => {
           const badgeCount = item.badgeKey ? badgeCounts[item.badgeKey] ?? 0 : 0
           const isSelected = location.pathname === item.path
+          const itemIcon = resolveNavIcon(item)
 
           return (
             <MenuItem
@@ -121,6 +130,7 @@ export const NavDropdown = ({ label, items, badgeCounts = {} }) => {
               selected={isSelected}
               onClick={() => handleSelect(item.path)}
               sx={{
+                gap: 1.25,
                 borderRadius: 1.5,
                 py: 1,
                 px: 1.25,
@@ -140,12 +150,20 @@ export const NavDropdown = ({ label, items, badgeCounts = {} }) => {
                 '&:last-child': { mb: 0 },
               }}
             >
+              <NavItemIcon
+                icon={itemIcon}
+                sx={{
+                  flexShrink: 0,
+                  color: isSelected ? 'primary.main' : 'text.secondary',
+                }}
+              />
               {badgeCount > 0 ? (
                 <Badge
                   color="error"
                   badgeContent={badgeCount}
                   sx={{
-                    width: '100%',
+                    flex: 1,
+                    minWidth: 0,
                     '& .MuiBadge-badge': {
                       fontSize: '0.65rem',
                       minWidth: 18,
@@ -158,7 +176,9 @@ export const NavDropdown = ({ label, items, badgeCounts = {} }) => {
                   </Box>
                 </Badge>
               ) : (
-                item.label
+                <Box component="span" sx={{ flex: 1, minWidth: 0 }}>
+                  {item.label}
+                </Box>
               )}
             </MenuItem>
           )

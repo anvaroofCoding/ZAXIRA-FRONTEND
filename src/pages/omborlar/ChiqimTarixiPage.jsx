@@ -29,6 +29,7 @@ import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
+import { BarcodeTableCell } from '@/features/warehouse/components/BarcodeTableCell'
 import {
   getItemNomenclatureCode,
   NOMENCLATURE_COLUMN_LABEL,
@@ -502,7 +503,7 @@ export const ChiqimTarixiPage = () => {
                         <TableCell sx={nomenclatureTableCellSx}>
                           {getItemNomenclatureCode(row)}
                         </TableCell>
-                        <TableCell sx={{ fontFamily: 'monospace' }}>{row.barcode}</TableCell>
+                        <BarcodeTableCell value={row.barcode} productName={row.name} width={150} />
                         <TableCell align="right">{row.quantity} ta</TableCell>
                       </TableRow>
                     ))}

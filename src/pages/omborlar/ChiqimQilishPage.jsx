@@ -36,6 +36,7 @@ import {
   useGetWarehouseExpenseReasonsQuery,
   useLazyGetWarehouseInventoryItemByBarcodeGloballyQuery,
 } from '@/features/warehouse/api/warehouseApi'
+import { BarcodeTableCell } from '@/features/warehouse/components/BarcodeTableCell'
 import {
   getItemNomenclatureCode,
   NOMENCLATURE_COLUMN_LABEL,
@@ -85,11 +86,25 @@ export const ChiqimQilishPage = () => {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
 
   const barcodeRef = useRef(null)
+  const wasFetchingRef = useRef(false)
+
+  const focusBarcodeInput = () => {
+    requestAnimationFrame(() => {
+      barcodeRef.current?.focus()
+    })
+  }
 
   useEffect(() => {
-    const timer = setTimeout(() => barcodeRef.current?.focus(), 0)
+    const timer = setTimeout(() => focusBarcodeInput(), 0)
     return () => clearTimeout(timer)
   }, [])
+
+  useEffect(() => {
+    if (wasFetchingRef.current && !lookupState.isFetching) {
+      focusBarcodeInput()
+    }
+    wasFetchingRef.current = lookupState.isFetching
+  }, [lookupState.isFetching])
 
   const [rows, setRows] = useState([])
   const rowsByKey = useMemo(() => new Map(rows.map((r) => [r.rowKey, r])), [rows])
@@ -98,6 +113,7 @@ export const ChiqimQilishPage = () => {
     canCreateExpense &&
     !lookupState.isFetching &&
     !createExpenseState.isLoading
+  const barcodeInputDisabled = !canCreateExpense || createExpenseState.isLoading
   const canOpenSaveDialog =
     canCreateExpense &&
     rows.length > 0 &&
@@ -110,10 +126,12 @@ export const ChiqimQilishPage = () => {
     (!isFixedAssetReason || Boolean(serviceStructureId))
 
   const handleScan = async () => {
+    if (!canScan) return
+
     setError('')
     const value = barcode.trim()
     if (!value) {
-      barcodeRef.current?.focus()
+      focusBarcodeInput()
       return
     }
 
@@ -151,7 +169,7 @@ export const ChiqimQilishPage = () => {
       setError(msg)
       barcodeRef.current?.select?.()
     } finally {
-      setTimeout(() => barcodeRef.current?.focus(), 0)
+      focusBarcodeInput()
     }
   }
 
@@ -164,7 +182,7 @@ export const ChiqimQilishPage = () => {
 
   const removeRow = (rowKey) => {
     setRows((prev) => prev.filter((r) => r.rowKey !== rowKey))
-    barcodeRef.current?.focus()
+    focusBarcodeInput()
   }
 
   const resetForm = () => {
@@ -174,7 +192,7 @@ export const ChiqimQilishPage = () => {
     setRows([])
     setBarcode('')
     setError('')
-    barcodeRef.current?.focus()
+    focusBarcodeInput()
   }
 
   const handleSubmit = async () => {
@@ -255,7 +273,8 @@ export const ChiqimQilishPage = () => {
                 placeholder="Skaner qiling va Enter bosing"
                 value={barcode}
                 onChange={(e) => setBarcode(e.target.value)}
-                disabled={!canScan}
+                disabled={barcodeInputDisabled}
+                autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault()
@@ -305,7 +324,7 @@ export const ChiqimQilishPage = () => {
                     <TableCell sx={nomenclatureTableCellSx}>
                       {getItemNomenclatureCode(r)}
                     </TableCell>
-                    <TableCell sx={{ fontFamily: 'monospace' }}>{r.barcode}</TableCell>
+                    <BarcodeTableCell value={r.barcode} productName={r.name} width={150} />
                     <TableCell>{r.locationName || '—'}</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 700 }}>
                       {r.available}

@@ -18,4 +18,6 @@ export const API_TAGS = {
   PRODUCT: 'Product',
   WAREHOUSE_IMPORT_SESSION: 'WarehouseImportSession',
   WAREHOUSE_IMPORT: 'WarehouseImport',
+  MEASUREMENT_UNIT: 'MeasurementUnit',
+  TASK: 'Task',
 }

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import dayjs from 'dayjs'
 import { useGetTransferHistoryQuery } from '@/features/transfer/api/transferApi'
 import { useGetAllWarehousesOverviewQuery } from '@/features/warehouse/api/warehouseApi'
 import {
@@ -11,10 +12,13 @@ import {
 export const TRANSFER_FETCH_LIMIT = 200
 
 export const useWarehouseMapData = () => {
+  const visibleFrom = dayjs().format('YYYY-MM-DD')
+
   const overviewQuery = useGetAllWarehousesOverviewQuery()
   const transferQuery = useGetTransferHistoryQuery({
     page: 1,
     limit: TRANSFER_FETCH_LIMIT,
+    visibleFrom,
   })
 
   const warehouses = overviewQuery.data ?? []

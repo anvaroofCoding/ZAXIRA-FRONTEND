@@ -11,6 +11,7 @@ import {
   shouldHandleSessionExpired,
 } from '@/shared/utils/sessionExpired'
 import { markTasksApiUnavailable } from '@/features/tasks/utils/tasksApiAvailability'
+import { markFaqApiUnavailable } from '@/features/app-usage/constants/defaultAppAbout'
 
 const getRequestUrl = (args) => {
   if (typeof args === 'string') {
@@ -43,6 +44,10 @@ const baseQuery = async (args, api, extraOptions) => {
 
   if (result.error?.status === 404 && getRequestUrl(args).includes('/tasks')) {
     markTasksApiUnavailable()
+  }
+
+  if (result.error?.status === 404 && getRequestUrl(args).includes('/app-usage/faqs')) {
+    markFaqApiUnavailable()
   }
 
   if (shouldHandleSessionExpired(result.error, args, hadToken)) {

@@ -32,6 +32,10 @@ export const STRUCTURES_PAGE_PATH = '/royxatga-olish/tuzilmalar'
 export const COMMISSIONS_PAGE_PATH = '/royxatga-olish/komissiya-azolari'
 export const UNITS_PAGE_PATH = '/royxatga-olish/birliklar'
 export const TASK_ASSIGNMENT_PAGE_PATH = '/royxatga-olish/vazifa-berish'
+export const FOYDALANISH_DASTUR_HAQIDA_PAGE_PATH = '/foydalanish/dastur-haqida'
+export const FOYDALANISH_DASTUR_APILARI_PAGE_PATH = '/foydalanish/dastur-apilari'
+export const FOYDALANISH_DASTUR_SERVERI_PAGE_PATH = '/foydalanish/dastur-serveri'
+export const FOYDALANISH_FAQ_PAGE_PATH = '/foydalanish/kop-beriladigan-savollar'
 
 /** Kirish va amallar alohida boshqariladigan sahifalar — legacy auto-enable qo‘llanmaydi */
 export const GRANULAR_PERMISSION_PATHS = new Set([
@@ -88,6 +92,10 @@ export const UNAVAILABLE_PAGE_ACTIONS = {
   [TRANSFER_PAGE_PATH]: ['create', 'update', 'delete'],
   [TRANSFER_RECEIPT_PAGE_PATH]: ['update', 'delete'],
   [TRANSFER_HISTORY_PAGE_PATH]: ['create', 'delete'],
+  [FOYDALANISH_DASTUR_HAQIDA_PAGE_PATH]: ['create', 'update', 'delete'],
+  [FOYDALANISH_DASTUR_APILARI_PAGE_PATH]: ['create', 'update', 'delete'],
+  [FOYDALANISH_DASTUR_SERVERI_PAGE_PATH]: ['create', 'update', 'delete'],
+  [FOYDALANISH_FAQ_PAGE_PATH]: ['create', 'update', 'delete'],
 }
 
 /** @deprecated UNAVAILABLE_PAGE_ACTIONS nomidan foydalaning */

@@ -1,20 +1,24 @@
 import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined'
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined'
+import ApiOutlinedIcon from '@mui/icons-material/ApiOutlined'
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined'
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined'
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined'
 import ChecklistOutlinedIcon from '@mui/icons-material/ChecklistOutlined'
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined'
+import DnsOutlinedIcon from '@mui/icons-material/DnsOutlined'
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined'
 import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined'
 import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined'
 import MoveToInboxOutlinedIcon from '@mui/icons-material/MoveToInboxOutlined'
 import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined'
 import PrecisionManufacturingOutlinedIcon from '@mui/icons-material/PrecisionManufacturingOutlined'
+import QuizOutlinedIcon from '@mui/icons-material/QuizOutlined'
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
 import SendOutlinedIcon from '@mui/icons-material/SendOutlined'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
@@ -84,6 +88,11 @@ export const SIDE_RAIL_ITEMS = [
     icon: ChecklistOutlinedIcon,
   },
   { label: 'Invertarizatsiya boshqaruvi', path: '/invertarizatsiya/boshqaruv', icon: AdminPanelSettingsOutlinedIcon },
+
+  { label: 'Dastur haqida', path: '/foydalanish/dastur-haqida', icon: InfoOutlinedIcon, dividerBefore: true },
+  { label: 'Dastur apilari', path: '/foydalanish/dastur-apilari', icon: ApiOutlinedIcon },
+  { label: 'Dastur serveri', path: '/foydalanish/dastur-serveri', icon: DnsOutlinedIcon },
+  { label: 'Ko‘p beriladigan savollar', path: '/foydalanish/kop-beriladigan-savollar', icon: QuizOutlinedIcon },
 
   { label: 'Kalendar', path: '/dashboard/kalendar', icon: CalendarMonthOutlinedIcon, dividerBefore: true },
   { label: 'Maxsulotlar', path: '/dashboard/maxsulotlar', icon: CategoryOutlinedIcon },

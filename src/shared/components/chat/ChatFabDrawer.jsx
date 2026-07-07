@@ -98,7 +98,10 @@ export const ChatNavButton = () => {
     <IconButton
       color="inherit"
       aria-label="Chat"
-      onClick={() => chatOpenHandler?.()}
+      onClick={(event) => {
+        event.currentTarget.blur()
+        chatOpenHandler?.()
+      }}
     >
       <Badge badgeContent={unreadCount} color="error" max={99}>
         <ChatOutlinedIcon />
@@ -775,12 +778,14 @@ export const ChatFabDrawer = () => {
                 placeholder="Qidiruv"
                 value={supportSearch}
                 onChange={(e) => setSupportSearch(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon fontSize="small" />
-                    </InputAdornment>
-                  ),
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  },
                 }}
               />
             </Box>
@@ -831,12 +836,14 @@ export const ChatFabDrawer = () => {
             placeholder="Qidiruv"
             value={directSearch}
             onChange={(e) => setDirectSearch(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
-                </InputAdornment>
-              ),
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              },
             }}
           />
         </Box>

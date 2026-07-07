@@ -60,7 +60,11 @@ export const InternetSpeedCard = ({ embedded = false }) => {
           gap: 1.5,
         }}
       >
-        <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ minWidth: 0, flex: 1 }}>
+        <Stack
+          direction="row"
+          spacing={1.5}
+          sx={{ minWidth: 0, flex: 1, alignItems: 'flex-start' }}
+        >
           {!embedded ? <SpeedOutlinedIcon color="action" sx={{ flexShrink: 0, mt: 0.25 }} /> : null}
           <Box sx={{ minWidth: 0 }}>
             <Typography variant="subtitle1" fontWeight={600}>

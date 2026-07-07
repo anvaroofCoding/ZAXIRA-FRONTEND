@@ -1,3 +1,4 @@
+import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import AppRegistrationOutlinedIcon from '@mui/icons-material/AppRegistrationOutlined'
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined'
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined'
@@ -19,6 +20,7 @@ export const NAV_TOP_LEVEL_ICONS = {
   Omborlar: WarehouseOutlinedIcon,
   Transfer: SwapHorizOutlinedIcon,
   Invertarizatsiya: Inventory2OutlinedIcon,
+  Foydalanish: MenuBookOutlinedIcon,
   "Ro'yxatga olish": AppRegistrationOutlinedIcon,
 }
 

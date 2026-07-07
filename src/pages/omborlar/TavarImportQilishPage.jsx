@@ -28,14 +28,18 @@ const PAGE_PATH = TAVAR_IMPORT_PAGE_PATH
 const MAX_ACTIVE_SESSIONS = 10
 
 export const TavarImportQilishPage = () => {
-  const { user: authUser, canCreate } = usePermissions()
+  const { user: authUser, canAccess, canCreate } = usePermissions()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [activeSessionId, setActiveSessionId] = useState(null)
   const [deleteSessionTarget, setDeleteSessionTarget] = useState(null)
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
 
   const isSuperAdmin = authUser?.isSuperAdmin || authUser?.role === 'SUPER_ADMIN'
+  const hasStructure = Boolean(authUser?.structureId ?? authUser?.structure?.id)
+  const hasWarehouse = authUser?.structure?.hasWarehouse === true
+  const canViewImportPage = isSuperAdmin || canAccess(PAGE_PATH)
   const canImport = isSuperAdmin || canCreate(PAGE_PATH)
+  const canLoadImportHistory = canViewImportPage && (isSuperAdmin || (hasStructure && hasWarehouse))
 
   const sessionsQuery = useGetProductImportSessionsQuery(undefined, {
     skip: !canImport,
@@ -200,7 +204,7 @@ export const TavarImportQilishPage = () => {
         </Alert>
       ) : null}
 
-      <ProductImportsHistoryTable />
+      <ProductImportsHistoryTable disabled={!canLoadImportHistory} />
 
       <ProductImportFormDialog
         open={dialogOpen}

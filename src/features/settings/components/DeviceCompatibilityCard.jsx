@@ -17,8 +17,7 @@ export const DeviceCompatibilityCard = ({ embedded = false }) => {
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         spacing={1.5}
-        alignItems={{ xs: 'stretch', sm: 'center' }}
-        justifyContent="space-between"
+        sx={{ alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: 'space-between' }}
       >
         <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ minWidth: 0, flex: 1 }}>
           {!embedded ? (

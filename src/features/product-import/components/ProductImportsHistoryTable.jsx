@@ -203,7 +203,7 @@ const ImportDetailDialog = ({ importId, open, onClose }) => {
   )
 }
 
-export const ProductImportsHistoryTable = () => {
+export const ProductImportsHistoryTable = ({ disabled = false }) => {
   const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch] = useState('')
   const [dateFrom, setDateFrom] = useState(null)
@@ -241,13 +241,16 @@ export const ProductImportsHistoryTable = () => {
     setSearchParams(next, { replace: true })
   }, [searchParams, setSearchParams])
 
-  const importsQuery = useGetProductImportsQuery({
-    page: page + 1,
-    limit: rowsPerPage,
-    search: debouncedSearch,
-    dateFrom: dateFromParam,
-    dateTo: dateToParam,
-  })
+  const importsQuery = useGetProductImportsQuery(
+    {
+      page: page + 1,
+      limit: rowsPerPage,
+      search: debouncedSearch,
+      dateFrom: dateFromParam,
+      dateTo: dateToParam,
+    },
+    { skip: disabled },
+  )
 
   const items = importsQuery.data?.items ?? []
   const total = importsQuery.data?.total ?? 0
@@ -290,89 +293,95 @@ export const ProductImportsHistoryTable = () => {
         />
       </Stack>
 
-      <QuerySkeleton
-        isLoading={importsQuery.isLoading}
-        isUninitialized={importsQuery.isUninitialized}
-        hasData={!importsQuery.isLoading && !importsQuery.isUninitialized}
-      >
-        {importsQuery.isError ? (
+      {disabled ? (
+        <Alert severity="info">
+          Import tarixini ko‘rish uchun foydalanuvchiga omborli tuzilma biriktirilishi kerak.
+        </Alert>
+      ) : (
+        <QuerySkeleton
+          isLoading={importsQuery.isLoading}
+          isUninitialized={importsQuery.isUninitialized}
+          hasData={!importsQuery.isLoading && !importsQuery.isUninitialized}
+        >
+          {importsQuery.isError ? (
           <Alert severity="error">
             {getApiErrorMessage(importsQuery.error, 'Import tarixini yuklab bo‘lmadi')}
           </Alert>
-        ) : (
-          <>
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Kod</TableCell>
-                    <TableCell>Sana</TableCell>
-                    <TableCell>Ombor joyi</TableCell>
-                    <TableCell align="right">Tovarlar</TableCell>
-                    <TableCell align="right">Jami dona</TableCell>
-                    <TableCell>Import qilgan</TableCell>
-                    <TableCell>Izoh</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {!items.length ? (
+          ) : (
+            <>
+              <TableContainer component={Paper} variant="outlined">
+                <Table size="small">
+                  <TableHead>
                     <TableRow>
-                      <TableCell colSpan={7}>
-                        <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-                          Hozircha import qilingan tavarlar topilmadi.
-                        </Typography>
-                      </TableCell>
+                      <TableCell>Kod</TableCell>
+                      <TableCell>Sana</TableCell>
+                      <TableCell>Ombor joyi</TableCell>
+                      <TableCell align="right">Tovarlar</TableCell>
+                      <TableCell align="right">Jami dona</TableCell>
+                      <TableCell>Import qilgan</TableCell>
+                      <TableCell>Izoh</TableCell>
                     </TableRow>
-                  ) : (
-                    items.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        hover
-                        onClick={() => setDetailId(row.id)}
-                        sx={{ cursor: 'pointer' }}
-                      >
-                        <TableCell>
-                          <Typography variant="body2" fontWeight={600}>
-                            {row.code}
+                  </TableHead>
+                  <TableBody>
+                    {!items.length ? (
+                      <TableRow>
+                        <TableCell colSpan={7}>
+                          <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+                            Hozircha import qilingan tavarlar topilmadi.
                           </Typography>
                         </TableCell>
-                        <TableCell>{formatDateTime(row.createdAt)}</TableCell>
-                        <TableCell>{row.locationName}</TableCell>
-                        <TableCell align="right">{row.itemCount}</TableCell>
-                        <TableCell align="right">{row.totalQuantity}</TableCell>
-                        <TableCell>{row.createdBy?.displayName ?? '—'}</TableCell>
-                        <TableCell sx={{ maxWidth: 180, width: 180 }}>
-                          <ImportCommentCell
-                            row={row}
-                            onViewComment={setCommentPreview}
-                          />
-                        </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                    ) : (
+                      items.map((row) => (
+                        <TableRow
+                          key={row.id}
+                          hover
+                          onClick={() => setDetailId(row.id)}
+                          sx={{ cursor: 'pointer' }}
+                        >
+                          <TableCell>
+                            <Typography variant="body2" fontWeight={600}>
+                              {row.code}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>{formatDateTime(row.createdAt)}</TableCell>
+                          <TableCell>{row.locationName}</TableCell>
+                          <TableCell align="right">{row.itemCount}</TableCell>
+                          <TableCell align="right">{row.totalQuantity}</TableCell>
+                          <TableCell>{row.createdBy?.displayName ?? '—'}</TableCell>
+                          <TableCell sx={{ maxWidth: 180, width: 180 }}>
+                            <ImportCommentCell
+                              row={row}
+                              onViewComment={setCommentPreview}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
 
-            <TablePagination
-              component="div"
-              count={total}
-              page={page}
-              onPageChange={(_event, nextPage) => setPage(nextPage)}
-              rowsPerPage={rowsPerPage}
-              onRowsPerPageChange={(event) => {
-                setRowsPerPage(Number(event.target.value))
-                setPage(0)
-              }}
-              rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
-              labelRowsPerPage="Sahifada:"
-              labelDisplayedRows={({ from, to, count }) =>
-                `${from}–${to} / ${count !== -1 ? count : `>${to}`}`
-              }
-            />
-          </>
-        )}
-      </QuerySkeleton>
+              <TablePagination
+                component="div"
+                count={total}
+                page={page}
+                onPageChange={(_event, nextPage) => setPage(nextPage)}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={(event) => {
+                  setRowsPerPage(Number(event.target.value))
+                  setPage(0)
+                }}
+                rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
+                labelRowsPerPage="Sahifada:"
+                labelDisplayedRows={({ from, to, count }) =>
+                  `${from}–${to} / ${count !== -1 ? count : `>${to}`}`
+                }
+              />
+            </>
+          )}
+        </QuerySkeleton>
+      )}
 
       <ImportDetailDialog
         importId={detailId}

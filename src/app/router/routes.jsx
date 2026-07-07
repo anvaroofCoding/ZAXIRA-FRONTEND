@@ -142,6 +142,22 @@ const { VazifaBerishPage } = lazyImport(
   () => import('@/pages/vazifa-berish'),
   'VazifaBerishPage',
 )
+const { DasturHaqidaPage } = lazyImport(
+  () => import('@/pages/foydalanish'),
+  'DasturHaqidaPage',
+)
+const { DasturApilariPage } = lazyImport(
+  () => import('@/pages/foydalanish'),
+  'DasturApilariPage',
+)
+const { DasturServeriPage } = lazyImport(
+  () => import('@/pages/foydalanish'),
+  'DasturServeriPage',
+)
+const { KopBeriladiganSavollarPage } = lazyImport(
+  () => import('@/pages/foydalanish'),
+  'KopBeriladiganSavollarPage',
+)
 const { SozlamalarPage } = lazyImport(
   () => import('@/pages/sozlamalar'),
   'SozlamalarPage',
@@ -319,6 +335,26 @@ export const routes = [
           {
             path: 'invertarizatsiya/boshqaruv',
             Component: BoshqaruvPage,
+          },
+          {
+            path: 'foydalanish',
+            element: <Navigate to="/foydalanish/dastur-haqida" replace />,
+          },
+          {
+            path: 'foydalanish/dastur-haqida',
+            Component: DasturHaqidaPage,
+          },
+          {
+            path: 'foydalanish/dastur-apilari',
+            Component: DasturApilariPage,
+          },
+          {
+            path: 'foydalanish/dastur-serveri',
+            Component: DasturServeriPage,
+          },
+          {
+            path: 'foydalanish/kop-beriladigan-savollar',
+            Component: KopBeriladiganSavollarPage,
           },
           {
             path: 'sozlamalar',

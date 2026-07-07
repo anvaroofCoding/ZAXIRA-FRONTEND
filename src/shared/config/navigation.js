@@ -56,6 +56,16 @@ export const NAV_ITEMS = [
   },
   {
     type: 'group',
+    label: 'Foydalanish',
+    children: [
+      { label: 'Dastur haqida', path: '/foydalanish/dastur-haqida' },
+      { label: 'Dastur apilari', path: '/foydalanish/dastur-apilari' },
+      { label: 'Dastur serveri', path: '/foydalanish/dastur-serveri' },
+      { label: 'Ko‘p beriladigan savollar', path: '/foydalanish/kop-beriladigan-savollar' },
+    ],
+  },
+  {
+    type: 'group',
     label: "Ro'yxatga olish",
     children: [
       { label: 'Foydalanuvchilar', path: '/royxatga-olish/foydalanuvchilar' },

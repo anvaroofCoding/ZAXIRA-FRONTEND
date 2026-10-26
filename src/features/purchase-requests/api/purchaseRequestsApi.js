@@ -58,18 +58,24 @@ const submitSessionWithFiles = async (
   sessionPayload,
 ) => {
   const formData = new FormData()
-  formData.append('bildirgi', bildirgiFile, bildirgiFile.name || 'bildirgi.docx')
-  formData.append('kelishuv', kelishuvFile, kelishuvFile.name || 'kelishuv.docx')
 
-  formData.append(
-    'payload',
-    JSON.stringify(
-      sanitizeSessionPayload({
-        purchasePeriodType: 'plain',
-        ...(sessionPayload ?? {}),
-      }),
-    ),
-  )
+  if (bildirgiFile) {
+    formData.append('bildirgi', bildirgiFile, bildirgiFile.name || 'bildirgi.docx')
+  }
+  if (kelishuvFile) {
+    formData.append('kelishuv', kelishuvFile, kelishuvFile.name || 'kelishuv.docx')
+  }
+
+  const sanitized = sanitizeSessionPayload({
+    purchasePeriodType: 'plain',
+    ...(sessionPayload ?? {}),
+  })
+
+  formData.append('payload', JSON.stringify(sanitized))
+
+  if (sanitized.manualDocuments === true) {
+    formData.append('manualDocuments', 'true')
+  }
 
   const response = await fetch(
     `${env.apiBaseUrl}/purchase-requests/active-sessions/${sessionId}/submit`,
@@ -246,6 +252,10 @@ const sanitizeSessionPayload = (body, { minimal = false } = {}) => {
     if (periodType === 'month' && body.purchasePeriodMonth) {
       next.purchasePeriodMonth = Number(body.purchasePeriodMonth)
     }
+  }
+
+  if (typeof body.manualDocuments === 'boolean') {
+    next.manualDocuments = body.manualDocuments
   }
 
   return next
@@ -605,10 +615,17 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
         }
 
         const payload = sanitizeSessionPayload(body)
+        const localPayload = {
+          ...payload,
+          manualDocuments: body.manualDocuments === true,
+          ...(body.documentsPreparedAt
+            ? { documentsPreparedAt: body.documentsPreparedAt }
+            : {}),
+        }
 
         let localSnapshot
         try {
-          localSnapshot = persistActiveSessionLocally(userId, id, payload)
+          localSnapshot = persistActiveSessionLocally(userId, id, localPayload)
         } catch (error) {
           return {
             error: {
@@ -734,12 +751,15 @@ export const purchaseRequestsApi = baseApi.injectEndpoints({
           }
         }
 
-        if (!bildirgiFile || !kelishuvFile) {
+        const isManualDocuments = sessionPayload?.manualDocuments === true
+
+        if (isManualDocuments && (!bildirgiFile || !kelishuvFile)) {
           return {
             error: {
               status: 400,
               data: {
-                message: 'Bildirgi va kelishuv Word fayllari yuborilishi shart',
+                message:
+                  'Qo‘lda yuklash rejimida bildirgi va kelishuv Word fayllari yuborilishi shart',
               },
             },
           }

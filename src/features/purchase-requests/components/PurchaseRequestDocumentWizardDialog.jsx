@@ -62,6 +62,7 @@ export const PurchaseRequestDocumentWizardDialog = ({
 
   const isEditMode = mode === 'edit'
   const isResubmitMode = mode === 'resubmit'
+  const isManualDocuments = sessionPayload?.manualDocuments === true
 
   const resetEditorState = useCallback(() => {
     setDocumentFile(null)
@@ -81,7 +82,7 @@ export const PurchaseRequestDocumentWizardDialog = ({
   }, [open, resetEditorState])
 
   useEffect(() => {
-    if (!open || !sessionId || prepared) return
+    if (!open || !sessionId || prepared || isManualDocuments) return
 
     const runPrepare = async () => {
       try {
@@ -96,10 +97,10 @@ export const PurchaseRequestDocumentWizardDialog = ({
     }
 
     runPrepare()
-  }, [open, sessionId, sessionPayload, prepared, prepareDocuments])
+  }, [open, sessionId, sessionPayload, prepared, prepareDocuments, isManualDocuments])
 
   useEffect(() => {
-    if (!open || !sessionId || !prepared) return
+    if (!open || !sessionId || !prepared || isManualDocuments) return
 
     const loadDocument = async () => {
       resetEditorState()
@@ -110,14 +111,14 @@ export const PurchaseRequestDocumentWizardDialog = ({
         const file = await fetchSessionDocumentFile(sessionId, docType)
         setDocumentFile(file)
       } catch (loadError) {
-        setError(loadError.message || 'Hujjatni ochib bo‘lmadi')
+        setError(getApiErrorMessage(loadError, loadError.message || 'Hujjatni ochib bo‘lmadi'))
       } finally {
         setDocumentLoading(false)
       }
     }
 
     loadDocument()
-  }, [open, sessionId, prepared, docType, resetEditorState])
+  }, [open, sessionId, prepared, docType, resetEditorState, isManualDocuments])
 
   const stepInfo = useMemo(() => {
     if (activeStep === 0) {

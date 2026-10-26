@@ -192,11 +192,39 @@ export const ArizalarYuborishPage = () => {
     }
   }
 
-  const handleContinueToDocuments = async (payload, { sessionId } = {}) => {
+  const handleWizardSubmitted = (created) => {
+    setDocumentWizardSessionId(null)
+    setDocumentWizardPayload(null)
+    setActiveSessionId(null)
+
+    if (created?.id) {
+      setDetailTarget(created)
+    }
+
+    showSnackbar(`Ariza ${created.requestCode} yuborildi`)
+  }
+
+  const handleContinueToDocuments = async (
+    payload,
+    { sessionId, bildirgiFile, kelishuvFile } = {},
+  ) => {
     if (!sessionId || isLocalActiveSessionId(sessionId)) {
       throw new Error(
         'Hujjat tahriri uchun server seansi kerak. Yangi ariza ochib qayta urinib ko‘ring.',
       )
+    }
+
+    if (payload.manualDocuments === true) {
+      const created = await submitPurchaseRequestSession({
+        sessionId,
+        bildirgiFile,
+        kelishuvFile,
+        sessionPayload: payload,
+      }).unwrap()
+
+      closeFormDialog()
+      handleWizardSubmitted(created)
+      return
     }
 
     closeFormDialog()
@@ -213,18 +241,6 @@ export const ArizalarYuborishPage = () => {
 
     setDocumentWizardPayload(payload)
     setDocumentWizardSessionId(sessionId)
-  }
-
-  const handleWizardSubmitted = (created) => {
-    setDocumentWizardSessionId(null)
-    setDocumentWizardPayload(null)
-    setActiveSessionId(null)
-
-    if (created?.id) {
-      setDetailTarget(created)
-    }
-
-    showSnackbar(`Ariza ${created.requestCode} yuborildi`)
   }
 
   const handleSubmit = async (payload, { sessionId } = {}) => {

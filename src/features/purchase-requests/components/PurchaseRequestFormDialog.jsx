@@ -6,18 +6,15 @@ import Alert from '@mui/material/Alert'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Checkbox from '@mui/material/Checkbox'
 import CircularProgress from '@mui/material/CircularProgress'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
-import Paper from '@mui/material/Paper'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
@@ -33,9 +30,17 @@ import { useGetUsersLookupQuery } from '@/features/users/api/usersApi'
 import { usePermissions } from '@/shared/hooks/usePermissions'
 import { ProductNameAutocomplete } from '@/features/products/components/ProductNameAutocomplete'
 import { COUNTRIES } from '@/features/purchase-requests/constants/countries'
+import { DocumentPrepareSwitch } from '@/features/purchase-requests/components/DocumentPrepareSwitch'
+import { ManualDocumentFileField } from '@/features/purchase-requests/components/ManualDocumentFileField'
 import { PurchasePeriodFields } from '@/features/purchase-requests/components/PurchasePeriodFields'
 import { UnitSelectField } from '@/shared/components/inputs/UnitSelectField'
+import {
+  getPurchaseRequestDocumentFileError,
+  MANUAL_DOCUMENTS_REQUIRED_MESSAGE,
+  validateManualPurchaseDocuments,
+} from '@/features/purchase-requests/utils/purchaseRequestDocumentFile'
 import { getLocalActiveSessionById } from '@/features/purchase-requests/utils/activeSessionsStorage'
+import { getApiErrorMessage } from '@/shared/utils/getApiErrorMessage'
 import { splitAutocompleteOptionProps } from '@/shared/utils/autocompleteOptionProps'
 import { buildYearOptions } from '@/features/purchase-requests/utils/formatPurchasePeriod'
 
@@ -109,6 +114,10 @@ export const PurchaseRequestFormDialog = ({
   const [error, setError] = useState('')
   const [sessionNotice, setSessionNotice] = useState('')
   const [aiLoadingByIndex, setAiLoadingByIndex] = useState({})
+  const [autoPrepareDocuments, setAutoPrepareDocuments] = useState(true)
+  const [manualBildirgiFile, setManualBildirgiFile] = useState(null)
+  const [manualKelishuvFile, setManualKelishuvFile] = useState(null)
+  const [fileErrors, setFileErrors] = useState({ bildirgi: '', kelishuv: '' })
   const [polishItemText] = usePolishPurchaseRequestItemTextMutation()
   const [saveSession, saveSessionState] = useSavePurchaseRequestSessionMutation()
   const skipNextAutosaveRef = useRef(true)
@@ -142,8 +151,10 @@ export const PurchaseRequestFormDialog = ({
       purchasePeriodQuarter:
         periodType === 'quarter' ? Number(periodQuarter) || undefined : undefined,
       purchasePeriodMonth: periodType === 'month' ? Number(periodMonth) || undefined : undefined,
+      manualDocuments: !autoPrepareDocuments,
     }),
     [
+      autoPrepareDocuments,
       bossId,
       comment,
       commissionAgreementText,
@@ -251,6 +262,19 @@ export const PurchaseRequestFormDialog = ({
     setError('')
     setSessionNotice('')
     setAiLoadingByIndex({})
+    setManualBildirgiFile(null)
+    setManualKelishuvFile(null)
+    setFileErrors({ bildirgi: '', kelishuv: '' })
+
+    if (request) {
+      setAutoPrepareDocuments(true)
+    } else if (session) {
+      const sessionSource =
+        getLocalActiveSessionById(currentUserId, session.id) ?? session
+      setAutoPrepareDocuments(sessionSource.manualDocuments !== true)
+    } else {
+      setAutoPrepareDocuments(true)
+    }
   }, [open, request?.id, session?.id, request, session]) // request/session: init ma'lumotlari
 
   useEffect(() => {
@@ -308,6 +332,7 @@ export const PurchaseRequestFormDialog = ({
     periodYear,
     periodQuarter,
     periodMonth,
+    autoPrepareDocuments,
     persistSession,
   ])
 
@@ -413,6 +438,24 @@ export const PurchaseRequestFormDialog = ({
       return
     }
 
+    const preparingManually = !isEdit && !autoPrepareDocuments
+
+    if (preparingManually) {
+      const nextFileErrors = validateManualPurchaseDocuments(
+        manualBildirgiFile,
+        manualKelishuvFile,
+      )
+      setFileErrors({
+        bildirgi: nextFileErrors.bildirgi,
+        kelishuv: nextFileErrors.kelishuv,
+      })
+
+      if (nextFileErrors.hasError) {
+        setError(MANUAL_DOCUMENTS_REQUIRED_MESSAGE)
+        return
+      }
+    }
+
     const payload = {
       commissionMemberIds: commissionMembers.map((member) => member.id),
       bossId,
@@ -423,6 +466,7 @@ export const PurchaseRequestFormDialog = ({
       purchasePeriodYear: periodType === 'plain' ? undefined : periodYear,
       purchasePeriodQuarter: periodType === 'quarter' ? periodQuarter : undefined,
       purchasePeriodMonth: periodType === 'month' ? periodMonth : undefined,
+      ...(!isEdit ? { manualDocuments: preparingManually } : {}),
     }
 
     try {
@@ -430,9 +474,46 @@ export const PurchaseRequestFormDialog = ({
         await saveSession({ id: sessionId, syncServer: true, ...payload }).unwrap()
       }
 
-      await onSubmit(payload, { sessionId })
+      await onSubmit(payload, {
+        sessionId,
+        ...(preparingManually
+          ? {
+              bildirgiFile: manualBildirgiFile,
+              kelishuvFile: manualKelishuvFile,
+            }
+          : {}),
+      })
     } catch (submitError) {
-      setError(submitError.message || 'Saqlashda xatolik')
+      setError(getApiErrorMessage(submitError, submitError.message || 'Saqlashda xatolik'))
+    }
+  }
+
+  const handleAutoPrepareChange = (nextChecked) => {
+    setAutoPrepareDocuments(nextChecked)
+    setManualBildirgiFile(null)
+    setManualKelishuvFile(null)
+    setFileErrors({ bildirgi: '', kelishuv: '' })
+
+    if (error === MANUAL_DOCUMENTS_REQUIRED_MESSAGE) {
+      setError('')
+    }
+  }
+
+  const handleManualFileSelect = (docType, file) => {
+    const label = docType === 'bildirgi' ? 'Bildirgi' : 'Kelishuv varaqasi'
+    const nextError = file ? getPurchaseRequestDocumentFileError(file, label) : ''
+    const nextFile = nextError ? null : file
+
+    if (docType === 'bildirgi') {
+      setManualBildirgiFile(nextFile)
+    } else {
+      setManualKelishuvFile(nextFile)
+    }
+
+    setFileErrors((prev) => ({ ...prev, [docType]: nextError }))
+
+    if (nextFile && error === MANUAL_DOCUMENTS_REQUIRED_MESSAGE) {
+      setError('')
     }
   }
 
@@ -502,6 +583,43 @@ export const PurchaseRequestFormDialog = ({
                 Faol seans: yozganlaringiz 2 soniyadan keyin avtomatik saqlanadi. Internet
                 bo‘lmasa ma’lumot qurilmada saqlanib qoladi va server tiklangach sinxronlanadi.
               </Alert>
+            ) : null}
+
+            {!isEdit ? (
+              <Stack spacing={1.5}>
+                <DocumentPrepareSwitch
+                  checked={autoPrepareDocuments}
+                  onChange={handleAutoPrepareChange}
+                  disabled={loading}
+                />
+
+                {!autoPrepareDocuments ? (
+                  <Stack spacing={1.5}>
+                    <ManualDocumentFileField
+                      label="Bildirgi"
+                      file={manualBildirgiFile}
+                      error={fileErrors.bildirgi}
+                      disabled={loading}
+                      onSelect={(file) => handleManualFileSelect('bildirgi', file)}
+                      onClear={() => handleManualFileSelect('bildirgi', null)}
+                    />
+                    <ManualDocumentFileField
+                      label="Kelishuv varaqasi"
+                      file={manualKelishuvFile}
+                      error={fileErrors.kelishuv}
+                      disabled={loading}
+                      onSelect={(file) => handleManualFileSelect('kelishuv', file)}
+                      onClear={() => handleManualFileSelect('kelishuv', null)}
+                    />
+                    {usesSession ? (
+                      <Typography variant="caption" color="text.secondary">
+                        Sahifa yangilangach fayllarni qayta tanlash kerak. Boshqa maydonlar
+                        saqlanib qoladi.
+                      </Typography>
+                    ) : null}
+                  </Stack>
+                ) : null}
+              </Stack>
             ) : null}
 
             <TextField

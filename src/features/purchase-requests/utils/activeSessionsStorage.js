@@ -78,6 +78,8 @@ const normalizeSession = (session, index = 1, userId = null) => {
     purchasePeriodQuarter: session.purchasePeriodQuarter ?? null,
     purchasePeriodMonth: session.purchasePeriodMonth ?? null,
     reservedRequestCode: session.reservedRequestCode ?? null,
+    manualDocuments: session.manualDocuments === true,
+    documentsPreparedAt: session.documentsPreparedAt ?? null,
     createdAt: session.createdAt ?? updatedAt,
     updatedAt,
     isLocal: Boolean(session.isLocal ?? String(session.id ?? '').startsWith('local-')),
